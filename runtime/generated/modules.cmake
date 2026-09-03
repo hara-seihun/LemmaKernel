@@ -82,6 +82,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/spreads_and_parti
 # module spreads_and_partitions: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/strongly_regular/backends/generic/strongly_regular_generic.cpp)
 # module strongly_regular: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/subgroups/backends/generic/subgroups_generic.cpp)
+# module subgroups: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/subspace_orbits/backends/generic/subspace_orbits_generic.cpp)
 # module subspace_orbits: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/sum_free_and_additive/backends/generic/sum_free_and_additive_generic.cpp)

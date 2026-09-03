@@ -717,6 +717,28 @@ class PermutationGenerators:
 
 
 @dataclass
+class SubgroupLists:
+    """Canonical subgroup lists for each input permutation group.
+
+    Each subgroup contains indices into the lexicographically sorted closure of its parent group.
+    """
+    count: int
+    group_offsets: list[int]
+    subgroup_offsets: list[int]
+    elements: list[int]
+
+    def member(self, i: int):
+        return [[int(x) for x in self.elements[self.subgroup_offsets[j]:self.subgroup_offsets[j + 1]]]
+                for j in range(self.group_offsets[i], self.group_offsets[i + 1])]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.group_offsets)}Q", *self.group_offsets)
+        payload += struct.pack(f"<{len(self.subgroup_offsets)}Q", *self.subgroup_offsets)
+        payload += struct.pack(f"<{len(self.elements)}Q", *self.elements)
+        return encode("subgroups.lists", {"count": self.count}, payload)
+
+
+@dataclass
 class MobiusMatrices:
     """A ragged batch of signed square matrices, one Möbius matrix per poset."""
     count: int
@@ -984,7 +1006,8 @@ KINDS = {"gfp.matrix": Matrix, "lattices.gram": Matrix, "orbits.perms": Perms, "
          "designs.matrix": U64Matrices,
          "polytopes_small.vectors": U64Vectors, "lk.signed_matrices": SignedMatrices,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
-         "automorphisms.generators": PermutationGenerators, "posets.mobius": MobiusMatrices,
+         "automorphisms.generators": PermutationGenerators, "subgroups.lists": SubgroupLists,
+         "posets.mobius": MobiusMatrices,
          "young.characters": Characters, "young.rsk_pairs": RskPairs,
          "elliptic_curves_fp.group": CurveGroups, "polynomials_fq.elements": Elements,
          "polynomials_fq.degrees": Degrees, "graph_polynomials.coefficients": Coefficients,
@@ -1150,6 +1173,15 @@ def decode_at(buf: bytes, offset: int):
         offsets = list(struct.unpack_from(f"<{noff}Q", pl, 0))
         entries = unpack_entries(pl[8 * noff:], 0, offsets[-1] * q["order"])
         return PermutationGenerators(q["count"], q["order"], offsets, entries), end
+    if k == "subgroups.lists":
+        group_count = q["count"] + 1
+        group_offsets = list(struct.unpack_from(f"<{group_count}Q", pl, 0))
+        subgroup_count = group_offsets[-1] + 1
+        pos = 8 * group_count
+        subgroup_offsets = list(struct.unpack_from(f"<{subgroup_count}Q", pl, pos))
+        pos += 8 * subgroup_count
+        elements = list(struct.unpack_from(f"<{subgroup_offsets[-1]}Q", pl, pos))
+        return SubgroupLists(q["count"], group_offsets, subgroup_offsets, elements), end
     if k == "posets.mobius":
         count = q["count"]
         offset_bytes = 8 * (count + 1)

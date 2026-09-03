@@ -139,7 +139,7 @@ std::vector<uint8_t> encode_matrix(const Matrix &m) {
     Writer w;
     w.entries(m.entries, entry_width(m.p));
     Writer out;
-    if (m.p == 0) write_header(out, "orbits.perms", {{"n", m.cols}, {"count", m.count}}, w.out);
+    if (m.p == 0) write_header(out, "orbits.perms", {{"n", m.cols}, {"count", m.count * m.rows}}, w.out);
     else if (m.p == NATURALS) write_header(out, "lk.naturals", {{"count", m.count}, {"rows", m.rows}, {"cols", m.cols}}, w.out);
     else if (m.p == GRAMS) write_header(out, "lattices.gram", {{"count", m.count}, {"n", m.rows}}, w.out);
     else write_header(out, "gfp.matrix", {{"p", m.p}, {"count", m.count}, {"rows", m.rows}, {"cols", m.cols}}, w.out);
@@ -944,6 +944,38 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->bsgs = b;
         return R::success(o);
     }
+    if (h.kind == "subgroups.lists") {
+        auto count = need(h, "count");
+        if (!count.ok) return R::failure(count.error.status, count.error.message);
+        if (count.value == UINT64_MAX || (unsigned __int128)(count.value + 1) * 8 > h.payload_len)
+            return R::failure(INVALID, "subgroups.lists group offsets are truncated");
+        auto lists = std::make_shared<SubgroupLists>();
+        lists->count = count.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i <= count.value; ++i) lists->group_offsets.push_back(r.u64());
+        if (r.bad || lists->group_offsets.front() != 0 ||
+            !std::is_sorted(lists->group_offsets.begin(), lists->group_offsets.end()))
+            return R::failure(INVALID, "subgroups.lists group offsets are malformed");
+        uint64_t subgroups = lists->group_offsets.back();
+        if (subgroups == UINT64_MAX || (unsigned __int128)(subgroups + 1) * 8 > (uint64_t)(r.end - r.p))
+            return R::failure(INVALID, "subgroups.lists subgroup offsets are truncated");
+        for (uint64_t i = 0; i <= subgroups; ++i) lists->subgroup_offsets.push_back(r.u64());
+        if (r.bad || lists->subgroup_offsets.front() != 0 ||
+            !std::is_sorted(lists->subgroup_offsets.begin(), lists->subgroup_offsets.end()) ||
+            (unsigned __int128)lists->subgroup_offsets.back() * 8 != (uint64_t)(r.end - r.p))
+            return R::failure(INVALID, "subgroups.lists subgroup offsets are malformed");
+        for (uint64_t i = 0; i < lists->subgroup_offsets.back(); ++i) lists->elements.push_back(r.u64());
+        if (r.bad || r.p != r.end)
+            return R::failure(INVALID, "subgroups.lists payload length mismatch");
+        for (uint64_t i = 0; i < subgroups; ++i) {
+            auto first = lists->elements.begin() + lists->subgroup_offsets[i];
+            auto last = lists->elements.begin() + lists->subgroup_offsets[i + 1];
+            if (first == last || !std::is_sorted(first, last) || std::adjacent_find(first, last) != last)
+                return R::failure(INVALID, "subgroups.lists subgroups must be nonempty increasing index lists");
+        }
+        o->subgroup_lists = std::move(lists);
+        return R::success(o);
+    }
     if (h.kind == "automorphisms.generators") {
         auto count = need(h, "count"), order = need(h, "order");
         for (auto *r : {&count, &order}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -1072,7 +1104,7 @@ bool is_prime(uint64_t n) {
 }
 
 std::map<std::string, uint64_t> Object::params() const {
-    if (matrix && matrix->p == 0) return {{"n", matrix->cols}, {"count", matrix->count}};
+    if (matrix && matrix->p == 0) return {{"n", matrix->cols}, {"count", matrix->count * matrix->rows}};
     if (matrix && matrix->p == NATURALS) return {{"count", matrix->count}, {"rows", matrix->rows}, {"cols", matrix->cols}};
     if (matrix && matrix->p == GRAMS) return {{"count", matrix->count}, {"n", matrix->rows}};
     if (matrix) return {{"p", matrix->p}, {"count", matrix->count}, {"rows", matrix->rows}, {"cols", matrix->cols}};
@@ -1098,6 +1130,7 @@ std::map<std::string, uint64_t> Object::params() const {
                                  {"conductor", character_table->conductor}};
     if (character_indicators) return {{"count", character_indicators->values.size()}};
     if (permutation_generators) return {{"count", permutation_generators->count}, {"order", permutation_generators->order}};
+    if (subgroup_lists) return {{"count", subgroup_lists->count}};
     if (weight_enumerators) return {{"count", weight_enumerators->count}, {"n", weight_enumerators->n}};
     if (signed_matrices) return {{"count", signed_matrices->count}};
     if (characters) return {{"count", characters->values.size()}};
@@ -1226,6 +1259,11 @@ std::vector<uint8_t> encode(const Object &o) {
         w.u64s(o.permutation_generators->offsets);
         w.entries(o.permutation_generators->entries, 4);
         write_header(out, "automorphisms.generators", o.params(), w.out);
+    } else if (o.subgroup_lists) {
+        w.u64s(o.subgroup_lists->group_offsets);
+        w.u64s(o.subgroup_lists->subgroup_offsets);
+        w.u64s(o.subgroup_lists->elements);
+        write_header(out, "subgroups.lists", o.params(), w.out);
     } else if (o.weight_enumerators) {
         w.u64s(o.weight_enumerators->coefficients);
         write_header(out, "linear_codes.weight_enumerators", o.params(), w.out);

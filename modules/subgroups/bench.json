@@ -1,0 +1,34 @@
+{
+ "module": "subgroups",
+ "fingerprint": {
+  "module": "9afe28b08f745d21e82573684f9f95ad7da07b5792dcdfe8e1458a33da587968",
+  "runtime": "ada276d82b5028dd517f03356865a1f17b6bd8556ca54ce1ece9d802c4a9d1c0",
+  "dependencies": [],
+  "combined": "bfb492d1a21ec1941df730ddea5ae6d138e90e99e9f8b545fa353c80dcd871ef"
+ },
+ "measured_at": "2026-09-03T06:17:05+00:00",
+ "commit": "ebb7d66eb237a8cc57964db2402d2b0d20309c9c",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "S5 subgroup census",
+   "what": "all 156 subgroups of S5, a parent group of order 120",
+   "op": "subgroups.subgroup_count",
+   "reduction": "all",
+   "members": 1,
+   "naive_s": 0.3632711679674685,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.043991869082674384,
+   "kernel_all_threads_s": 0.04396847006864846,
+   "threads": 32,
+   "speedup_1_thread": 8.257688876205036,
+   "speedup_all_threads": 8.262083429336732,
+   "answer": "Integers(values=[156])"
+  }
+ ]
+}

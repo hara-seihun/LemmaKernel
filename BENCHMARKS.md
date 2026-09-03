@@ -51,6 +51,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | circulants | spectra of pairs on Z101 | 4,950 | 0.214 s | 0.00518 s | 41× | 79× |
 | hypergraphs | ramsey_R33_on_six_vertices | 6,435 | 0.0577 s | 0.00154 s | 37× | 121× |
 | continued_fractions_and_pell | class_numbers_to_50000 | 50,000 | 5.01 s | 0.176 s | 28× | 365× |
+| subgroups | S5 subgroup census | 1 | 0.363 s | 0.044 s | 8.3× | 8.3× |
 | polytopes_small | five-subsets of the 5-cube | 201,376 | 0.447 s | 0.0569 s | 7.9× | 81× |
 
 ## Every bench case
@@ -150,6 +151,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | spreads_and_partitions | pg32_meetings | how many of the three pairs meet, over every three-set of lines of PG(3,2) | 6,545 | 0.273 s | 0.000942 s | 0.00182 s | 290× | 150× |
 | spreads_and_partitions | pg42_partial_spreads | partial spreads among the 23,130,030 four-sets of the 155 lines of PG(4,2) | 23,130,030 | 1,751 s~ | 1.18 s | 0.201 s | 1,481× | 8,700× |
 | strongly_regular | six-vertex graph census | count labelled strongly regular graphs among all 2^21 symmetric 6x6 binary matrices | 2,097,152 | 16.8 s~ | 0.229 s | 0.0556 s | 73× | 302× |
+| subgroups | S5 subgroup census | all 156 subgroups of S5, a parent group of order 120 | 1 | 0.363 s | 0.044 s | 0.044 s | 8.3× | 8.3× |
 | subspace_orbits | PG(4,2) line orbits | canonical indices for the 155 lines of PG(4,2) under the Singer normaliser | 155 | 0.958 s | 0.0148 s | 0.00307 s | 65× | 312× |
 | sum_free_and_additive | sum_free_10_subsets_of_30 | how many of the 30 million 10-subsets of [1,30] are sum-free | 30,045,015 | 141 s~ | 0.00947 s | 0.00368 s | 14,872× | 38,300× |
 | sum_free_and_additive | sumset_sizes_6_subsets_of_40 | the distribution of |S+S| over every 6-subset of [1,40] | 3,838,380 | 13.9 s~ | 0.125 s | 0.0389 s | 111× | 358× |

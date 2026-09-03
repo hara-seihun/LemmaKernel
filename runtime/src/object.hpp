@@ -172,6 +172,13 @@ struct PermutationGenerators {
     std::vector<Entry> entries;
 };
 
+/* Per input group, a ragged list of subgroups. Each subgroup is an increasing list of indices
+ * into that input group's canonical element list. */
+struct SubgroupLists {
+    uint64_t count = 0;
+    std::vector<uint64_t> group_offsets, subgroup_offsets, elements;
+};
+
 struct WeightEnumerators {
     uint64_t count = 0, n = 0;
     std::vector<uint64_t> coefficients;
@@ -290,6 +297,7 @@ struct Object {
     std::shared_ptr<CharacterTable> character_table;
     std::shared_ptr<CharacterIndicators> character_indicators;
     std::shared_ptr<PermutationGenerators> permutation_generators;
+    std::shared_ptr<SubgroupLists> subgroup_lists;
     std::shared_ptr<WeightEnumerators> weight_enumerators;
     std::shared_ptr<SignedMatrices> signed_matrices;
     std::shared_ptr<Characters> characters;

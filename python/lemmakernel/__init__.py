@@ -22,16 +22,16 @@ from .interchange import (GRAMS, NATURALS, Basis, Bsgs, BurnsideCounts, Characte
                           CycleIndex, Degrees, DegreeSequences, Elements, Expansions, Extremum, Family, First,
                           GraphGroups, Histogram, Hits, Integers, Inverses, Matrix, MobiusMatrices, Partitions, Perms,
                           PermutationGenerators, QuadraticUnits, RegularSubgroups, RskPairs, ShortVectors,
-                          SignedMatrices, Solutions, Spectra,
-                          ThetaSeries, U64Matrices, U64Vectors, WeightEnumerators, Witness, gram, matrix, naturals, perms)
+                          SignedMatrices, Solutions, Spectra, SubgroupLists, ThetaSeries, U64Matrices, U64Vectors,
+                          WeightEnumerators, Witness, gram, matrix, naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "gram", "perms", "naturals", "interchange", "MODULES",
            "Perms", "Matrix", "Basis", "Solutions", "Inverses", "Witness", "WeightEnumerators", "BurnsideCounts",
            "CycleIndex", "Spectra", "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "CharacterTable",
-           "CharacterIndicators", "CharacterMultiplicities", "PermutationGenerators", "MobiusMatrices", "Characters",
-           "RskPairs", "CurveGroups", "Elements", "Degrees", "DegreeSequences", "Expansions", "QuadraticUnits",
-           "Coefficients", "ThetaSeries",
+           "CharacterIndicators", "CharacterMultiplicities", "PermutationGenerators", "SubgroupLists",
+           "MobiusMatrices", "Characters", "RskPairs", "CurveGroups", "Elements", "Degrees", "DegreeSequences",
+           "Expansions", "QuadraticUnits", "Coefficients", "ThetaSeries",
            "ShortVectors", "SignedMatrices", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family",
            "GraphGroups", "RegularSubgroups", "NATURALS", "GRAMS"]
 
@@ -183,7 +183,7 @@ _PARAM_NAMES = {
     "designs.matrix": ["count", "rows", "cols"],
     "polytopes_small.vectors": ["count", "length"], "perm_groups.partition": ["count", "n"],
     "perm_groups.bsgs": ["count", "n"], "automorphisms.generators": ["count", "order"],
-    "posets.mobius": ["count"], "young.characters": ["count"], "young.rsk_pairs": ["count", "length"],
+    "subgroups.lists": ["count"], "posets.mobius": ["count"], "young.characters": ["count"], "young.rsk_pairs": ["count", "length"],
     "elliptic_curves_fp.group": ["count"], "polynomials_fq.elements": ["p", "count"],
     "polynomials_fq.degrees": ["count"], "lk.signed_matrices": ["count", "rows", "cols"], "integers": ["count"],
     "continued_fractions_and_pell.expansion": ["count"], "continued_fractions_and_pell.unit": ["count"],
