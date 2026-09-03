@@ -84,6 +84,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/subspace_orbits/b
 # module subspace_orbits: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/sum_free_and_additive/backends/generic/sum_free_and_additive_generic.cpp)
 # module sum_free_and_additive: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/vertex_transitive/backends/generic/vertex_transitive_generic.cpp)
+# module vertex_transitive: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/words_and_growth/backends/generic/words_and_growth_generic.cpp)
 # module words_and_growth: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/young/backends/generic/young_generic.cpp)

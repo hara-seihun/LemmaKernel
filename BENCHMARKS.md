@@ -28,6 +28,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | automorphisms | order8_catalogue | 4 | 0.0782 s | 5.31e-05 s | 1,471× | 1,009× |
 | set_systems | antichains_64_choose_5 | 7,624,512 | 16.6 s~ | 0.0204 s | 815× | 4,420× |
 | posets | divisor_heights_100000 | 100,000 | 123 s~ | 0.17 s | 725× | 11,326× |
+| vertex_transitive | cycle_8_regular_subgroups | 1 | 0.0752 s | 0.000136 s | 552× | 572× |
 | graphs | random_graph_chromatic | 120 | 0.0713 s | 0.000214 s | 334× | 199× |
 | quantum_codes | distance census of three-spaces | 97,155 | 8.16 s | 0.0274 s | 297× | 2,732× |
 | gfq | gf4_subset_ranks | 8,568 | 1.58 s | 0.00965 s | 163× | 593× |
@@ -150,6 +151,10 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | subspace_orbits | PG(4,2) line orbits | canonical indices for the 155 lines of PG(4,2) under the Singer normaliser | 155 | 0.958 s | 0.0148 s | 0.00307 s | 65× | 312× |
 | sum_free_and_additive | sum_free_10_subsets_of_30 | how many of the 30 million 10-subsets of [1,30] are sum-free | 30,045,015 | 141 s~ | 0.00947 s | 0.00368 s | 14,872× | 38,300× |
 | sum_free_and_additive | sumset_sizes_6_subsets_of_40 | the distribution of |S+S| over every 6-subset of [1,40] | 3,838,380 | 13.9 s~ | 0.125 s | 0.0389 s | 111× | 358× |
+| vertex_transitive | all_graphs_6_vertex_transitive | count vertex-transitive isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.145 s | 0.0029 s | 0.00155 s | 50× | 94× |
+| vertex_transitive | all_graphs_6_arc_transitive | count arc-transitive isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.149 s | 0.003 s | 0.00102 s | 50× | 146× |
+| vertex_transitive | all_graphs_6_cayley | count Cayley isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.322 s | 0.00316 s | 0.000945 s | 102× | 341× |
+| vertex_transitive | cycle_8_regular_subgroups | list every regular subgroup of the automorphism group of the 8-cycle | 1 | 0.0752 s | 0.000136 s | 0.000131 s | 552× | 572× |
 | words_and_growth | free group F2 geodesic prefix | geodesic-word counts through length 9 in the rank-two free group | 10 | 2.06 s | 1.88e-05 s | 1.15e-05 s | 109,456× | 179,308× |
 | young | hook_counts_n30 | the dimensions of every irreducible representation of S_30 | 5,604 | 0.145 s | 0.00721 s | 0.00226 s | 20× | 64× |
 | young | ternary_rsk_length7 | RSK insertion and recording tableaux for all 2,187 ternary words of length 7 | 2,187 | 0.0427 s | 0.000693 s | 0.00146 s | 62× | 29× |

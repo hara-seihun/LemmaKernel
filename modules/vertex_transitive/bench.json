@@ -1,0 +1,79 @@
+{
+ "module": "vertex_transitive",
+ "fingerprint": {
+  "module": "02bf0c250baae158c0c062e755ebd232f075cb853a4bf11332f05482aea986eb",
+  "runtime": "e784f24d8649a8c64bfeaf4e94a3240d77f281e4739101168ee6be4f37397165",
+  "dependencies": [],
+  "combined": "3b5a306d8c1f4a935d80f111e2b1fa0c3ba88a0c0ecbc37f2e21644e9b0c98c6"
+ },
+ "measured_at": "2026-09-03T06:09:01+00:00",
+ "commit": "cce6076ef5aaafe6ca4f78832b35072f2fa41c4d",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "all_graphs_6_vertex_transitive",
+   "what": "count vertex-transitive isomorphism classes among all 156 simple graphs on six vertices",
+   "op": "vertex_transitive.is_vertex_transitive",
+   "reduction": "count",
+   "members": 156,
+   "naive_s": 0.14516487810760736,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0029049799777567387,
+   "kernel_all_threads_s": 0.0015511971432715654,
+   "threads": 32,
+   "speedup_1_thread": 49.97104256109382,
+   "speedup_all_threads": 93.58248159318174,
+   "answer": "Count(value=8, visited=156, family_size=156)"
+  },
+  {
+   "case": "all_graphs_6_arc_transitive",
+   "what": "count arc-transitive isomorphism classes among all 156 simple graphs on six vertices",
+   "op": "vertex_transitive.is_arc_transitive",
+   "reduction": "count",
+   "members": 156,
+   "naive_s": 0.14878714689984918,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0030044768936932087,
+   "kernel_all_threads_s": 0.0010194319766014814,
+   "threads": 32,
+   "speedup_1_thread": 49.521814333860554,
+   "speedup_all_threads": 145.9510299018346,
+   "answer": "Count(value=14, visited=156, family_size=156)"
+  },
+  {
+   "case": "all_graphs_6_cayley",
+   "what": "count Cayley isomorphism classes among all 156 simple graphs on six vertices",
+   "op": "vertex_transitive.is_cayley",
+   "reduction": "count",
+   "members": 156,
+   "naive_s": 0.32175104203633964,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0031556328758597374,
+   "kernel_all_threads_s": 0.0009448949713259935,
+   "threads": 32,
+   "speedup_1_thread": 101.96086005368419,
+   "speedup_all_threads": 340.51513850774205,
+   "answer": "Count(value=8, visited=156, family_size=156)"
+  },
+  {
+   "case": "cycle_8_regular_subgroups",
+   "what": "list every regular subgroup of the automorphism group of the 8-cycle",
+   "op": "vertex_transitive.regular_subgroups",
+   "reduction": "all",
+   "members": 1,
+   "naive_s": 0.07515459205023944,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.00013623596169054508,
+   "kernel_all_threads_s": 0.0001314959954470396,
+   "threads": 32,
+   "speedup_1_thread": 551.6501745768882,
+   "speedup_all_threads": 571.5352151580021,
+   "answer": "RegularSubgroups(count=1, n=8, offsets=[0, 2], entries=array([0, 1, 2, 3, 4, 5, 6, 7, 1, 0, 7, 6, 5, 4, 3, 2, 2, 3, 4, 5"
+  }
+ ]
+}

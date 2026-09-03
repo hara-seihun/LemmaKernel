@@ -1,0 +1,72 @@
+# vertex_transitive: transitivity and Cayley recognition for finite graphs.
+
+[module]
+name = "vertex_transitive"
+version = 1
+summary = "Automorphism transitivity and Cayley recognition for labelled finite simple graphs. Arcs are ordered adjacent vertex pairs; action on an empty arc set is transitive. A graph is Cayley exactly when its full automorphism group contains a regular subgroup. regular_subgroups returns every such labelled subgroup: each subgroup is its complete lexicographically sorted element list, and subgroups are sorted lexicographically by those lists."
+lean = "lean"
+contract = "lean/Vertex_transitive/Contract.lean"
+reference = "lean/Vertex_transitive/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "vertex_transitive.regular_subgroups"
+params = ["count", "n"]
+payload = "u64 offsets[count+1], then offsets[count]*n*n u32 images; subgroup s consists of its n consecutive permutations"
+lean = "regularSubgroups"
+summary = "For each graph, every regular subgroup of its automorphism group. Each subgroup contains all n elements in lexicographic order; the subgroups are lexicographically sorted by their element lists."
+
+[[operations]]
+name = "is_vertex_transitive"
+value = "boolean"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Whether the full automorphism group is transitive on the labelled vertices."
+
+[[operations]]
+name = "is_arc_transitive"
+value = "boolean"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Whether the full automorphism group is transitive on ordered arcs (u,v) with u adjacent to v. The empty arc set is transitive."
+
+[[operations]]
+name = "is_cayley"
+value = "boolean"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Whether the full automorphism group contains a subgroup acting regularly on vertices, equivalently whether the labelled graph is isomorphic to a Cayley graph."
+
+[[operations]]
+name = "regular_subgroups"
+value = "vertex_transitive.regular_subgroups"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Every regular subgroup of the full automorphism group. A subgroup is returned as all n of its permutations in lexicographic order; the outer list is lexicographic too, so the answer has no generator choice."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/vertex_transitive_generic.cpp"]
+accepts = "simple undirected F_2 adjacency matrices on 1 to 10 vertices from explicit or graph families"
+summary = "Portable C++: graph_iso-style colour-refined automorphism backtracking, orbit tests, and canonical generation of semiregular subgroups up to order n; members run in parallel."
+
+[[rejections]]
+case = "ternary adjacency"
+error = "over F_2"
+
+[[rejections]]
+case = "rectangular adjacency"
+error = "square"
+
+[[rejections]]
+case = "directed adjacency"
+error = "symmetric"
+
+[[rejections]]
+case = "looped adjacency"
+error = "zero diagonal"
+
+[[rejections]]
+case = "eleven vertices"
+error = "at most 10"
+
+[[rejections]]
+case = "all matrices family"
+error = "families"

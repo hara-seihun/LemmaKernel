@@ -280,6 +280,28 @@ class GraphGroups:
 
 
 @dataclass
+class RegularSubgroups:
+    """Every regular subgroup for each graph, with complete sorted element lists."""
+    count: int
+    n: int
+    offsets: list[int]
+    entries: object
+
+    def member(self, i: int):
+        first, last = self.offsets[i], self.offsets[i + 1]
+        groups = []
+        for subgroup in range(first, last):
+            base = subgroup * self.n * self.n
+            groups.append([[int(x) for x in self.entries[base + g * self.n:base + (g + 1) * self.n]]
+                           for g in range(self.n)])
+        return groups
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.offsets)}Q", *self.offsets) + pack_entries(self.entries, 0)
+        return encode("vertex_transitive.regular_subgroups", {"count": self.count, "n": self.n}, payload)
+
+
+@dataclass
 class Basis:
     p: int
     count: int
@@ -952,6 +974,7 @@ class Family:
 
 
 KINDS = {"gfp.matrix": Matrix, "lattices.gram": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphGroups,
+         "vertex_transitive.regular_subgroups": RegularSubgroups,
          "gfp.basis": Basis, "gfp.solutions": Solutions, "gfp.inverses": Inverses,
          "gfp.witness": Witness, "linear_codes.weight_enumerators": WeightEnumerators,
          "graphs.degree_sequences": DegreeSequences,
@@ -1011,6 +1034,11 @@ def decode_at(buf: bytes, offset: int):
         offsets = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
         return GraphGroups(q["count"], q["n"], offsets,
                            unpack_entries(pl[width:], 0, offsets[-1] * q["n"])), end
+    if k == "vertex_transitive.regular_subgroups":
+        width = 8 * (q["count"] + 1)
+        offsets = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
+        return RegularSubgroups(q["count"], q["n"], offsets,
+                                unpack_entries(pl[width:], 0, offsets[-1] * q["n"] * q["n"])), end
     if k == "lk.naturals":
         n = q["count"] * q["rows"] * q["cols"]
         return Matrix(NATURALS, q["count"], q["rows"], q["cols"], unpack_entries(pl, NATURALS, n)), end

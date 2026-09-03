@@ -725,6 +725,41 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->graph_groups = groups;
         return G::success(o);
     }
+    if (h.kind == "vertex_transitive.regular_subgroups") {
+        auto count = need(h, "count"), n = need(h, "n");
+        for (auto *r : {&count, &n}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        if (n.value == 0 || n.value >= (1ULL << 32))
+            return R::failure(INVALID, "vertex_transitive.regular_subgroups: need 1 <= n < 2^32");
+        if (((unsigned __int128)count.value + 1) * 8 > h.payload_len)
+            return R::failure(INVALID, "vertex_transitive.regular_subgroups offsets truncated");
+        auto groups = std::make_shared<RegularSubgroups>();
+        groups->count = count.value; groups->n = n.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i <= count.value; ++i) groups->offsets.push_back(r.u64());
+        if (r.bad || groups->offsets.front() != 0)
+            return R::failure(INVALID, "vertex_transitive.regular_subgroups offsets must start at zero");
+        for (uint64_t i = 0; i < count.value; ++i)
+            if (groups->offsets[i] > groups->offsets[i + 1])
+                return R::failure(INVALID, "vertex_transitive.regular_subgroups offsets must be nondecreasing");
+        unsigned __int128 entry_count = (unsigned __int128)groups->offsets.back() * n.value * n.value;
+        if (entry_count > UINT64_MAX)
+            return R::failure(INVALID, "vertex_transitive.regular_subgroups entry count overflows u64");
+        r.entries(groups->entries, (uint64_t)entry_count, 4);
+        if (r.bad || r.p != r.end)
+            return R::failure(INVALID, "vertex_transitive.regular_subgroups payload length mismatch");
+        uint64_t permutations = groups->offsets.back() * n.value;
+        for (uint64_t g = 0; g < permutations; ++g) {
+            std::vector<bool> seen(n.value, false);
+            for (uint64_t i = 0; i < n.value; ++i) {
+                Entry e = groups->entries[g * n.value + i];
+                if (e >= n.value || seen[e])
+                    return R::failure(INVALID, "vertex_transitive.regular_subgroups contains an invalid permutation");
+                seen[e] = true;
+            }
+        }
+        o->regular_subgroups = groups;
+        return R::success(o);
+    }
     if (h.kind == "gfp.basis") {
         auto p = need(h, "p"), count = need(h, "count"), cols = need(h, "cols");
         for (auto *r : {&p, &count, &cols}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -1043,6 +1078,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (matrix) return {{"p", matrix->p}, {"count", matrix->count}, {"rows", matrix->rows}, {"cols", matrix->cols}};
     if (basis) return {{"p", basis->p}, {"count", basis->count}, {"cols", basis->cols}};
     if (graph_groups) return {{"count", graph_groups->count}, {"n", graph_groups->n}};
+    if (regular_subgroups) return {{"count", regular_subgroups->count}, {"n", regular_subgroups->n}};
     if (solutions) return {{"p", solutions->p}, {"count", solutions->count}, {"length", solutions->length}};
     if (inverses) return {{"p", inverses->p}, {"count", inverses->count}, {"n", inverses->n}};
     if (witness) return {{"p", witness->p}, {"count", witness->count}, {"rows", witness->rows}, {"cols", witness->cols}};
@@ -1112,6 +1148,10 @@ std::vector<uint8_t> encode(const Object &o) {
         w.u64s(o.graph_groups->offsets);
         w.entries(o.graph_groups->entries, 4);
         write_header(out, "graph_iso.groups", o.params(), w.out);
+    } else if (o.regular_subgroups) {
+        w.u64s(o.regular_subgroups->offsets);
+        w.entries(o.regular_subgroups->entries, 4);
+        write_header(out, "vertex_transitive.regular_subgroups", o.params(), w.out);
     } else if (o.solutions) {
         w.bytes(o.solutions->solvable);
         w.entries(o.solutions->entries, entry_width(o.solutions->p));

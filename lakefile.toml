@@ -2,7 +2,7 @@
 # Lk is the runtime's reference (families, reductions) and contract; then one library
 # per module: its executable reference and contract (against Mathlib).
 name = "LemmaKernel"
-defaultTargets = ["Lk", "Automorphisms", "Bilinear_invariants", "Boolean_functions", "Burnside", "Cayley", "Char_poly", "Characters", "Circulants", "Code_equivalence", "Continued_fractions_and_pell", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Graph_polynomials", "Graphs", "Hadamard", "Hypergraphs", "Integer_partitions", "Latin_squares", "Lattice_of_subspaces", "Lattices_small", "Linear_codes", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Polytopes_small", "Posets", "Projective_sets", "Quantum_codes", "Residues", "Set_systems", "Simplicial_complexes", "Spreads_and_partitions", "Strongly_regular", "Subspace_orbits", "Sum_free_and_additive", "Words_and_growth", "Young"]
+defaultTargets = ["Lk", "Automorphisms", "Bilinear_invariants", "Boolean_functions", "Burnside", "Cayley", "Char_poly", "Characters", "Circulants", "Code_equivalence", "Continued_fractions_and_pell", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Graph_polynomials", "Graphs", "Hadamard", "Hypergraphs", "Integer_partitions", "Latin_squares", "Lattice_of_subspaces", "Lattices_small", "Linear_codes", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Polytopes_small", "Posets", "Projective_sets", "Quantum_codes", "Residues", "Set_systems", "Simplicial_complexes", "Spreads_and_partitions", "Strongly_regular", "Subspace_orbits", "Sum_free_and_additive", "Vertex_transitive", "Words_and_growth", "Young"]
 
 [[require]]
 name = "mathlib"
@@ -223,6 +223,11 @@ roots = ["Subspace_orbits"]
 name = "Sum_free_and_additive"
 srcDir = "modules/sum_free_and_additive/lean"
 roots = ["Sum_free_and_additive"]
+
+[[lean_lib]]
+name = "Vertex_transitive"
+srcDir = "modules/vertex_transitive/lean"
+roots = ["Vertex_transitive"]
 
 [[lean_lib]]
 name = "Words_and_growth"

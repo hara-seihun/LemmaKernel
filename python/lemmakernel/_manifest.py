@@ -2848,6 +2848,61 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'element outside Z/7', 'error': 'below the modulus'},
                  {'case': 'progression shorter than two', 'error': 'length'},
                  {'case': 'zero denominator', 'error': 'bound_den'}]},
+ {'backends': [{'accepts': 'simple undirected F_2 adjacency matrices on 1 to 10 vertices from explicit or '
+                           'graph families',
+                'name': 'generic',
+                'sources': ['backends/generic/vertex_transitive_generic.cpp'],
+                'summary': 'Portable C++: graph_iso-style colour-refined automorphism backtracking, orbit '
+                           'tests, and canonical generation of semiregular subgroups up to order n; members '
+                           'run in parallel.'}],
+  'kinds': [{'lean': 'regularSubgroups',
+             'name': 'vertex_transitive.regular_subgroups',
+             'params': ['count', 'n'],
+             'payload': 'u64 offsets[count+1], then offsets[count]*n*n u32 images; subgroup s consists of '
+                        'its n consecutive permutations',
+             'summary': 'For each graph, every regular subgroup of its automorphism group. Each subgroup '
+                        'contains all n elements in lexicographic order; the subgroups are lexicographically '
+                        'sorted by their element lists.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Vertex_transitive/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'vertex_transitive',
+             'reference': 'lean/Vertex_transitive/Reference.lean',
+             'summary': 'Automorphism transitivity and Cayley recognition for labelled finite simple graphs. '
+                        'Arcs are ordered adjacent vertex pairs; action on an empty arc set is transitive. A '
+                        'graph is Cayley exactly when its full automorphism group contains a regular '
+                        'subgroup. regular_subgroups returns every such labelled subgroup: each subgroup is '
+                        'its complete lexicographically sorted element list, and subgroups are sorted '
+                        'lexicographically by those lists.',
+             'version': 1},
+  'operations': [{'families': ['explicit', 'all_graphs', 'edge_subgraphs', 'cayley_graphs'],
+                  'name': 'is_vertex_transitive',
+                  'summary': 'Whether the full automorphism group is transitive on the labelled vertices.',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'all_graphs', 'edge_subgraphs', 'cayley_graphs'],
+                  'name': 'is_arc_transitive',
+                  'summary': 'Whether the full automorphism group is transitive on ordered arcs (u,v) with u '
+                             'adjacent to v. The empty arc set is transitive.',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'all_graphs', 'edge_subgraphs', 'cayley_graphs'],
+                  'name': 'is_cayley',
+                  'summary': 'Whether the full automorphism group contains a subgroup acting regularly on '
+                             'vertices, equivalently whether the labelled graph is isomorphic to a Cayley '
+                             'graph.',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'all_graphs', 'edge_subgraphs', 'cayley_graphs'],
+                  'name': 'regular_subgroups',
+                  'summary': 'Every regular subgroup of the full automorphism group. A subgroup is returned '
+                             'as all n of its permutations in lexicographic order; the outer list is '
+                             'lexicographic too, so the answer has no generator choice.',
+                  'value': 'vertex_transitive.regular_subgroups'}],
+  'rejections': [{'case': 'ternary adjacency', 'error': 'over F_2'},
+                 {'case': 'rectangular adjacency', 'error': 'square'},
+                 {'case': 'directed adjacency', 'error': 'symmetric'},
+                 {'case': 'looped adjacency', 'error': 'zero diagonal'},
+                 {'case': 'eleven vertices', 'error': 'at most 10'},
+                 {'case': 'all matrices family', 'error': 'families'}]},
  {'backends': [{'accepts': '1 to 128 generators, equation rows of width at most 514, at most 256 equations '
                            'and 2^20 critical-pair checks, normal forms needing at most 2^20 rewrites, radii '
                            'at most 10^6, and u64 counts; geodesic_count with equal-length rules enumerates '

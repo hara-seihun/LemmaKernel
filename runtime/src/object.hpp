@@ -62,6 +62,12 @@ struct GraphGroups {
     std::vector<Entry> entries;
 };
 
+struct RegularSubgroups {
+    uint64_t count = 0, n = 0;
+    std::vector<uint64_t> offsets;
+    std::vector<Entry> entries;
+};
+
 struct Solutions {
     uint64_t p = 0, count = 0, length = 0;
     std::vector<uint8_t> solvable;
@@ -266,6 +272,7 @@ struct Object {
     std::shared_ptr<Matrix> matrix;
     std::shared_ptr<Basis> basis;
     std::shared_ptr<GraphGroups> graph_groups;
+    std::shared_ptr<RegularSubgroups> regular_subgroups;
     std::shared_ptr<Solutions> solutions;
     std::shared_ptr<Inverses> inverses;
     std::shared_ptr<Witness> witness;
