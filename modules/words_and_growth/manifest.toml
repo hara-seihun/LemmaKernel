@@ -1,0 +1,70 @@
+# words_and_growth: exact growth from finite complete rewriting presentations.
+
+[module]
+name = "words_and_growth"
+version = 1
+summary = "Ball sizes, spherical growth-series coefficients, and geodesic-word counts for finitely presented groups with a finite complete shortlex-decreasing rewriting system. Generator i is letter 2i and its inverse is 2i+1. Each relation row is [left_length, right_length, left..., right..., padding...], with padding equal to 2*generators. Equations orient from the larger side in shortlex order; inverse cancellations are implicit. The generic backend rejects a system unless every critical pair joins. A growth-series prefix is sphere_size/all on a range of radii, in increasing-radius order."
+lean = "lean"
+contract = "lean/Words_and_growth/Contract.lean"
+reference = "lean/Words_and_growth/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+# `relations` is an lk.naturals matrix interpreted as a list of rows. A batch of 1 x width
+# matrices and one rows x width matrix have the same meaning. The two lengths make equations
+# variable-sized; every unused entry must be the alphabet size, 2*generators. A [0, 0] row is a
+# harmless way to give a presentation with no defining equations.
+
+[[operations]]
+name = "ball_size"
+value = "integer"
+args = { generators = "int", relations = "vectors" }
+families = ["range"]
+summary = "For each radius n, the number of elements represented by words of length at most n. Radius 0 includes the identity."
+
+[[operations]]
+name = "sphere_size"
+value = "integer"
+args = { generators = "int", relations = "vectors" }
+families = ["range"]
+summary = "For each n, the coefficient of z^n in the spherical growth series: the number of elements whose shortest word has length n."
+
+[[operations]]
+name = "geodesic_count"
+value = "integer"
+args = { generators = "int", relations = "vectors" }
+families = ["range"]
+summary = "For each n, the number of length-n words that are geodesic. Distinct geodesic words for the same element are counted separately."
+
+[[operations]]
+name = "is_geodesic"
+value = "boolean"
+args = { generators = "int", relations = "vectors" }
+families = ["words"]
+summary = "Whether the member word has minimum length among all words representing the same group element."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/words_and_growth_generic.cpp"]
+accepts = "1 to 128 generators, equation rows of width at most 514, at most 256 equations and 2^20 critical-pair checks, normal forms needing at most 2^20 rewrites, radii at most 10^6, and u64 counts; geodesic_count with equal-length rules enumerates at most 2^24 words"
+summary = "Portable C++: validates convergence by critical pairs, counts irreducible normal forms with a prefix automaton, and enumerates words only when equal-length rules make geodesic multiplicities differ from sphere sizes."
+
+[[rejections]]
+case = "ball size on words"
+error = "range families only"
+
+[[rejections]]
+case = "geodesic predicate on radii"
+error = "words families only"
+
+[[rejections]]
+case = "wrong word alphabet"
+error = "alphabet"
+
+[[rejections]]
+case = "relation has an invalid symbol"
+error = "symbol"
+
+[[rejections]]
+case = "nonconfluent C3 relator"
+error = "not confluent"

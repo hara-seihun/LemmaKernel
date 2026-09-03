@@ -1613,6 +1613,59 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'wrong group dimension', 'error': 'n x n'},
                  {'case': 'singular generator', 'error': 'invertible'},
                  {'case': 'invalid projective flag', 'error': 'projective'}]},
+ {'backends': [{'accepts': '1 to 128 generators, equation rows of width at most 514, at most 256 equations '
+                           'and 2^20 critical-pair checks, normal forms needing at most 2^20 rewrites, radii '
+                           'at most 10^6, and u64 counts; geodesic_count with equal-length rules enumerates '
+                           'at most 2^24 words',
+                'name': 'generic',
+                'sources': ['backends/generic/words_and_growth_generic.cpp'],
+                'summary': 'Portable C++: validates convergence by critical pairs, counts irreducible normal '
+                           'forms with a prefix automaton, and enumerates words only when equal-length rules '
+                           'make geodesic multiplicities differ from sphere sizes.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Words_and_growth/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'words_and_growth',
+             'reference': 'lean/Words_and_growth/Reference.lean',
+             'summary': 'Ball sizes, spherical growth-series coefficients, and geodesic-word counts for '
+                        'finitely presented groups with a finite complete shortlex-decreasing rewriting '
+                        'system. Generator i is letter 2i and its inverse is 2i+1. Each relation row is '
+                        '[left_length, right_length, left..., right..., padding...], with padding equal to '
+                        '2*generators. Equations orient from the larger side in shortlex order; inverse '
+                        'cancellations are implicit. The generic backend rejects a system unless every '
+                        'critical pair joins. A growth-series prefix is sphere_size/all on a range of radii, '
+                        'in increasing-radius order.',
+             'version': 1},
+  'operations': [{'args': {'generators': 'int', 'relations': 'vectors'},
+                  'families': ['range'],
+                  'name': 'ball_size',
+                  'summary': 'For each radius n, the number of elements represented by words of length at '
+                             'most n. Radius 0 includes the identity.',
+                  'value': 'integer'},
+                 {'args': {'generators': 'int', 'relations': 'vectors'},
+                  'families': ['range'],
+                  'name': 'sphere_size',
+                  'summary': 'For each n, the coefficient of z^n in the spherical growth series: the number '
+                             'of elements whose shortest word has length n.',
+                  'value': 'integer'},
+                 {'args': {'generators': 'int', 'relations': 'vectors'},
+                  'families': ['range'],
+                  'name': 'geodesic_count',
+                  'summary': 'For each n, the number of length-n words that are geodesic. Distinct geodesic '
+                             'words for the same element are counted separately.',
+                  'value': 'integer'},
+                 {'args': {'generators': 'int', 'relations': 'vectors'},
+                  'families': ['words'],
+                  'name': 'is_geodesic',
+                  'summary': 'Whether the member word has minimum length among all words representing the '
+                             'same group element.',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'ball size on words', 'error': 'range families only'},
+                 {'case': 'geodesic predicate on radii', 'error': 'words families only'},
+                 {'case': 'wrong word alphabet', 'error': 'alphabet'},
+                 {'case': 'relation has an invalid symbol', 'error': 'symbol'},
+                 {'case': 'nonconfluent C3 relator', 'error': 'not confluent'}]},
  {'backends': [{'accepts': 'partition operations through n=30; RSK when its materialised output has at most '
                            '2^31 u32 entries; any representable standard_tableaux family',
                 'name': 'generic',
