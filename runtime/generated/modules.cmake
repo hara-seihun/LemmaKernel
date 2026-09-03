@@ -10,6 +10,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/burnside/backends
 # module burnside: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/cayley/backends/generic/cayley_generic.cpp)
 # module cayley: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/cayley_iso/backends/generic/cayley_iso_generic.cpp)
+# module cayley_iso: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/char_poly/backends/generic/char_poly_generic.cpp)
 # module char_poly: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/characters/backends/generic/characters_generic.cpp)

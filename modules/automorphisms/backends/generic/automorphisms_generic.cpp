@@ -4,6 +4,7 @@
  * forces the images of every product with an element already assigned. This turns a search over
  * n! permutations into a search over possible images of a small generating set for most groups.
  * Element order and centralizer size reject impossible images before propagation. */
+#include "../../../../runtime/src/group_table.hpp"
 #include "../../../../runtime/src/reduce.hpp"
 
 #include <unordered_set>
@@ -19,109 +20,6 @@ struct VectorHash {
         uint64_t h = 1469598103934665603ULL;
         for (Entry x : v) { h ^= x; h *= 1099511628211ULL; }
         return (size_t)h;
-    }
-};
-
-class AutomorphismSearch {
-public:
-    AutomorphismSearch(const Entry *table, uint64_t order)
-        : t(table), n(order), image(n, -1), preimage(n, -1), element_order(n), centralizer(n) {
-        identity = find_identity();
-        for (uint64_t a = 0; a < n; ++a) {
-            element_order[a] = order_of(a);
-            uint64_t c = 0;
-            for (uint64_t b = 0; b < n; ++b) c += mul(a, b) == mul(b, a);
-            centralizer[a] = c;
-        }
-    }
-
-    std::vector<std::vector<Entry>> run() {
-        bind(identity, identity);
-        descend();
-        std::sort(found.begin(), found.end());
-        return found;
-    }
-
-private:
-    const Entry *t;
-    uint64_t n, identity = 0;
-    std::vector<int64_t> image, preimage;
-    std::vector<uint64_t> element_order, centralizer;
-    std::vector<uint64_t> trail;
-    std::vector<std::vector<Entry>> found;
-
-    Entry mul(uint64_t a, uint64_t b) const { return t[a * n + b]; }
-
-    uint64_t find_identity() const {
-        for (uint64_t e = 0; e < n; ++e) {
-            bool ok = true;
-            for (uint64_t x = 0; x < n; ++x)
-                if (mul(e, x) != x || mul(x, e) != x) { ok = false; break; }
-            if (ok) return e;
-        }
-        return n;
-    }
-
-    uint64_t order_of(uint64_t a) const {
-        uint64_t x = identity;
-        for (uint64_t k = 1; k <= n; ++k) {
-            x = mul(x, a);
-            if (x == identity) return k;
-        }
-        return 0;
-    }
-
-    bool compatible(uint64_t a, uint64_t b) const {
-        return element_order[a] == element_order[b] && centralizer[a] == centralizer[b];
-    }
-
-    bool bind(uint64_t a, uint64_t b) {
-        if (image[a] >= 0) return (uint64_t)image[a] == b;
-        if (preimage[b] >= 0 || !compatible(a, b)) return false;
-        image[a] = (int64_t)b;
-        preimage[b] = (int64_t)a;
-        trail.push_back(a);
-
-        for (uint64_t x = 0; x < n; ++x) {
-            if (image[x] < 0) continue;
-            uint64_t y = (uint64_t)image[x];
-            if (!bind(mul(a, x), mul(b, y))) return false;
-            if (!bind(mul(x, a), mul(y, b))) return false;
-        }
-        return true;
-    }
-
-    void rollback(size_t mark) {
-        while (trail.size() > mark) {
-            uint64_t a = trail.back();
-            trail.pop_back();
-            preimage[(uint64_t)image[a]] = -1;
-            image[a] = -1;
-        }
-    }
-
-    void descend() {
-        uint64_t source = n;
-        size_t best = SIZE_MAX;
-        for (uint64_t a = 0; a < n; ++a) {
-            if (image[a] >= 0) continue;
-            size_t choices = 0;
-            for (uint64_t b = 0; b < n; ++b)
-                if (preimage[b] < 0 && compatible(a, b)) ++choices;
-            if (choices < best) { best = choices; source = a; }
-        }
-        if (source == n) {
-            std::vector<Entry> f(n);
-            for (uint64_t a = 0; a < n; ++a) f[a] = (Entry)image[a];
-            found.push_back(std::move(f));
-            return;
-        }
-        for (uint64_t target = 0; target < n; ++target) {
-            if (preimage[target] >= 0 || !compatible(source, target)) continue;
-            size_t mark = trail.size();
-            if (bind(source, target)) descend();
-            rollback(mark);
-        }
     }
 };
 
@@ -183,7 +81,7 @@ R run_integer(const Request &req, Op op) {
     auto statuses = parallel_ranges(count, threads, [&](uint32_t thread, uint64_t begin, uint64_t end) -> Status {
         for (uint64_t i = begin; i < end; ++i) {
             if (accs[thread].exhausted(i)) break;
-            auto autos = AutomorphismSearch(tables.at(i), n).run();
+            auto autos = group_table::automorphisms(tables.at(i), n);
             unsigned __int128 value = autos.size();
             if (op == Op::HolomorphOrder) value *= n;
             if (op == Op::InnerAutIndex) value = value * center_size(tables.at(i), n) / n;
@@ -205,7 +103,7 @@ R run_generators(const Request &req) {
     uint32_t threads = std::max<uint32_t>(1, std::min<uint64_t>(req.threads, count));
     auto statuses = parallel_ranges(count, threads, [&](uint32_t, uint64_t begin, uint64_t end) -> Status {
         for (uint64_t i = begin; i < end; ++i) {
-            auto autos = AutomorphismSearch(tables.at(i), n).run();
+            auto autos = group_table::automorphisms(tables.at(i), n);
             per_group[i] = canonical_generators(n, autos);
         }
         return ok();

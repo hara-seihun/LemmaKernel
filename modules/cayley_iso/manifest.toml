@@ -1,0 +1,61 @@
+# cayley_iso: the fixed-valency CI property for finite groups.
+
+[module]
+name = "cayley_iso"
+version = 1
+summary = "Fixed-size undirected Cayley graph classification for finite groups. For every group-table member and k, inverse-closed identity-free k-subsets are partitioned both by Aut(G) and by unlabelled graph isomorphism. The group is CI at k exactly when those class counts agree."
+lean = "lean"
+contract = "lean/Cayley_iso/Contract.lean"
+reference = "lean/Cayley_iso/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "aut_class_count"
+value = "integer"
+args = { k = "int" }
+families = ["group_tables"]
+summary = "Number of Aut(G)-orbits on inverse-closed identity-free connection sets of cardinality k. Aut(G) acts on the Cayley-table labels."
+
+[[operations]]
+name = "iso_class_count"
+value = "integer"
+args = { k = "int" }
+families = ["group_tables"]
+summary = "Number of unlabelled graph-isomorphism classes among Cay(G,S) for inverse-closed identity-free connection sets S of cardinality k."
+
+[[operations]]
+name = "is_ci"
+value = "boolean"
+args = { k = "int" }
+families = ["group_tables"]
+summary = "Whether aut_class_count equals iso_class_count for G and k, equivalently whether every isomorphism between the enumerated Cayley graphs is induced on connection sets by an automorphism of G."
+
+[[operations]]
+name = "is_non_ci"
+value = "boolean"
+args = { k = "int" }
+families = ["group_tables"]
+summary = "The negation of is_ci. Use the hits reduction to return the group-table members forming non-CI (G,k) pairs; k is the request argument. This separate predicate keeps the shared rule that hits returns true members."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/cayley_iso_generic.cpp"]
+accepts = "validated finite group tables; exhaustive inverse-closed connection sets and exact canonical forms"
+summary = "Portable C++: propagated table-automorphism search shared with automorphisms, canonical graph labelling shared with the runtime graph code, complement symmetry, and one fixed-k connection-set pass per group."
+
+[[rejections]]
+case = "matrix is not a group family"
+error = "group_tables"
+
+[[rejections]]
+case = "order-four catalogue at k=1"
+op = "aut_class_count"
+reduction = "count"
+error = "does not accept integer"
+
+[[rejections]]
+case = "order-four catalogue at k=1"
+op = "is_ci"
+reduction = "histogram"
+error = "does not accept boolean"

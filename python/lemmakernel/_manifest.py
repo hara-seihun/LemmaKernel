@@ -449,6 +449,59 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'error': 'does not accept integer',
                   'op': 'girth',
                   'reduction': 'count'}]},
+ {'backends': [{'accepts': 'validated finite group tables; exhaustive inverse-closed connection sets and '
+                           'exact canonical forms',
+                'name': 'generic',
+                'sources': ['backends/generic/cayley_iso_generic.cpp'],
+                'summary': 'Portable C++: propagated table-automorphism search shared with automorphisms, '
+                           'canonical graph labelling shared with the runtime graph code, complement '
+                           'symmetry, and one fixed-k connection-set pass per group.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Cayley_iso/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'cayley_iso',
+             'reference': 'lean/Cayley_iso/Reference.lean',
+             'summary': 'Fixed-size undirected Cayley graph classification for finite groups. For every '
+                        'group-table member and k, inverse-closed identity-free k-subsets are partitioned '
+                        'both by Aut(G) and by unlabelled graph isomorphism. The group is CI at k exactly '
+                        'when those class counts agree.',
+             'version': 1},
+  'operations': [{'args': {'k': 'int'},
+                  'families': ['group_tables'],
+                  'name': 'aut_class_count',
+                  'summary': 'Number of Aut(G)-orbits on inverse-closed identity-free connection sets of '
+                             'cardinality k. Aut(G) acts on the Cayley-table labels.',
+                  'value': 'integer'},
+                 {'args': {'k': 'int'},
+                  'families': ['group_tables'],
+                  'name': 'iso_class_count',
+                  'summary': 'Number of unlabelled graph-isomorphism classes among Cay(G,S) for '
+                             'inverse-closed identity-free connection sets S of cardinality k.',
+                  'value': 'integer'},
+                 {'args': {'k': 'int'},
+                  'families': ['group_tables'],
+                  'name': 'is_ci',
+                  'summary': 'Whether aut_class_count equals iso_class_count for G and k, equivalently '
+                             'whether every isomorphism between the enumerated Cayley graphs is induced on '
+                             'connection sets by an automorphism of G.',
+                  'value': 'boolean'},
+                 {'args': {'k': 'int'},
+                  'families': ['group_tables'],
+                  'name': 'is_non_ci',
+                  'summary': 'The negation of is_ci. Use the hits reduction to return the group-table '
+                             'members forming non-CI (G,k) pairs; k is the request argument. This separate '
+                             'predicate keeps the shared rule that hits returns true members.',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'matrix is not a group family', 'error': 'group_tables'},
+                 {'case': 'order-four catalogue at k=1',
+                  'error': 'does not accept integer',
+                  'op': 'aut_class_count',
+                  'reduction': 'count'},
+                 {'case': 'order-four catalogue at k=1',
+                  'error': 'does not accept boolean',
+                  'op': 'is_ci',
+                  'reduction': 'histogram'}]},
  {'backends': [{'accepts': 'square matrices over any p < 2^32 for charpoly, minpoly, is_regular and '
                            'is_semisimple; rational forms, labels and element orders when p^n <= 2^20',
                 'name': 'generic',

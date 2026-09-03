@@ -19,6 +19,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | sum_free_and_additive | sum_free_10_subsets_of_30 | 30,045,015 | 141 s~ | 0.00947 s | 14,872× | 38,300× |
 | difference_sets | C31 (31,6,1) search | 736,281 | 1,076 s~ | 0.0779 s | 13,816× | 72,721× |
 | permutation_statistics | S8 Mahonian | 40,320 | 10.9 s~ | 0.00108 s | 10,050× | 5,490× |
+| cayley_iso | C4xC2 fixed-size census | 1 | 0.305 s | 3.13e-05 s | 9,742× | 10,754× |
 | elliptic_curves_fp | iso_classes_F_997 | 994,009 | 175 s~ | 0.0286 s | 6,111× | 46,339× |
 | char_poly | explicit_6x6_charpoly | 10,000 | 26.1 s~ | 0.00697 s | 3,745× | 21,203× |
 | gfp | subsets_independent | 38,760 | 0.507 s | 0.000246 s | 2,060× | 1,762× |
@@ -68,6 +69,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | cayley | D6 triples | connected simple Cayley graphs from all 3-subsets of the 11 nonidentity elements of D_12 | 165 | 0.00273 s | 9.09e-05 s | 0.000414 s | 30× | 6.6× |
 | cayley | C8 automorphisms | full graph automorphism orders for singleton connection sets of C_8 | 7 | 0.15 s | 0.00173 s | 0.00121 s | 87× | 124× |
 | cayley | C4xC2 singleton CI | which singleton connection sets of C_4 x C_2 satisfy the undirected CI condition | 7 | 0.0219 s | 0.00543 s | 0.00391 s | 4.0× | 5.6× |
+| cayley_iso | C4xC2 fixed-size census | the three inverse-closed singleton connections of C4xC2 | 1 | 0.305 s | 3.13e-05 s | 2.84e-05 s | 9,742× | 10,754× |
 | char_poly | explicit_6x6_charpoly | characteristic polynomials of 10,000 dense and structured 6x6 matrices over F_251 | 10,000 | 26.1 s~ | 0.00697 s | 0.00123 s | 3,745× | 21,203× |
 | circulants | canonical 5-subsets on Z31 | multiplier-isomorphism classes of valency-five circulant digraphs on 31 vertices | 142,506 | 0.888 s | 0.0776 s | 0.0317 s | 11× | 28× |
 | circulants | spectra of pairs on Z101 | exact character spectra of every valency-two circulant digraph on 101 vertices | 4,950 | 0.214 s | 0.00518 s | 0.0027 s | 41× | 79× |
