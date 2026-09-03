@@ -1,0 +1,72 @@
+# subspace_orbits: matrix groups acting on subspaces over prime fields.
+# Members are read as row spaces. Their canonical form is the rref basis with zero rows removed.
+# Canonical indices use the runtime Grassmannian order at the member's rank and ambient dimension.
+
+[module]
+name = "subspace_orbits"
+version = 1
+summary = "GL and projective linear orbits of Grassmannian families and their transform/stack derivatives. Representatives are the least rref subspaces in Grassmannian order. Set projective=0 for the generated GL group and projective=1 for its image modulo nonzero scalars. Over the runtime's prime fields, PGammaL equals PGL."
+lean = "lean"
+contract = "lean/Subspace_orbits/Contract.lean"
+reference = "lean/Subspace_orbits/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+# A group is a nonempty gfp.matrix batch of invertible n x n generators over the family's prime.
+# Matrices act on row spaces on the right, W -> W A. Scalar matrices therefore act trivially.
+# `projective` controls the group order used by stabilizer_order: 0 closes the matrices in GL;
+# 1 identifies nonzero scalar multiples while closing the group, giving its PGL image.
+
+[[operations]]
+name = "is_canonical"
+value = "boolean"
+args = { group = "group", projective = "int" }
+families = ["grassmannian", "transform", "stack"]
+summary = "Whether the member's row space is the least subspace in its orbit. Subspaces are ordered by their canonical rref's index in grassmannian(p, n, rank)."
+
+[[operations]]
+name = "canonical_index"
+value = "integer"
+args = { group = "group", projective = "int" }
+families = ["grassmannian", "transform", "stack"]
+summary = "Index of the least orbit representative in grassmannian(p, n, rank), where rank and n belong to this member's row space."
+
+[[operations]]
+name = "orbit_size"
+value = "integer"
+args = { group = "group", projective = "int" }
+families = ["grassmannian", "transform", "stack"]
+summary = "Number of distinct row spaces in the member's orbit. The projective flag does not change the orbit."
+
+[[operations]]
+name = "stabilizer_order"
+value = "integer"
+args = { group = "group", projective = "int" }
+families = ["grassmannian", "transform", "stack"]
+summary = "Order of the stabilizer: |generated GL group|/orbit_size when projective=0, or |its image modulo nonzero scalars|/orbit_size when projective=1."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/subspace_orbits_generic.cpp"]
+accepts = "Any p < 2^32 and Grassmannian-derived transform/stack family whose ambient Grassmannian size at each encountered rank fits u64; group closure up to 2^26 elements."
+summary = "Portable C++: canonical rref and breadth-first orbit search per member, threaded over family members."
+
+[[rejections]]
+case = "permutations on subspaces"
+error = "gfp.matrix"
+
+[[rejections]]
+case = "all matrices are not a subspace family"
+error = "families only"
+
+[[rejections]]
+case = "wrong group dimension"
+error = "n x n"
+
+[[rejections]]
+case = "singular generator"
+error = "invertible"
+
+[[rejections]]
+case = "invalid projective flag"
+error = "projective"

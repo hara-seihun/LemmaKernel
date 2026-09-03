@@ -242,4 +242,51 @@ MODULES = [{'backends': [{'accepts': 'any p < 2^32; any family; any operation',
                   'error': 'does not accept',
                   'op': 'is_canonical',
                   'reduction': 'histogram'},
-                 {'case': 'fixed_points on a subsets family', 'error': 'families'}]}]
+                 {'case': 'fixed_points on a subsets family', 'error': 'families'}]},
+ {'backends': [{'accepts': 'Any p < 2^32 and Grassmannian-derived transform/stack family whose ambient '
+                           'Grassmannian size at each encountered rank fits u64; group closure up to 2^26 '
+                           'elements.',
+                'name': 'generic',
+                'sources': ['backends/generic/subspace_orbits_generic.cpp'],
+                'summary': 'Portable C++: canonical rref and breadth-first orbit search per member, threaded '
+                           'over family members.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Subspace_orbits/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'subspace_orbits',
+             'reference': 'lean/Subspace_orbits/Reference.lean',
+             'summary': 'GL and projective linear orbits of Grassmannian families and their transform/stack '
+                        'derivatives. Representatives are the least rref subspaces in Grassmannian order. '
+                        'Set projective=0 for the generated GL group and projective=1 for its image modulo '
+                        "nonzero scalars. Over the runtime's prime fields, PGammaL equals PGL.",
+             'version': 1},
+  'operations': [{'args': {'group': 'group', 'projective': 'int'},
+                  'families': ['grassmannian', 'transform', 'stack'],
+                  'name': 'is_canonical',
+                  'summary': "Whether the member's row space is the least subspace in its orbit. Subspaces "
+                             "are ordered by their canonical rref's index in grassmannian(p, n, rank).",
+                  'value': 'boolean'},
+                 {'args': {'group': 'group', 'projective': 'int'},
+                  'families': ['grassmannian', 'transform', 'stack'],
+                  'name': 'canonical_index',
+                  'summary': 'Index of the least orbit representative in grassmannian(p, n, rank), where '
+                             "rank and n belong to this member's row space.",
+                  'value': 'integer'},
+                 {'args': {'group': 'group', 'projective': 'int'},
+                  'families': ['grassmannian', 'transform', 'stack'],
+                  'name': 'orbit_size',
+                  'summary': "Number of distinct row spaces in the member's orbit. The projective flag does "
+                             'not change the orbit.',
+                  'value': 'integer'},
+                 {'args': {'group': 'group', 'projective': 'int'},
+                  'families': ['grassmannian', 'transform', 'stack'],
+                  'name': 'stabilizer_order',
+                  'summary': 'Order of the stabilizer: |generated GL group|/orbit_size when projective=0, or '
+                             '|its image modulo nonzero scalars|/orbit_size when projective=1.',
+                  'value': 'integer'}],
+  'rejections': [{'case': 'permutations on subspaces', 'error': 'gfp.matrix'},
+                 {'case': 'all matrices are not a subspace family', 'error': 'families only'},
+                 {'case': 'wrong group dimension', 'error': 'n x n'},
+                 {'case': 'singular generator', 'error': 'invertible'},
+                 {'case': 'invalid projective flag', 'error': 'projective'}]}]

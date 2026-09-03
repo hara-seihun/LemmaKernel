@@ -2,7 +2,7 @@
 # Lk is the runtime's reference (families, reductions) and contract; then one library
 # per module: its executable reference and contract (against Mathlib).
 name = "LemmaKernel"
-defaultTargets = ["Lk", "Gfp", "Orbits"]
+defaultTargets = ["Lk", "Gfp", "Orbits", "Subspace_orbits"]
 
 [[require]]
 name = "mathlib"
@@ -23,3 +23,8 @@ roots = ["Gfp"]
 name = "Orbits"
 srcDir = "modules/orbits/lean"
 roots = ["Orbits"]
+
+[[lean_lib]]
+name = "Subspace_orbits"
+srcDir = "modules/subspace_orbits/lean"
+roots = ["Subspace_orbits"]

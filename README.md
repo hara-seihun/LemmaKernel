@@ -84,6 +84,7 @@ and committed; the build refuses to configure if they are stale.
 |---|---|---|
 | [gfp](modules/gfp/manifest.toml) | linear algebra over F_p on families of matrices: rank, rref, nullspace, span membership, solve, inverse, rref witness | `generic` (any p < 2^32, portable C++) |
 | [orbits](modules/orbits/manifest.toml) | finite groups acting on families: orbit representatives (`is_canonical`), canonical index, orbit size, stabiliser order, fixed points for Burnside, and the projective action that turns a matrix group into permutations of points | `generic` (per-member orbit search, portable C++) |
+| [subspace_orbits](modules/subspace_orbits/manifest.toml) | GL, PGL and PGammaL orbits of row spaces from Grassmannians and their transform/stack derivatives; canonical indices use the least rref in Grassmannian order | `generic` (per-member rref orbit search, portable C++) |
 
 An orbit is a permutation of member indices; the representative is the least index. Permutation
 groups act on `subsets` families, matrix groups on `grassmannian` and `all_matrices` families
@@ -92,6 +93,11 @@ naive Python implementation on inputs small enough for naive to finish, so every
 byte-for-byte agreement; single-threaded ratios on this machine run from about 40× (Grassmannian
 orbits, where each step is an elimination) to about 1700× (independence of subsets), and higher
 where the backend changes the algorithm (Burnside counts from cycle types).
+
+`subspace_orbits` treats each matrix as a row space, so it also handles transforms and stacks that
+change the displayed basis or its rank. Set `projective=0` to retain the generated GL group order,
+or `projective=1` to identify nonzero scalar matrices. The runtime currently works over prime
+fields, where PGammaL has the same action as PGL.
 
 To add to this table, read [docs/adding-a-module.md](docs/adding-a-module.md). To make an
 existing module faster, read [docs/adding-a-backend.md](docs/adding-a-backend.md).
