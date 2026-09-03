@@ -124,7 +124,7 @@ def composition_members(total, parts, max_part):
 
 
 def prime(f: Family) -> int:
-    if f.kind in ("range", "words", "partitions", "compositions"):
+    if f.kind in ("group_tables", "range", "words", "partitions", "compositions"):
         return NATURALS
     if f.kind == "group_elements":
         return 0
@@ -148,7 +148,7 @@ def dictionary(f: Family) -> list[list[int]]:
 
 def iter_members(f: Family):
     """Yield the members of a family in canonical order as lists of rows."""
-    if f.kind == "explicit":
+    if f.kind in ("explicit", "group_tables"):
         (batch,) = f.children
         yield from batch_members(batch)
     elif f.kind in ("subsets", "subsets_of"):

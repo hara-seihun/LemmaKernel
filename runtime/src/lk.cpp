@@ -254,6 +254,24 @@ lk_status lk_family_group_elements(lk_context *ctx, lk_handle generators, lk_han
     FAMILY_RESULT(make_group_elements(o.value->matrix));
 }
 
+lk_status lk_family_group_tables(lk_context *ctx, lk_handle tables, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    auto o = ctx->get(tables);
+    if (!o.ok) return ctx->set_error(o.error);
+    if (!o.value->matrix || o.value->matrix->p != NATURALS)
+        return ctx->set_error(LK_INVALID_ARGUMENT, "tables must be an lk.naturals batch");
+    FAMILY_RESULT(make_group_tables(o.value->matrix));
+}
+
+lk_status lk_family_generated_group(lk_context *ctx, lk_handle generators, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    auto o = ctx->get(generators);
+    if (!o.ok) return ctx->set_error(o.error);
+    if (!o.value->matrix || o.value->matrix->p != 0)
+        return ctx->set_error(LK_INVALID_ARGUMENT, "generators must be an orbits.perms batch");
+    FAMILY_RESULT(make_generated_group(o.value->matrix));
+}
+
 lk_status lk_family_subsets_of(lk_context *ctx, lk_handle family, uint64_t k, lk_handle *out) {
     if (!ctx || !out) return LK_INVALID_ARGUMENT;
     auto f = ctx->get_family(family);

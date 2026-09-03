@@ -14,10 +14,10 @@ struct PivotTable;
 
 struct Family {
     enum class Kind { Explicit, Subsets, Grassmannian, AllMatrices, Transform, Stack, GroupElements,
-                      SubsetsOf, SymmetricMatrices, Range, Words, Partitions, Compositions };
+                      GroupTables, SubsetsOf, SymmetricMatrices, Range, Words, Partitions, Compositions };
     Kind kind;
-    /* batch, dictionary (Subsets, and the materialised inner family for SubsetsOf), C, stacked
-     * rows, or group generators */
+    /* batch, group tables, dictionary (Subsets, and the materialised inner family for SubsetsOf),
+     * C, stacked rows, or group generators */
     std::shared_ptr<Matrix> data;
     std::shared_ptr<Family> child;
     uint64_t p = 0, k = 0, n = 0, h = 0, m = 0; /* Words: p is the alphabet size, n the length */
@@ -68,6 +68,9 @@ Result<std::shared_ptr<Family>> make_all_matrices(uint64_t p, uint64_t rows, uin
 Result<std::shared_ptr<Family>> make_transform(std::shared_ptr<Family> inner, std::shared_ptr<Matrix> c);
 Result<std::shared_ptr<Family>> make_stack(std::shared_ptr<Family> inner, std::shared_ptr<Matrix> rows);
 Result<std::shared_ptr<Family>> make_group_elements(std::shared_ptr<Matrix> generators);
+/* A batch of Cayley tables, or the Cayley table of a group given by permutation generators. */
+Result<std::shared_ptr<Family>> make_group_tables(std::shared_ptr<Matrix> tables);
+Result<std::shared_ptr<Family>> make_generated_group(std::shared_ptr<Matrix> generators);
 /* k-subsets of another family's members, each member flattened to one row of rows*cols entries.
  * The inner family is materialised once; it must have at most 2^22 members. */
 Result<std::shared_ptr<Family>> make_subsets_of(std::shared_ptr<Family> inner, uint64_t k);

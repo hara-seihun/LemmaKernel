@@ -203,6 +203,7 @@ const char *family_kind_name(Family::Kind k) {
     case Family::Kind::Transform: return "transform";
     case Family::Kind::Stack: return "stack";
     case Family::Kind::GroupElements: return "group_elements";
+    case Family::Kind::GroupTables: return "group_tables";
     case Family::Kind::SubsetsOf: return "subsets_of";
     case Family::Kind::SymmetricMatrices: return "symmetric_matrices";
     case Family::Kind::Range: return "range";
@@ -221,7 +222,8 @@ uint64_t Family::prime() const {
 
 uint64_t Family::rows() const {
     switch (kind) {
-    case Kind::Explicit: return data->rows;
+    case Kind::Explicit:
+    case Kind::GroupTables: return data->rows;
     case Kind::Subsets: return k;
     case Kind::Grassmannian: return h;
     case Kind::AllMatrices: return m;
@@ -240,7 +242,8 @@ uint64_t Family::rows() const {
 
 uint64_t Family::cols() const {
     switch (kind) {
-    case Kind::Explicit: return data->cols;
+    case Kind::Explicit:
+    case Kind::GroupTables: return data->cols;
     case Kind::Subsets: return data->cols;
     case Kind::Grassmannian: return n;
     case Kind::AllMatrices: return n;
@@ -258,12 +261,13 @@ uint64_t Family::cols() const {
 }
 
 bool Family::is_explicit() const {
-    return kind == Kind::Explicit;
+    return kind == Kind::Explicit || kind == Kind::GroupTables;
 }
 
 Result<uint64_t> Family::size() const {
     switch (kind) {
-    case Kind::Explicit: return Result<uint64_t>::success(data->count);
+    case Kind::Explicit:
+    case Kind::GroupTables: return Result<uint64_t>::success(data->count);
     case Kind::Subsets:
     case Kind::SubsetsOf: return binom(data->count, k);
     case Kind::Grassmannian: {
@@ -307,7 +311,8 @@ Result<uint64_t> Family::size() const {
 
 Result<uint64_t> Family::top_count() const {
     switch (kind) {
-    case Kind::Explicit: return Result<uint64_t>::success(data->count);
+    case Kind::Explicit:
+    case Kind::GroupTables: return Result<uint64_t>::success(data->count);
     case Kind::Subsets:
     case Kind::SubsetsOf: return Result<uint64_t>::success(data->count - k + 1);
     case Kind::Grassmannian: return binom(n, h);
@@ -341,6 +346,7 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
     out.cols = cols();
     switch (kind) {
     case Kind::Explicit:
+    case Kind::GroupTables:
         out.entries.assign(data->at(index), data->at(index) + out.rows * out.cols);
         break;
     case Kind::Subsets:
@@ -634,7 +640,8 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
 Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const {
     using Step = Visitor::Step;
     switch (kind) {
-    case Kind::Explicit: {
+    case Kind::Explicit:
+    case Kind::GroupTables: {
         for (uint64_t i = top_begin; i < top_end; ++i) {
             const Entry *base = data->at(i);
             uint64_t pushed = 0;
@@ -932,6 +939,48 @@ Result<std::shared_ptr<Family>> make_explicit(std::shared_ptr<Matrix> batch) {
     return Result<std::shared_ptr<Family>>::success(f);
 }
 
+Result<std::shared_ptr<Family>> make_group_tables(std::shared_ptr<Matrix> tables) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (tables->p != NATURALS || tables->count == 0 || tables->rows == 0 || tables->rows != tables->cols)
+        return R::failure(INVALID, "group_tables: need a nonempty batch of square natural-number tables");
+    uint64_t n = tables->rows;
+    std::vector<uint8_t> row_seen(n), col_seen(n);
+    for (uint64_t q = 0; q < tables->count; ++q) {
+        const Entry *t = tables->at(q);
+        for (uint64_t i = 0; i < n * n; ++i)
+            if (t[i] >= n)
+                return R::failure(INVALID, "group_tables: table " + std::to_string(q) + " has an entry outside 0.." + std::to_string(n - 1));
+        for (uint64_t i = 0; i < n; ++i) {
+            std::fill(row_seen.begin(), row_seen.end(), 0);
+            std::fill(col_seen.begin(), col_seen.end(), 0);
+            for (uint64_t j = 0; j < n; ++j) {
+                if (row_seen[t[i * n + j]]++ || col_seen[t[j * n + i]]++)
+                    return R::failure(INVALID, "group_tables: table " + std::to_string(q) + " is not a Latin square");
+            }
+        }
+        uint64_t identity = n;
+        for (uint64_t e = 0; e < n; ++e) {
+            bool is_identity = true;
+            for (uint64_t x = 0; x < n; ++x)
+                if (t[e * n + x] != x || t[x * n + e] != x) { is_identity = false; break; }
+            if (is_identity) { identity = e; break; }
+        }
+        if (identity == n)
+            return R::failure(INVALID, "group_tables: table " + std::to_string(q) + " has no identity");
+        for (uint64_t a = 0; a < n; ++a)
+            for (uint64_t b = 0; b < n; ++b)
+                for (uint64_t c = 0; c < n; ++c)
+                    if (t[t[a * n + b] * n + c] != t[a * n + t[b * n + c]])
+                        return R::failure(INVALID, "group_tables: table " + std::to_string(q) + " is not associative");
+    }
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::GroupTables;
+    f->data = std::move(tables);
+    f->p = NATURALS;
+    f->n = n;
+    return R::success(f);
+}
+
 Result<std::shared_ptr<Family>> make_subsets(std::shared_ptr<Matrix> dictionary, uint64_t k) {
     /* The dictionary is a list of row vectors: either one rows x cols matrix or a batch of
      * 1 x cols vectors. Both are the same flat data; keep it as a batch of vectors. */
@@ -1175,6 +1224,39 @@ Result<std::shared_ptr<Family>> make_group_elements(std::shared_ptr<Matrix> gene
     f->p = 0;
     f->n = f->data->cols;
     return Result<std::shared_ptr<Family>>::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_generated_group(std::shared_ptr<Matrix> generators) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (generators->p != 0 || generators->rows != 1 || generators->count == 0)
+        return R::failure(INVALID, "generated_group: need at least one permutation generator");
+    auto closure = permutation_closure(*generators, 4096);
+    if (!closure.ok) return R::failure(closure.error.status, closure.error.message);
+    uint64_t degree = generators->cols;
+    uint64_t order = closure.value.size() / degree;
+    auto tables = std::make_shared<Matrix>();
+    tables->p = NATURALS;
+    tables->count = 1;
+    tables->rows = order;
+    tables->cols = order;
+    tables->entries.resize(order * order);
+    std::unordered_map<std::string, uint64_t> index;
+    for (uint64_t i = 0; i < order; ++i) {
+        const Entry *g = closure.value.data() + i * degree;
+        index.emplace(std::string(reinterpret_cast<const char *>(g), degree * sizeof(Entry)), i);
+    }
+    std::vector<Entry> product(degree);
+    for (uint64_t i = 0; i < order; ++i) {
+        const Entry *a = closure.value.data() + i * degree;
+        for (uint64_t j = 0; j < order; ++j) {
+            const Entry *b = closure.value.data() + j * degree;
+            for (uint64_t x = 0; x < degree; ++x) product[x] = b[a[x]];
+            auto it = index.find(std::string(reinterpret_cast<const char *>(product.data()), degree * sizeof(Entry)));
+            if (it == index.end()) return R::failure(INTERNAL, "generated_group: permutation closure is not closed");
+            tables->entries[i * order + j] = (Entry)it->second;
+        }
+    }
+    return make_group_tables(std::move(tables));
 }
 
 } // namespace lk

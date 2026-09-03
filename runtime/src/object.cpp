@@ -254,6 +254,11 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         if (!g.ok) return R::failure(g.error.status, g.error.message);
         return make_group_elements(g.value->matrix);
     }
+    if (sub == "group_tables") {
+        auto tables = child_object("lk.naturals");
+        if (!tables.ok) return R::failure(tables.error.status, tables.error.message);
+        return make_group_tables(tables.value->matrix);
+    }
     if (sub == "all_matrices") {
         auto p = need(h, "p"), rows = need(h, "rows"), cols = need(h, "cols");
         for (auto *r : {&p, &rows, &cols}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -306,6 +311,7 @@ std::vector<uint8_t> encode_family(const Family &f) {
         params = {{"total", f.n}, {"parts", f.k}, {"max_part", f.m}};
         break;
     case Family::Kind::GroupElements:
+    case Family::Kind::GroupTables:
         payload.bytes(encode_matrix(*f.data));
         break;
     case Family::Kind::Transform:
@@ -519,6 +525,31 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->bsgs = b;
         return R::success(o);
     }
+    if (h.kind == "automorphisms.generators") {
+        auto count = need(h, "count"), order = need(h, "order");
+        for (auto *r : {&count, &order}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        auto g = std::make_shared<PermutationGenerators>();
+        g->count = count.value; g->order = order.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i <= count.value; ++i) g->offsets.push_back(r.u64());
+        if (r.bad || g->offsets.empty() || g->offsets[0] != 0)
+            return R::failure(INVALID, "automorphisms.generators offsets are truncated or do not start at zero");
+        for (uint64_t i = 1; i < g->offsets.size(); ++i)
+            if (g->offsets[i] < g->offsets[i - 1])
+                return R::failure(INVALID, "automorphisms.generators offsets are not increasing");
+        r.entries(g->entries, g->offsets.back() * order.value, 4);
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "automorphisms.generators payload length mismatch");
+        for (uint64_t i = 0; i < g->offsets.back(); ++i) {
+            std::vector<uint8_t> seen(order.value, 0);
+            for (uint64_t j = 0; j < order.value; ++j) {
+                Entry e = g->entries[i * order.value + j];
+                if (e >= order.value || seen[e]++)
+                    return R::failure(INVALID, "automorphisms.generators payload contains a non-permutation");
+            }
+        }
+        o->permutation_generators = g;
+        return R::success(o);
+    }
     return R::failure(INVALID, "unknown object kind " + h.kind);
 }
 
@@ -573,6 +604,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (u64_matrices) return {{"count", u64_matrices->count}, {"rows", u64_matrices->rows}, {"cols", u64_matrices->cols}};
     if (partitions) return {{"count", partitions->count}, {"n", partitions->n}};
     if (bsgs) return {{"count", bsgs->count}, {"n", bsgs->n}};
+    if (permutation_generators) return {{"count", permutation_generators->count}, {"order", permutation_generators->order}};
     if (integers) return {{"count", integers->values.size()}};
     if (count) return {{"value", count->value}, {"visited", count->visited}, {"family_size", count->family_size}};
     if (histogram) return {{"visited", histogram->visited}, {"family_size", histogram->family_size}, {"bins", histogram->bins.size()}};
@@ -639,6 +671,10 @@ std::vector<uint8_t> encode(const Object &o) {
         w.entries(o.bsgs->bases, 4);
         w.entries(o.bsgs->strong, 4);
         write_header(out, "perm_groups.bsgs", o.params(), w.out);
+    } else if (o.permutation_generators) {
+        w.u64s(o.permutation_generators->offsets);
+        w.entries(o.permutation_generators->entries, 4);
+        write_header(out, "automorphisms.generators", o.params(), w.out);
     } else if (o.integers) {
         w.u64s(o.integers->values);
         write_header(out, o.kind == "burnside.counts" ? "burnside.counts" : "integers", o.params(), w.out);

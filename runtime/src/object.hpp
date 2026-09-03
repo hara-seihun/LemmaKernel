@@ -85,6 +85,13 @@ struct Bsgs {
     std::vector<Entry> bases, strong;
 };
 
+/* A ragged list of permutation generators for each of `count` groups of the same order. */
+struct PermutationGenerators {
+    uint64_t count = 0, order = 0;
+    std::vector<uint64_t> offsets;
+    std::vector<Entry> entries;
+};
+
 struct Integers {
     std::vector<uint64_t> values;
 };
@@ -130,6 +137,7 @@ struct Object {
     std::shared_ptr<U64Matrices> u64_matrices;
     std::shared_ptr<Partitions> partitions;
     std::shared_ptr<Bsgs> bsgs;
+    std::shared_ptr<PermutationGenerators> permutation_generators;
     std::shared_ptr<Integers> integers;
     std::shared_ptr<Count> count;
     std::shared_ptr<Histogram> histogram;

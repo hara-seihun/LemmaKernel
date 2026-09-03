@@ -30,8 +30,9 @@ Vocabulary, in the order a request is built:
 - **family**: a description of a set of objects with a canonical order (`explicit`, `subsets`
   of a dictionary, `subsets_of` another family, `grassmannian`, `all_matrices`,
   `symmetric_matrices`, the `transform`/`stack` wrappers, `group_elements` of a permutation
-  group, `range`/`words` of natural numbers, constrained `partitions`, and `compositions`). Family
-  sizes in the hundreds of millions are normal.
+  group, `group_tables` from stored Cayley tables or permutation generators, `range`/`words` of
+  natural numbers, constrained `partitions`, and `compositions`). Family sizes in the hundreds of
+  millions are normal.
 - **operation**: what to compute per member (`gfp.rank`, `gfp.in_span`, `gfp.rref`, ...).
 - **reduction**: what to bring back. For booleans: `count`, `hits`, `first` (the least hit,
   stopping early), `all`. For integers: `histogram`, `sum`, `max`, `min` (with the member
@@ -82,6 +83,7 @@ and committed; the build refuses to configure if they are stale.
 
 | module | what it computes | backends |
 |---|---|---|
+| [automorphisms](modules/automorphisms/manifest.toml) | automorphism groups of finite groups: order, canonical generators, holomorph order, and outer automorphism group order | `generic` (propagated partial table isomorphisms, portable C++) |
 | [burnside](modules/burnside/manifest.toml) | orbit counts, fixed counts, and canonical cycle indices for permutation groups on subsets and words, without enumerating the acted-on family | `generic` (cycle-type formulas, portable C++) |
 | [cayley](modules/cayley/manifest.toml) | simple undirected Cayley graphs of finite permutation groups: connectivity, regularity, girth, diameter, graph automorphism order, and the CI property of a connection set | `generic` (exact group closure, graph search, partition refinement and individualisation, portable C++) |
 | [designs](modules/designs/manifest.toml) | whole-family tests and data for finite block designs: t-design multiplicities, resolutions, dual 2-designs, intersections, and Kramer-Mesner matrices | `generic` (portable C++) |
@@ -98,6 +100,12 @@ and committed; the build refuses to configure if they are stale.
 | [projective_sets](modules/projective_sets/manifest.toml) | arcs, caps, blocking sets, hyperovals, ovoids, span rank, maximum collinearity, and secant, tangent and passant counts for point sets in `PG(n,p)` | `generic` (precomputed line and hyperplane incidence, portable C++) |
 | [set_systems](modules/set_systems/manifest.toml) | extremal predicates on finite set systems: intersecting families, antichains, sunflowers, maximum degree, lower shadows, and exact EKR/Sperner extremality | `generic` (prefix-pruned enumeration, portable C++) |
 | [subspace_orbits](modules/subspace_orbits/manifest.toml) | GL, PGL and PGammaL orbits of row spaces from Grassmannians and their transform/stack derivatives; canonical indices use the least rref in Grassmannian order | `generic` (per-member rref orbit search, portable C++) |
+
+`ctx.group_tables(lk.naturals(tables))` builds a family from stored Cayley tables;
+`ctx.generated_group(permutations)` builds one from permutation generators.
+`automorphisms.aut_generators` scans all automorphisms in lexicographic order and keeps an
+automorphism exactly when earlier choices do not generate it. This fixes one generating list for
+every Cayley-table labelling.
 
 A `designs` block on `v` labelled points is a `k x v` matrix of distinct standard basis rows in
 increasing point order. The family members are the indexed blocks. Kramer-Mesner rows and columns

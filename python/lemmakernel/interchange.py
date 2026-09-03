@@ -364,6 +364,23 @@ class Bsgs:
 
 
 @dataclass
+class PermutationGenerators:
+    """One canonical list of permutation generators per group in a group_tables family."""
+    count: int
+    order: int
+    offsets: list[int]
+    entries: object
+
+    def member(self, i: int):
+        a, b = self.offsets[i], self.offsets[i + 1]
+        return [[int(x) for x in self.entries[j * self.order:(j + 1) * self.order]] for j in range(a, b)]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.offsets)}Q", *self.offsets) + pack_entries(self.entries, 0)
+        return encode("automorphisms.generators", {"count": self.count, "order": self.order}, payload)
+
+
+@dataclass
 class Integers:
     values: list[int]
 
@@ -461,7 +478,8 @@ class Family:
 KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "gfp.basis": Basis, "gfp.solutions": Solutions,
          "gfp.inverses": Inverses, "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
          "burnside.cycle_index": CycleIndex, "designs.matrix": U64Matrices,
-         "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs, "integers": Integers,
+         "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
+         "automorphisms.generators": PermutationGenerators, "integers": Integers,
          "count": Count, "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
 
 
@@ -540,6 +558,11 @@ def decode_at(buf: bytes, offset: int):
         bases = unpack_entries(pl[pos:pos + base_bytes], 0, base_offsets[-1])
         strong = unpack_entries(pl[pos + base_bytes:], 0, strong_offsets[-1] * n)
         return Bsgs(count, n, base_offsets, strong_offsets, bases, strong), end
+    if k == "automorphisms.generators":
+        noff = q["count"] + 1
+        offsets = list(struct.unpack_from(f"<{noff}Q", pl, 0))
+        entries = unpack_entries(pl[8 * noff:], 0, offsets[-1] * q["order"])
+        return PermutationGenerators(q["count"], q["order"], offsets, entries), end
     if k == "integers":
         return Integers(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "count":

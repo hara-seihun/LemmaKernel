@@ -168,6 +168,9 @@ def lean_family(f: ic.Family) -> str:
     if f.kind == "group_elements":
         (gens,) = f.children
         return f"(.{ctor} {L(gens.tolist())})"
+    if f.kind == "group_tables":
+        (tables,) = f.children
+        return f"(.{ctor} {L(tables.tolist())})"
     if f.kind == "subsets_of":
         (inner,) = f.children
         return f"(.{ctor} {lean_family(inner)} {q['k']})"

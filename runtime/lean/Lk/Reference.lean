@@ -158,6 +158,7 @@ inductive Family
   | transform (inner : Family) (c : Mat)
   | stack (inner : Family) (rows : Mat)
   | groupElements (gens : List Perm)
+  | groupTables (tables : List Mat)
   | subsetsOf (inner : Family) (k : Nat)
   | symmetricMatrices (p n : Nat)
   | range (a b : Nat)
@@ -169,7 +170,7 @@ inductive Family
 def Family.p : Family → Nat
   | .explicit p _ | .subsets p _ _ | .grassmannian p _ _ | .allMatrices p _ _ | .symmetricMatrices p _ => p
   | .transform f _ | .stack f _ | .subsetsOf f _ => f.p
-  | .groupElements _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ | .compositions _ _ _ => 0
+  | .groupElements _ | .groupTables _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ | .compositions _ _ _ => 0
 
 /-- Members in canonical order. A permutation is a one-row matrix; so is a word, and an integer
 is a `1 x 1` matrix. -/
@@ -181,6 +182,7 @@ def Family.members : Family → List Mat
   | .transform f c => f.members.map fun m => matmul f.p m c
   | .stack f rows => f.members.map (· ++ rows)
   | .groupElements gens => (permElements gens).map ([·])
+  | .groupTables tables => tables
   | .subsetsOf f k => combos (f.members.map List.flatten) k
   | .symmetricMatrices p n => symmetricMembers p n
   | .range a b => (List.range (b - a)).map fun i => [[a + i]]

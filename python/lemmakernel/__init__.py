@@ -18,13 +18,14 @@ from pathlib import Path
 
 from . import interchange
 from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, Count, CycleIndex, Extremum, Family, First, Histogram,
-                          Hits, Integers, Inverses, Matrix, Partitions, Perms, Solutions, U64Matrices, Witness, matrix,
-                          naturals, perms)
+                          Hits, Integers, Inverses, Matrix, Partitions, Perms, PermutationGenerators, Solutions,
+                          U64Matrices, Witness, matrix, naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
            "Matrix", "Basis", "Solutions", "Inverses", "Witness", "BurnsideCounts", "CycleIndex", "U64Matrices",
-           "Partitions", "Bsgs", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family", "NATURALS"]
+           "Partitions", "Bsgs", "PermutationGenerators", "Integers", "Count", "Histogram", "Hits", "First",
+           "Extremum", "Family", "NATURALS"]
 
 
 class Error(RuntimeError):
@@ -74,6 +75,8 @@ _lib.lk_family_all_matrices.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ct
 _lib.lk_family_transform.argtypes = [_P, _H, _H, ctypes.POINTER(_H)]
 _lib.lk_family_stack.argtypes = [_P, _H, _H, ctypes.POINTER(_H)]
 _lib.lk_family_group_elements.argtypes = [_P, _H, ctypes.POINTER(_H)]
+_lib.lk_family_group_tables.argtypes = [_P, _H, ctypes.POINTER(_H)]
+_lib.lk_family_generated_group.argtypes = [_P, _H, ctypes.POINTER(_H)]
 _lib.lk_family_subsets_of.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_symmetric_matrices.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_range.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
@@ -159,7 +162,8 @@ _PARAM_NAMES = {
     "gfp.solutions": ["p", "count", "length"], "gfp.inverses": ["p", "count", "n"],
     "gfp.witness": ["p", "count", "rows", "cols"], "burnside.counts": ["count"],
     "burnside.cycle_index": ["degree", "count", "denominator"], "designs.matrix": ["count", "rows", "cols"],
-    "perm_groups.partition": ["count", "n"], "perm_groups.bsgs": ["count", "n"], "integers": ["count"],
+    "perm_groups.partition": ["count", "n"], "perm_groups.bsgs": ["count", "n"],
+    "automorphisms.generators": ["count", "order"], "integers": ["count"],
     "count": ["value", "visited", "family_size"], "histogram": ["visited", "family_size", "bins"],
     "hits": ["p", "rows", "cols", "total", "visited", "family_size", "count", "materialised"],
     "lk.naturals": ["count", "rows", "cols"],
@@ -269,6 +273,20 @@ class Context:
         out = _H()
         g = self._keep(generators)
         self._check(_lib.lk_family_group_elements(self._ptr, g._h, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def group_tables(self, tables) -> Handle:
+        """Explicit finite groups from a batch of natural-number Cayley tables."""
+        out = _H()
+        t = self._keep(tables)
+        self._check(_lib.lk_family_group_tables(self._ptr, t._h, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def generated_group(self, generators) -> Handle:
+        """One finite group from permutation generators, converted to its Cayley table."""
+        out = _H()
+        g = self._keep(generators)
+        self._check(_lib.lk_family_generated_group(self._ptr, g._h, ctypes.byref(out)))
         return self._wrap(out)
 
     def subsets_of(self, family, k: int) -> Handle:
