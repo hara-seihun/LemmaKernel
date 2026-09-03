@@ -2,7 +2,7 @@
 # Lk is the runtime's reference (families, reductions) and contract; then one library
 # per module: its executable reference and contract (against Mathlib).
 name = "LemmaKernel"
-defaultTargets = ["Lk", "Burnside", "Cayley", "Designs", "Gfp", "Hadamard", "Lattice_of_subspaces", "Orbits", "Perm_groups", "Projective_sets", "Subspace_orbits"]
+defaultTargets = ["Lk", "Burnside", "Cayley", "Designs", "Gfp", "Hadamard", "Integer_partitions", "Lattice_of_subspaces", "Orbits", "Perm_groups", "Projective_sets", "Subspace_orbits"]
 
 [[require]]
 name = "mathlib"
@@ -38,6 +38,11 @@ roots = ["Gfp"]
 name = "Hadamard"
 srcDir = "modules/hadamard/lean"
 roots = ["Hadamard"]
+
+[[lean_lib]]
+name = "Integer_partitions"
+srcDir = "modules/integer_partitions/lean"
+roots = ["Integer_partitions"]
 
 [[lean_lib]]
 name = "Lattice_of_subspaces"

@@ -14,14 +14,14 @@ struct PivotTable;
 
 struct Family {
     enum class Kind { Explicit, Subsets, Grassmannian, AllMatrices, Transform, Stack, GroupElements,
-                      SubsetsOf, SymmetricMatrices, Range, Words };
+                      SubsetsOf, SymmetricMatrices, Range, Words, Partitions, Compositions };
     Kind kind;
     /* batch, dictionary (Subsets, and the materialised inner family for SubsetsOf), C, stacked
      * rows, or group generators */
     std::shared_ptr<Matrix> data;
     std::shared_ptr<Family> child;
     uint64_t p = 0, k = 0, n = 0, h = 0, m = 0; /* Words: p is the alphabet size, n the length */
-    uint64_t a = 0, b = 0;                     /* Range: [a, b) */
+    uint64_t a = 0, b = 0;                     /* Range: [a, b). Partitions: flags distinct, odd. */
     /* GroupElements: every element of the generated permutation group, sorted lexicographically,
      * computed on first use (count x n entries). Read through the atomic pointer so that the
      * per-member fast path takes no lock. */
@@ -74,6 +74,13 @@ Result<std::shared_ptr<Family>> make_subsets_of(std::shared_ptr<Family> inner, u
 Result<std::shared_ptr<Family>> make_symmetric_matrices(uint64_t p, uint64_t n);
 Result<std::shared_ptr<Family>> make_range(uint64_t a, uint64_t b);
 Result<std::shared_ptr<Family>> make_words(uint64_t alphabet, uint64_t length);
+/* Partitions of total, padded with trailing zeros to total entries. A zero bound means
+ * unrestricted. `distinct` and `odd` are Boolean flags. */
+Result<std::shared_ptr<Family>> make_partitions(uint64_t total, uint64_t max_part, uint64_t max_parts,
+                                                uint64_t max_multiplicity, uint64_t distinct, uint64_t odd);
+/* Positive compositions of total, padded to total entries. `parts == 0` allows every length;
+ * `max_part == 0` does not bound a part. */
+Result<std::shared_ptr<Family>> make_compositions(uint64_t total, uint64_t parts, uint64_t max_part);
 
 /* Closure of a set of permutations (count x n, p == 0) under composition: every element of the
  * generated group, sorted lexicographically. Fails above `limit` elements. */

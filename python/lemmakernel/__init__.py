@@ -78,6 +78,9 @@ _lib.lk_family_subsets_of.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H
 _lib.lk_family_symmetric_matrices.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_range.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_words.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
+_lib.lk_family_partitions.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64,
+                                      ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
+_lib.lk_family_compositions.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_size.argtypes = [_P, _H, ctypes.POINTER(ctypes.c_uint64)]
 _lib.lk_family_member.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_run.argtypes = [_P, ctypes.c_char_p, _H, ctypes.c_char_p, ctypes.POINTER(_Arg), ctypes.c_size_t, ctypes.POINTER(_H)]
@@ -290,6 +293,20 @@ class Context:
         """Every word of `length` letters over 0..alphabet-1 as a 1 x length natural-number matrix."""
         out = _H()
         self._check(_lib.lk_family_words(self._ptr, alphabet, length, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def partitions(self, total: int, *, max_part: int = 0, max_parts: int = 0,
+                   max_multiplicity: int = 0, distinct: bool = False, odd: bool = False) -> Handle:
+        """Partitions of `total`, in descending lexicographic order and padded with zeros."""
+        out = _H()
+        self._check(_lib.lk_family_partitions(self._ptr, total, max_part, max_parts, max_multiplicity,
+                                              int(distinct), int(odd), ctypes.byref(out)))
+        return self._wrap(out)
+
+    def compositions(self, total: int, *, parts: int = 0, max_part: int = 0) -> Handle:
+        """Positive compositions of `total`, padded with zeros. Zero `parts` allows every length."""
+        out = _H()
+        self._check(_lib.lk_family_compositions(self._ptr, total, parts, max_part, ctypes.byref(out)))
         return self._wrap(out)
 
     def size(self, family) -> int:

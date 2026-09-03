@@ -54,7 +54,20 @@ RUNTIME = {'families': [{'lean': 'explicit',
                'member': 'lk.naturals',
                'name': 'words',
                'summary': 'Every word of the given length over the alphabet 0..alphabet-1 as a 1 x length '
-                          'natural-number matrix; index is the base-alphabet number of the word.'}],
+                          'natural-number matrix; index is the base-alphabet number of the word.'},
+              {'lean': 'partitions',
+               'member': 'lk.naturals',
+               'name': 'partitions',
+               'summary': 'Partitions of total with optional largest-part, part-count and multiplicity '
+                          'bounds, and optional distinct or odd parts; one decreasing row padded to total '
+                          'entries with zeros, in descending lexicographic order. A zero bound is '
+                          'unrestricted.'},
+              {'lean': 'compositions',
+               'member': 'lk.naturals',
+               'name': 'compositions',
+               'summary': 'Positive compositions of total with optional exact length and largest-part bound; '
+                          'one row padded to total entries with zeros. Lengths increase first, then rows are '
+                          'descending lexicographic. A zero bound or length is unrestricted.'}],
  'reductions': [{'accepts': ['*'],
                  'name': 'all',
                  'summary': 'Materialise the per-member value for every member, in family order. Integers '
@@ -395,6 +408,44 @@ MODULES = [{'backends': [{'accepts': 'permutation groups on subsets, subsets_of,
                   'error': 'does not accept',
                   'op': 'canonical_form',
                   'reduction': 'count'}]},
+ {'backends': [{'accepts': 'partition and composition families whose size fits in 64 bits',
+                'name': 'generic',
+                'sources': ['backends/generic/integer_partitions_generic.cpp'],
+                'summary': 'Portable C++: recursive family enumeration split by largest part or composition '
+                           'length, with runtime integer reductions.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Integer_partitions/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'integer_partitions',
+             'reference': 'lean/Integer_partitions/Reference.lean',
+             'summary': 'Constrained integer partitions and compositions. Families support odd, distinct, '
+                        'largest-part, length and multiplicity bounds. Rank and crank are returned with the '
+                        'partition total added, so histogram bin i represents statistic i-total.',
+             'version': 1},
+  'operations': [{'families': ['partitions', 'compositions'],
+                  'name': 'number_of_parts',
+                  'summary': 'Number of positive parts in the member. Histogram gives the length '
+                             'distribution.',
+                  'value': 'integer'},
+                 {'families': ['partitions', 'compositions'],
+                  'name': 'largest_part',
+                  'summary': 'Largest positive part in the member. Histogram gives the largest-part '
+                             'distribution.',
+                  'value': 'integer'},
+                 {'families': ['partitions'],
+                  'name': 'rank',
+                  'summary': 'Dyson rank (largest part minus number of parts), encoded by adding the '
+                             'partition total. Histogram bin i counts rank i-total.',
+                  'value': 'integer'},
+                 {'families': ['partitions'],
+                  'name': 'crank',
+                  'summary': 'Andrews-Garvan crank, encoded by adding the partition total. If there are no '
+                             'ones it is the largest part; otherwise it is parts greater than the number of '
+                             'ones minus the number of ones. Histogram bin i counts crank i-total.',
+                  'value': 'integer'}],
+  'rejections': [{'case': 'compositions of 6', 'error': 'partitions families only', 'op': 'rank'},
+                 {'case': 'compositions of 6', 'error': 'partitions families only', 'op': 'crank'}]},
  {'backends': [{'accepts': 'q >= 2 for formula operations; any matrix family over p < 2^32 for row-space '
                            'operations; integer answers must fit in u64',
                 'name': 'generic',

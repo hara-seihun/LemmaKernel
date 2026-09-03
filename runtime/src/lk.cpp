@@ -276,6 +276,17 @@ lk_status lk_family_words(lk_context *ctx, uint64_t alphabet, uint64_t length, l
     FAMILY_RESULT(make_words(alphabet, length));
 }
 
+lk_status lk_family_partitions(lk_context *ctx, uint64_t total, uint64_t max_part, uint64_t max_parts,
+                               uint64_t max_multiplicity, uint64_t distinct, uint64_t odd, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    FAMILY_RESULT(make_partitions(total, max_part, max_parts, max_multiplicity, distinct, odd));
+}
+
+lk_status lk_family_compositions(lk_context *ctx, uint64_t total, uint64_t parts, uint64_t max_part, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    FAMILY_RESULT(make_compositions(total, parts, max_part));
+}
+
 lk_status lk_run(lk_context *ctx, const char *op, lk_handle family, const char *reduction,
                  const lk_arg *args, size_t nargs, lk_handle *out) {
     if (!ctx || !op || !reduction || !out) return LK_INVALID_ARGUMENT;

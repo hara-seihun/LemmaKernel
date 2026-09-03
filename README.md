@@ -30,8 +30,8 @@ Vocabulary, in the order a request is built:
 - **family**: a description of a set of objects with a canonical order (`explicit`, `subsets`
   of a dictionary, `subsets_of` another family, `grassmannian`, `all_matrices`,
   `symmetric_matrices`, the `transform`/`stack` wrappers, `group_elements` of a permutation
-  group, and `range`/`words` of natural numbers). Family sizes in the hundreds of millions are
-  normal.
+  group, `range`/`words` of natural numbers, constrained `partitions`, and `compositions`). Family
+  sizes in the hundreds of millions are normal.
 - **operation**: what to compute per member (`gfp.rank`, `gfp.in_span`, `gfp.rref`, ...).
 - **reduction**: what to bring back. For booleans: `count`, `hits`, `first` (the least hit,
   stopping early), `all`. For integers: `histogram`, `sum`, `max`, `min` (with the member
@@ -87,6 +87,7 @@ and committed; the build refuses to configure if they are stale.
 | [designs](modules/designs/manifest.toml) | whole-family tests and data for finite block designs: t-design multiplicities, resolutions, dual 2-designs, intersections, and Kramer-Mesner matrices | `generic` (portable C++) |
 | [gfp](modules/gfp/manifest.toml) | linear algebra over F_p on families of matrices: rank, rref, nullspace, span membership, solve, inverse, rref witness | `generic` (any p < 2^32, portable C++) |
 | [hadamard](modules/hadamard/manifest.toml) | Hadamard, skew, regular and conference predicates for F_2 matrices read as signs, plus signed-equivalence canonical forms | `generic` (portable C++) |
+| [integer_partitions](modules/integer_partitions/manifest.toml) | constrained partitions and compositions: number of parts, largest part, and rank/crank distributions | `generic` (portable C++ enumeration) |
 | [lattice_of_subspaces](modules/lattice_of_subspaces/manifest.toml) | Gaussian binomials, flag counts, counts above and below a row space, and subspace incidence predicates | `generic` (checked formulas and row reduction, portable C++) |
 | [orbits](modules/orbits/manifest.toml) | finite groups acting on families: orbit representatives (`is_canonical`), canonical index, orbit size, stabiliser order, fixed points for Burnside, and the projective action that turns a matrix group into permutations of points | `generic` (per-member orbit search, portable C++) |
 | [perm_groups](modules/perm_groups/manifest.toml) | Schreier-Sims for permutation groups: order, membership, transitivity, primitivity, point-orbit partitions, and deterministic bases with strong generators | `generic` (portable C++, parallel across groups) |

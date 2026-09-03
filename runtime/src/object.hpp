@@ -27,7 +27,7 @@ inline Status fail(int status, std::string msg) { return Status::failure(status,
 using Entry = uint32_t;
 
 /* Matrix::p for a batch of natural-number matrices (entries < 2^32, no arithmetic meaning;
- * interchange kind "lk.naturals"). Members of `range` and `words` families are these. */
+ * interchange kind "lk.naturals"). Members of natural-number families use these. */
 constexpr uint64_t NATURALS = UINT64_MAX;
 
 /* A batch of count rows x cols matrices. p is the prime, 0 for a batch of permutations

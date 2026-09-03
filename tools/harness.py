@@ -176,6 +176,11 @@ def lean_family(f: ic.Family) -> str:
         return f"(.{ctor} {q['a']} {q['b']})"
     if f.kind == "words":
         return f"(.{ctor} {q['alphabet']} {q['length']})"
+    if f.kind == "partitions":
+        return (f"(.{ctor} {q['total']} {q['max_part']} {q['max_parts']} {q['max_multiplicity']} "
+                f"{q['distinct']} {q['odd']})")
+    if f.kind == "compositions":
+        return f"(.{ctor} {q['total']} {q['parts']} {q['max_part']})"
     raise ValueError(f.kind)
 
 

@@ -10,6 +10,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/gfp/backends/gene
 # module gfp: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/hadamard/backends/generic/hadamard_generic.cpp)
 # module hadamard: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/integer_partitions/backends/generic/integer_partitions_generic.cpp)
+# module integer_partitions: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/lattice_of_subspaces/backends/generic/lattice_of_subspaces_generic.cpp)
 # module lattice_of_subspaces: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/orbits/backends/generic/orbits_generic.cpp)

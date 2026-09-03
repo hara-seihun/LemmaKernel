@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <mutex>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace lk {
@@ -38,6 +39,89 @@ Result<uint64_t> pow_checked(uint64_t p, uint64_t e) {
         if (mul_overflows(r, p, r)) return Result<uint64_t>::failure(INVALID, "family size does not fit in 64 bits");
     return Result<uint64_t>::success(r);
 }
+
+struct Triple {
+    uint64_t x, y, z;
+    bool operator==(const Triple &) const = default;
+};
+
+struct TripleHash {
+    size_t operator()(const Triple &s) const {
+        size_t h = std::hash<uint64_t>{}(s.x);
+        h ^= std::hash<uint64_t>{}(s.y) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        h ^= std::hash<uint64_t>{}(s.z) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        return h;
+    }
+};
+
+struct PartitionCounter {
+    uint64_t cap;
+    bool odd;
+    bool overflow = false;
+    std::unordered_map<Triple, uint64_t, TripleHash> memo;
+
+    PartitionCounter(uint64_t total, uint64_t max_multiplicity, bool distinct, bool odd_parts)
+        : cap(distinct ? 1 : (max_multiplicity ? max_multiplicity : total)), odd(odd_parts) {}
+
+    uint64_t add(uint64_t a, uint64_t b) {
+        unsigned __int128 s = (unsigned __int128)a + b;
+        if (s > UINT64_MAX) { overflow = true; return UINT64_MAX; }
+        return (uint64_t)s;
+    }
+
+    /* Count frequency vectors for available part sizes `part, part-1, ..., 1`. */
+    uint64_t count(uint64_t rem, uint64_t part, uint64_t slots) {
+        if (rem == 0) return 1;
+        if (part == 0 || slots == 0) return 0;
+        Triple key{rem, part, slots};
+        if (auto it = memo.find(key); it != memo.end()) return it->second;
+        uint64_t total = 0;
+        if (odd && part % 2 == 0) {
+            total = count(rem, part - 1, slots);
+        } else {
+            uint64_t max_count = std::min({cap, slots, rem / part});
+            for (uint64_t c = max_count + 1; c-- > 0;)
+                total = add(total, count(rem - c * part, part - 1, slots - c));
+        }
+        memo.emplace(key, total);
+        return total;
+    }
+
+    uint64_t largest_branch(uint64_t total, uint64_t largest, uint64_t slots) {
+        if ((odd && largest % 2 == 0) || largest > total || slots == 0) return 0;
+        uint64_t answer = 0;
+        uint64_t max_count = std::min({cap, slots, total / largest});
+        for (uint64_t c = max_count + 1; c-- > 1;)
+            answer = add(answer, count(total - c * largest, largest - 1, slots - c));
+        return answer;
+    }
+};
+
+struct CompositionCounter {
+    uint64_t max_part;
+    bool overflow = false;
+    std::unordered_map<Triple, uint64_t, TripleHash> memo;
+
+    explicit CompositionCounter(uint64_t maximum) : max_part(maximum) {}
+
+    uint64_t count(uint64_t rem, uint64_t parts) {
+        if (parts == 0) return rem == 0;
+        if (rem < parts || (unsigned __int128)parts * max_part < rem) return 0;
+        Triple key{rem, parts, 0};
+        if (auto it = memo.find(key); it != memo.end()) return it->second;
+        uint64_t total = 0;
+        uint64_t hi = std::min(max_part, rem);
+        for (uint64_t x = 1; x <= hi; ++x) {
+            unsigned __int128 s = (unsigned __int128)total + count(rem - x, parts - 1);
+            if (s > UINT64_MAX) { overflow = true; total = UINT64_MAX; break; }
+            total = (uint64_t)s;
+        }
+        memo.emplace(key, total);
+        return total;
+    }
+};
+
+uint64_t effective_bound(uint64_t bound, uint64_t total) { return bound ? std::min(bound, total) : total; }
 
 } // namespace
 
@@ -123,12 +207,15 @@ const char *family_kind_name(Family::Kind k) {
     case Family::Kind::SymmetricMatrices: return "symmetric_matrices";
     case Family::Kind::Range: return "range";
     case Family::Kind::Words: return "words";
+    case Family::Kind::Partitions: return "partitions";
+    case Family::Kind::Compositions: return "compositions";
     }
     return "?";
 }
 
 uint64_t Family::prime() const {
-    if (kind == Kind::Range || kind == Kind::Words) return NATURALS;
+    if (kind == Kind::Range || kind == Kind::Words || kind == Kind::Partitions || kind == Kind::Compositions)
+        return NATURALS;
     return child ? child->prime() : p;
 }
 
@@ -145,6 +232,8 @@ uint64_t Family::rows() const {
     case Kind::SymmetricMatrices: return n;
     case Kind::Range: return 1;
     case Kind::Words: return 1;
+    case Kind::Partitions: return 1;
+    case Kind::Compositions: return 1;
     }
     return 0;
 }
@@ -162,6 +251,8 @@ uint64_t Family::cols() const {
     case Kind::SymmetricMatrices: return n;
     case Kind::Range: return 1;
     case Kind::Words: return n;
+    case Kind::Partitions: return n;
+    case Kind::Compositions: return n;
     }
     return 0;
 }
@@ -184,6 +275,25 @@ Result<uint64_t> Family::size() const {
     case Kind::Words: return pow_checked(p, m * n);
     case Kind::SymmetricMatrices: return pow_checked(p, n * (n + 1) / 2);
     case Kind::Range: return Result<uint64_t>::success(b - a);
+    case Kind::Partitions: {
+        uint64_t largest = effective_bound(m, n), slots = effective_bound(k, n);
+        PartitionCounter counter(n, h, a != 0, b != 0);
+        uint64_t total = counter.count(n, largest, slots);
+        if (counter.overflow) return Result<uint64_t>::failure(INVALID, "family size does not fit in 64 bits");
+        return Result<uint64_t>::success(total);
+    }
+    case Kind::Compositions: {
+        CompositionCounter counter(effective_bound(m, n));
+        uint64_t total = 0;
+        uint64_t first_parts = k ? k : 1, last_parts = k ? k : n;
+        for (uint64_t parts = first_parts; parts <= last_parts; ++parts) {
+            unsigned __int128 next = (unsigned __int128)total + counter.count(n, parts);
+            if (next > UINT64_MAX) counter.overflow = true;
+            total = next > UINT64_MAX ? UINT64_MAX : (uint64_t)next;
+        }
+        if (counter.overflow) return Result<uint64_t>::failure(INVALID, "family size does not fit in 64 bits");
+        return Result<uint64_t>::success(total);
+    }
     case Kind::Transform:
     case Kind::Stack: return child->size();
     case Kind::GroupElements: {
@@ -205,6 +315,8 @@ Result<uint64_t> Family::top_count() const {
     case Kind::Words:
     case Kind::SymmetricMatrices: return pow_checked(p, n);
     case Kind::Range: return size();
+    case Kind::Partitions: return Result<uint64_t>::success(effective_bound(m, n));
+    case Kind::Compositions: return Result<uint64_t>::success(k ? 1 : n);
     case Kind::Transform:
     case Kind::Stack: return child->top_count();
     case Kind::GroupElements: return size();
@@ -298,6 +410,61 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
     case Kind::Range:
         out.entries.assign(1, (Entry)(a + index));
         break;
+    case Kind::Partitions: {
+        uint64_t rem = n, slots = effective_bound(k, n), largest = effective_bound(m, n), pos = 0;
+        PartitionCounter counter(n, h, a != 0, b != 0);
+        out.entries.assign(n, 0);
+        for (uint64_t part = largest; part > 0 && rem > 0; --part) {
+            if (b && part % 2 == 0) continue;
+            uint64_t cap = a ? 1 : (h ? h : n);
+            uint64_t max_count = std::min({cap, slots, rem / part});
+            bool selected = false;
+            for (uint64_t c = max_count + 1; c-- > 0;) {
+                uint64_t below = counter.count(rem - c * part, part - 1, slots - c);
+                if (index < below) {
+                    for (uint64_t j = 0; j < c; ++j) out.entries[pos++] = (Entry)part;
+                    rem -= c * part;
+                    slots -= c;
+                    selected = true;
+                    break;
+                }
+                index -= below;
+            }
+            if (!selected) return fail(INTERNAL, "partition unranking failed");
+        }
+        if (rem != 0 || index != 0) return fail(INTERNAL, "partition unranking failed");
+        break;
+    }
+    case Kind::Compositions: {
+        uint64_t maximum = effective_bound(m, n), parts = k;
+        CompositionCounter counter(maximum);
+        if (parts == 0) {
+            for (parts = 1; parts <= n; ++parts) {
+                uint64_t below = counter.count(n, parts);
+                if (index < below) break;
+                index -= below;
+            }
+        }
+        out.entries.assign(n, 0);
+        uint64_t rem = n;
+        for (uint64_t pos = 0; pos < parts; ++pos) {
+            uint64_t hi = std::min(maximum, rem);
+            bool selected = false;
+            for (uint64_t x = hi + 1; x-- > 1;) {
+                uint64_t below = counter.count(rem - x, parts - pos - 1);
+                if (index < below) {
+                    out.entries[pos] = (Entry)x;
+                    rem -= x;
+                    selected = true;
+                    break;
+                }
+                index -= below;
+            }
+            if (!selected) return fail(INTERNAL, "composition unranking failed");
+        }
+        if (rem != 0 || index != 0) return fail(INTERNAL, "composition unranking failed");
+        break;
+    }
     case Kind::Transform: {
         auto inner = child->member(index);
         if (!inner.ok) return fail(inner.error.status, inner.error.message);
@@ -605,6 +772,73 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
         }
         return ok();
     }
+    case Kind::Partitions: {
+        uint64_t maximum = effective_bound(m, n), slots = effective_bound(k, n);
+        PartitionCounter counter(n, h, a != 0, b != 0);
+        uint64_t index = 0;
+        for (uint64_t t = 0; t < top_begin; ++t)
+            index += counter.largest_branch(n, maximum - t, slots);
+        std::vector<Entry> row(n, 0);
+        auto emit = [&](uint64_t i) {
+            Step step = v.push(row.data(), i, 1);
+            if (step == Step::Descend) v.leaf(i);
+            else if (step == Step::TakeAll) v.take_all(i, 1);
+            else v.skip_all(i, 1);
+            v.pop();
+        };
+        auto descend = [&](auto &self, uint64_t part, uint64_t rem, uint64_t left, uint64_t pos) -> void {
+            if (rem == 0) { emit(index++); return; }
+            if (part == 0 || left == 0) return;
+            if (b && part % 2 == 0) { self(self, part - 1, rem, left, pos); return; }
+            uint64_t cap = a ? 1 : (h ? h : n);
+            uint64_t max_count = std::min({cap, left, rem / part});
+            for (uint64_t c = max_count + 1; c-- > 0;) {
+                for (uint64_t j = 0; j < c; ++j) row[pos + j] = (Entry)part;
+                self(self, part - 1, rem - c * part, left - c, pos + c);
+                for (uint64_t j = 0; j < c; ++j) row[pos + j] = 0;
+            }
+        };
+        for (uint64_t t = top_begin; t < top_end; ++t) {
+            uint64_t largest = maximum - t;
+            if ((b && largest % 2 == 0) || largest > n) continue;
+            uint64_t cap = a ? 1 : (h ? h : n);
+            uint64_t max_count = std::min({cap, slots, n / largest});
+            for (uint64_t c = max_count + 1; c-- > 1;) {
+                for (uint64_t j = 0; j < c; ++j) row[j] = (Entry)largest;
+                descend(descend, largest - 1, n - c * largest, slots - c, c);
+                for (uint64_t j = 0; j < c; ++j) row[j] = 0;
+            }
+        }
+        return ok();
+    }
+    case Kind::Compositions: {
+        uint64_t maximum = effective_bound(m, n);
+        CompositionCounter counter(maximum);
+        uint64_t index = 0;
+        if (!k)
+            for (uint64_t parts = 1; parts <= top_begin; ++parts) index += counter.count(n, parts);
+        std::vector<Entry> row(n, 0);
+        auto descend = [&](auto &self, uint64_t rem, uint64_t left, uint64_t pos) -> void {
+            if (left == 0) {
+                if (rem != 0) return;
+                Step step = v.push(row.data(), index, 1);
+                if (step == Step::Descend) v.leaf(index);
+                else if (step == Step::TakeAll) v.take_all(index, 1);
+                else v.skip_all(index, 1);
+                v.pop();
+                ++index;
+                return;
+            }
+            uint64_t hi = std::min(maximum, rem);
+            for (uint64_t x = hi + 1; x-- > 1;) {
+                row[pos] = (Entry)x;
+                self(self, rem - x, left - 1, pos + 1);
+                row[pos] = 0;
+            }
+        };
+        for (uint64_t t = top_begin; t < top_end; ++t) descend(descend, n, k ? k : t + 1, 0);
+        return ok();
+    }
     case Kind::AllMatrices:
     case Kind::Words: {
         auto per_row = pow_checked(p, n);
@@ -841,6 +1075,44 @@ Result<std::shared_ptr<Family>> make_words(uint64_t alphabet, uint64_t length) {
     f->n = length;
     auto sz = f->size();
     if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
+    return R::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_partitions(uint64_t total, uint64_t max_part, uint64_t max_parts,
+                                                uint64_t max_multiplicity, uint64_t distinct, uint64_t odd) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (total == 0 || total > 4096) return R::failure(INVALID, "partitions: need 1 <= total <= 4096");
+    if (max_part > UINT32_MAX) return R::failure(INVALID, "partitions: max_part must be < 2^32");
+    if (max_parts > total) return R::failure(INVALID, "partitions: max_parts must be at most total");
+    if (max_multiplicity > total) return R::failure(INVALID, "partitions: max_multiplicity must be at most total");
+    if (distinct > 1 || odd > 1) return R::failure(INVALID, "partitions: distinct and odd must be 0 or 1");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::Partitions;
+    f->n = total;
+    f->m = max_part;
+    f->k = max_parts;
+    f->h = max_multiplicity;
+    f->a = distinct;
+    f->b = odd;
+    auto sz = f->size();
+    if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
+    if (sz.value == 0) return R::failure(INVALID, "partitions: constraints admit no partition");
+    return R::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_compositions(uint64_t total, uint64_t parts, uint64_t max_part) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (total == 0 || total > 4096) return R::failure(INVALID, "compositions: need 1 <= total <= 4096");
+    if (parts > total) return R::failure(INVALID, "compositions: parts must be at most total");
+    if (max_part > UINT32_MAX) return R::failure(INVALID, "compositions: max_part must be < 2^32");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::Compositions;
+    f->n = total;
+    f->k = parts;
+    f->m = max_part;
+    auto sz = f->size();
+    if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
+    if (sz.value == 0) return R::failure(INVALID, "compositions: constraints admit no composition");
     return R::success(f);
 }
 

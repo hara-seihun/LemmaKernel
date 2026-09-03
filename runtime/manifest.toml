@@ -71,6 +71,18 @@ member = "lk.naturals"
 lean = "words"
 summary = "Every word of the given length over the alphabet 0..alphabet-1 as a 1 x length natural-number matrix; index is the base-alphabet number of the word."
 
+[[families]]
+name = "partitions"
+member = "lk.naturals"
+lean = "partitions"
+summary = "Partitions of total with optional largest-part, part-count and multiplicity bounds, and optional distinct or odd parts; one decreasing row padded to total entries with zeros, in descending lexicographic order. A zero bound is unrestricted."
+
+[[families]]
+name = "compositions"
+member = "lk.naturals"
+lean = "compositions"
+summary = "Positive compositions of total with optional exact length and largest-part bound; one row padded to total entries with zeros. Lengths increase first, then rows are descending lexicographic. A zero bound or length is unrestricted."
+
 [[reductions]]
 name = "all"
 accepts = ["*"]

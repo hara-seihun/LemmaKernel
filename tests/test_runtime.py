@@ -43,12 +43,13 @@ def test_describe_lists_every_module():
 
 
 def test_natural_number_families_enumerate_like_the_naive_layer():
-    """`range` and `words` carry lk.naturals members; no module operation takes them yet, so the
-    runtime's size, member, index_of (through hits materialisation) and interchange roundtrip are
-    checked here against the shared naive enumeration."""
+    """Natural-number families agree with the shared naive enumeration member for member."""
     from lemmakernel import naive as rt
     ctx = lk.Context()
-    for fam in [ctx.range(10, 15), ctx.words(3, 3), ctx.range(0, 1)]:
+    families = [ctx.range(10, 15), ctx.words(3, 3), ctx.range(0, 1), ctx.partitions(7),
+                ctx.partitions(9, distinct=True, odd=True), ctx.compositions(6),
+                ctx.compositions(8, parts=3, max_part=4)]
+    for fam in families:
         desc = fam.value()
         expected, p = rt.members(desc)
         assert p == lk.NATURALS
@@ -61,6 +62,10 @@ def test_natural_number_families_enumerate_like_the_naive_layer():
         ctx.range(5, 5)
     with pytest.raises(lk.Error, match="alphabet"):
         ctx.words(1, 3)
+    with pytest.raises(lk.Error, match="no partition"):
+        ctx.partitions(3, max_part=2, max_parts=1)
+    with pytest.raises(lk.Error, match="no composition"):
+        ctx.compositions(5, parts=2, max_part=2)
     # naturals never enter F_p arithmetic
     with pytest.raises(lk.Error, match="no available backend"):
         ctx.run("gfp.rank", ctx.words(2, 3))

@@ -86,8 +86,45 @@ def symmetric_members(p, n):
         yield m
 
 
+def partition_members(total, max_part, max_parts, max_multiplicity, distinct, odd):
+    """Constrained partitions, descending lexicographic, padded to `total` entries."""
+    upper = min(max_part or total, total)
+    slots = min(max_parts or total, total)
+    cap = 1 if distinct else max_multiplicity or total
+    values = [v for v in range(upper, 0, -1) if not odd or v % 2]
+
+    def rec(i, remaining, left, prefix):
+        if remaining == 0:
+            yield [prefix + [0] * (total - len(prefix))]
+            return
+        if i == len(values) or left == 0:
+            return
+        value = values[i]
+        for count in range(min(cap, left, remaining // value), -1, -1):
+            yield from rec(i + 1, remaining - count * value, left - count,
+                           prefix + [value] * count)
+
+    yield from rec(0, total, slots, [])
+
+
+def composition_members(total, parts, max_part):
+    """Positive bounded compositions, by length then descending lexicographic."""
+    maximum = min(max_part or total, total)
+
+    def exact(remaining, left, prefix):
+        if left == 0:
+            if remaining == 0:
+                yield [prefix + [0] * (total - len(prefix))]
+            return
+        for value in range(min(maximum, remaining), 0, -1):
+            yield from exact(remaining - value, left - 1, prefix + [value])
+
+    for length in ([parts] if parts else range(1, total + 1)):
+        yield from exact(total, length, [])
+
+
 def prime(f: Family) -> int:
-    if f.kind in ("range", "words"):
+    if f.kind in ("range", "words", "partitions", "compositions"):
         return NATURALS
     if f.kind == "group_elements":
         return 0
@@ -146,6 +183,11 @@ def iter_members(f: Family):
     elif f.kind == "words":
         for w in itertools.product(range(f.params["alphabet"]), repeat=f.params["length"]):
             yield [list(w)]
+    elif f.kind == "partitions":
+        yield from partition_members(f.params["total"], f.params["max_part"], f.params["max_parts"],
+                                     f.params["max_multiplicity"], f.params["distinct"], f.params["odd"])
+    elif f.kind == "compositions":
+        yield from composition_members(f.params["total"], f.params["parts"], f.params["max_part"])
     else:
         raise ValueError(f"unknown family {f.kind}")
 

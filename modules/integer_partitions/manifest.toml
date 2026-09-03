@@ -1,0 +1,51 @@
+# integer_partitions: statistics on the runtime's constrained partition and composition families.
+
+[module]
+name = "integer_partitions"
+version = 1
+summary = "Constrained integer partitions and compositions. Families support odd, distinct, largest-part, length and multiplicity bounds. Rank and crank are returned with the partition total added, so histogram bin i represents statistic i-total."
+lean = "lean"
+contract = "lean/Integer_partitions/Contract.lean"
+reference = "lean/Integer_partitions/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "number_of_parts"
+value = "integer"
+families = ["partitions", "compositions"]
+summary = "Number of positive parts in the member. Histogram gives the length distribution."
+
+[[operations]]
+name = "largest_part"
+value = "integer"
+families = ["partitions", "compositions"]
+summary = "Largest positive part in the member. Histogram gives the largest-part distribution."
+
+[[operations]]
+name = "rank"
+value = "integer"
+families = ["partitions"]
+summary = "Dyson rank (largest part minus number of parts), encoded by adding the partition total. Histogram bin i counts rank i-total."
+
+[[operations]]
+name = "crank"
+value = "integer"
+families = ["partitions"]
+summary = "Andrews-Garvan crank, encoded by adding the partition total. If there are no ones it is the largest part; otherwise it is parts greater than the number of ones minus the number of ones. Histogram bin i counts crank i-total."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/integer_partitions_generic.cpp"]
+accepts = "partition and composition families whose size fits in 64 bits"
+summary = "Portable C++: recursive family enumeration split by largest part or composition length, with runtime integer reductions."
+
+[[rejections]]
+case = "compositions of 6"
+op = "rank"
+error = "partitions families only"
+
+[[rejections]]
+case = "compositions of 6"
+op = "crank"
+error = "partitions families only"

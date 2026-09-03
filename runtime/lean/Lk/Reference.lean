@@ -124,6 +124,32 @@ def symmetricMembers (p n : Nat) : List Mat :=
     (List.range n).map fun i => (List.range n).map fun j =>
       if i ≤ j then digits.getD (pos i j) 0 else digits.getD (pos j i) 0
 
+/-- The positive integers at most `n`, largest first. -/
+def descending (n : Nat) : List Nat := (List.range n).reverse.map (· + 1)
+
+/-- Frequency choices for the available part sizes, largest first. -/
+def partitionLists : List Nat → Nat → Nat → Nat → List Vec
+  | [], rem, _, _ => if rem = 0 then [[]] else []
+  | v :: vs, rem, slots, cap =>
+    let maxCount := min cap (min slots (rem / v))
+    (List.range (maxCount + 1)).reverse.flatMap fun c =>
+      (partitionLists vs (rem - c * v) (slots - c) cap).map fun tail => List.replicate c v ++ tail
+
+/-- Partitions under the runtime constraints, without trailing padding. -/
+def constrainedPartitions (total maxPart maxParts maxMultiplicity distinct odd : Nat) : List Vec :=
+  let upper := if maxPart = 0 then total else min maxPart total
+  let slots := if maxParts = 0 then total else min maxParts total
+  let cap := if distinct = 1 then 1 else if maxMultiplicity = 0 then total else maxMultiplicity
+  let values := if odd = 1 then (descending upper).filter (· % 2 = 1) else descending upper
+  partitionLists values total slots cap
+
+/-- Compositions of `rem` into exactly `parts` positive bounded parts, descending lexicographic. -/
+def compositionLists (maxPart rem : Nat) : Nat → List Vec
+  | 0 => if rem = 0 then [[]] else []
+  | parts + 1 =>
+    (descending (min maxPart rem)).flatMap fun x =>
+      (compositionLists maxPart (rem - x) parts).map (x :: ·)
+
 inductive Family
   | explicit (p : Nat) (batch : List Mat)
   | subsets (p : Nat) (dictionary : List Vec) (k : Nat)
@@ -136,12 +162,14 @@ inductive Family
   | symmetricMatrices (p n : Nat)
   | range (a b : Nat)
   | words (alphabet length : Nat)
+  | partitions (total maxPart maxParts maxMultiplicity distinct odd : Nat)
+  | compositions (total parts maxPart : Nat)
 
 /-- The prime of a matrix family; 0 for permutations and for natural-number members. -/
 def Family.p : Family → Nat
   | .explicit p _ | .subsets p _ _ | .grassmannian p _ _ | .allMatrices p _ _ | .symmetricMatrices p _ => p
   | .transform f _ | .stack f _ | .subsetsOf f _ => f.p
-  | .groupElements _ | .range _ _ | .words _ _ => 0
+  | .groupElements _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ | .compositions _ _ _ => 0
 
 /-- Members in canonical order. A permutation is a one-row matrix; so is a word, and an integer
 is a `1 x 1` matrix. -/
@@ -157,6 +185,14 @@ def Family.members : Family → List Mat
   | .symmetricMatrices p n => symmetricMembers p n
   | .range a b => (List.range (b - a)).map fun i => [[a + i]]
   | .words q len => (tuples q len).map ([·])
+  | .partitions total maxPart maxParts maxMultiplicity distinct odd =>
+    (constrainedPartitions total maxPart maxParts maxMultiplicity distinct odd).map fun xs =>
+      [((xs ++ List.replicate total 0).take total)]
+  | .compositions total parts maxPart =>
+    let maximum := if maxPart = 0 then total else min maxPart total
+    let lengths := if parts = 0 then (List.range total).map (· + 1) else [parts]
+    lengths.flatMap fun k => (compositionLists maximum total k).map fun xs =>
+      [((xs ++ List.replicate total 0).take total)]
 
 /-- The dictionary a `subsets` or `subsets_of` family draws from, for modules whose groups act
 on dictionary positions. -/

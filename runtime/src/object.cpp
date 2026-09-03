@@ -231,6 +231,19 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         for (auto *r : {&q, &len}) if (!r->ok) return R::failure(r->error.status, r->error.message);
         return make_words(q.value, len.value);
     }
+    if (sub == "partitions") {
+        auto total = need(h, "total"), max_part = need(h, "max_part"), max_parts = need(h, "max_parts"),
+             max_multiplicity = need(h, "max_multiplicity"), distinct = need(h, "distinct"), odd = need(h, "odd");
+        for (auto *r : {&total, &max_part, &max_parts, &max_multiplicity, &distinct, &odd})
+            if (!r->ok) return R::failure(r->error.status, r->error.message);
+        return make_partitions(total.value, max_part.value, max_parts.value, max_multiplicity.value,
+                               distinct.value, odd.value);
+    }
+    if (sub == "compositions") {
+        auto total = need(h, "total"), parts = need(h, "parts"), max_part = need(h, "max_part");
+        for (auto *r : {&total, &parts, &max_part}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        return make_compositions(total.value, parts.value, max_part.value);
+    }
     if (sub == "grassmannian") {
         auto p = need(h, "p"), n = need(h, "n"), hh = need(h, "h");
         for (auto *r : {&p, &n, &hh}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -284,6 +297,13 @@ std::vector<uint8_t> encode_family(const Family &f) {
         break;
     case Family::Kind::Words:
         params = {{"alphabet", f.p}, {"length", f.n}};
+        break;
+    case Family::Kind::Partitions:
+        params = {{"total", f.n}, {"max_part", f.m}, {"max_parts", f.k}, {"max_multiplicity", f.h},
+                  {"distinct", f.a}, {"odd", f.b}};
+        break;
+    case Family::Kind::Compositions:
+        params = {{"total", f.n}, {"parts", f.k}, {"max_part", f.m}};
         break;
     case Family::Kind::GroupElements:
         payload.bytes(encode_matrix(*f.data));
