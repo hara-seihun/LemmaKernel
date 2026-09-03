@@ -835,8 +835,11 @@ struct Walker {
         }
     }
 
-    /* The subtree of a prefix of j elements ending at index `prev`, leaves [base, base+size). */
-    void walk(uint64_t j, uint64_t prev, Index base, Index size) {
+    /* The subtree of a prefix of j >= 1 elements ending at index `prev`, leaves [base, base+size).
+     * The size is read off the table rather than passed: a fifth argument would go on the stack
+     * as two 8-byte stores read back as one 16-byte load, a store-forwarding stall per node. */
+    void walk(uint64_t j, uint64_t prev, Index base) {
+        Index size = child_size(j - 1, prev);
         uint64_t need = k - j;
         uint64_t lo = prev + 1;
         int64_t hi = hi_of_level[j]; /* children; `total` counts every candidate above prev */
@@ -887,7 +890,7 @@ struct Walker {
                     continue;
                 }
                 bool alive = push(j, dict[c]);
-                if (alive) walk(j + 1, c, first, below);
+                if (alive) walk(j + 1, c, first);
                 else acc.booleans(first, below, false);
                 pop();
                 decided += below;
@@ -1033,7 +1036,7 @@ struct Walker {
         } else if (k == 1) {
             if (mode == Mode::Forbid) acc.booleans(first, 1, allowed_index(0, idx[0]));
             else leaves_valued(0, idx[0], idx[0] + 1, first);
-        } else walk(d, idx[d - 1], first, size);
+        } else walk(d, idx[d - 1], first);
     }
 
     /* Under the mirror rule the last gap is at least g1 = a1 - a0, so the elements chosen at
