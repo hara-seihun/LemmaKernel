@@ -16,7 +16,7 @@ struct PartitionTable;
 struct Family {
     enum class Kind { Explicit, Subsets, Grassmannian, AllMatrices, Transform, Stack, GroupElements,
                       GroupTables, SubsetsOf, SymmetricMatrices, Range, Words, Partitions, Compositions,
-                      StandardTableaux };
+                      StandardTableaux, AllGraphs, EdgeSubgraphs, CayleyGraphs };
     Kind kind;
     /* Batch, group tables, dictionary (Subsets, and the materialised inner family for SubsetsOf),
      * C, stacked rows, group generators, or the shape of a StandardTableaux family. */
@@ -32,6 +32,8 @@ struct Family {
      * pointer so that the per-member fast path takes no lock. */
     mutable std::shared_ptr<const std::vector<Entry>> elements;
     mutable std::atomic<const std::vector<Entry> *> elements_ready{nullptr};
+    /* CayleyGraphs: inverse classes of nonidentity group elements, as indices in `elements`. */
+    std::shared_ptr<const std::vector<std::vector<uint64_t>>> cayley_classes;
     /* Grassmannian: pivot sets and offsets, computed on first use. */
     mutable std::shared_ptr<const PivotTable> pivots;
     mutable std::atomic<const PivotTable *> pivots_ready{nullptr};
@@ -91,6 +93,9 @@ Result<std::shared_ptr<Family>> make_partitions(uint64_t total, uint64_t max_par
  * `max_part == 0` does not bound a part. */
 Result<std::shared_ptr<Family>> make_compositions(uint64_t total, uint64_t parts, uint64_t max_part);
 Result<std::shared_ptr<Family>> make_standard_tableaux(std::shared_ptr<Matrix> shape);
+Result<std::shared_ptr<Family>> make_all_graphs(uint64_t n);
+Result<std::shared_ptr<Family>> make_edge_subgraphs(std::shared_ptr<Matrix> host, uint64_t k);
+Result<std::shared_ptr<Family>> make_cayley_graphs(std::shared_ptr<Matrix> generators);
 
 /* Closures under composition or multiplication, sorted lexicographically. */
 Result<std::vector<Entry>> permutation_closure(const Matrix &generators, uint64_t limit);

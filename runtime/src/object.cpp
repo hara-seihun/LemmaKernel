@@ -226,6 +226,23 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         for (auto *r : {&p, &n}) if (!r->ok) return R::failure(r->error.status, r->error.message);
         return make_symmetric_matrices(p.value, n.value);
     }
+    if (sub == "all_graphs") {
+        auto n = need(h, "n");
+        if (!n.ok) return R::failure(n.error.status, n.error.message);
+        return make_all_graphs(n.value);
+    }
+    if (sub == "edge_subgraphs") {
+        auto k = need(h, "k");
+        if (!k.ok) return R::failure(k.error.status, k.error.message);
+        auto host = child_object("gfp.matrix");
+        if (!host.ok) return R::failure(host.error.status, host.error.message);
+        return make_edge_subgraphs(host.value->matrix, k.value);
+    }
+    if (sub == "cayley_graphs") {
+        auto group = child_object("orbits.perms");
+        if (!group.ok) return R::failure(group.error.status, group.error.message);
+        return make_cayley_graphs(group.value->matrix);
+    }
     if (sub == "range") {
         auto a = need(h, "a"), b = need(h, "b");
         for (auto *r : {&a, &b}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -324,6 +341,16 @@ std::vector<uint8_t> encode_family(const Family &f) {
     case Family::Kind::StandardTableaux:
         payload.bytes(encode_matrix(*f.data));
         break;
+    case Family::Kind::AllGraphs:
+        params = {{"n", f.n}};
+        break;
+    case Family::Kind::EdgeSubgraphs:
+        payload.bytes(encode_matrix(*f.data));
+        params = {{"k", f.k}};
+        break;
+    case Family::Kind::CayleyGraphs:
+        payload.bytes(encode_matrix(*f.data));
+        break;
     case Family::Kind::GroupElements:
     case Family::Kind::GroupTables:
         payload.bytes(encode_matrix(*f.data));
@@ -382,6 +409,19 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->curve_groups = std::make_shared<CurveGroups>();
         o->curve_groups->count = n.value;
         for (uint64_t i = 0; i < 2 * n.value; ++i) o->curve_groups->orders.push_back(r.u64());
+        return R::success(o);
+    }
+    if (h.kind == "graphs.degree_sequences") {
+        auto count = need(h, "count"), n = need(h, "n");
+        for (auto *r : {&count, &n}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        if ((unsigned __int128)count.value * n.value * 4 != h.payload_len)
+            return R::failure(INVALID, "graphs.degree_sequences payload length mismatch");
+        auto d = std::make_shared<DegreeSequences>();
+        d->count = count.value;
+        d->n = n.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        r.entries(d->entries, count.value * n.value, 4);
+        o->degree_sequences = d;
         return R::success(o);
     }
     if (h.kind == "burnside.cycle_index") {
@@ -843,6 +883,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (srg_params) return {{"count", srg_params->count}};
     if (srg_spectra) return {{"count", srg_spectra->count}};
     if (integers) return {{"count", integers->values.size()}};
+    if (degree_sequences) return {{"count", degree_sequences->count}, {"n", degree_sequences->n}};
     if (count) return {{"value", count->value}, {"visited", count->visited}, {"family_size", count->family_size}};
     if (histogram) return {{"visited", histogram->visited}, {"family_size", histogram->family_size}, {"bins", histogram->bins.size()}};
     if (hits) return {{"p", hits->p}, {"rows", hits->rows}, {"cols", hits->cols}, {"total", hits->total},
@@ -901,6 +942,9 @@ std::vector<uint8_t> encode(const Object &o) {
         w.u64s(o.degrees->offsets);
         w.u64s(o.degrees->values);
         write_header(out, "polynomials_fq.degrees", o.params(), w.out);
+    } else if (o.degree_sequences) {
+        w.entries(o.degree_sequences->entries, 4);
+        write_header(out, "graphs.degree_sequences", o.params(), w.out);
     } else if (o.cycle_index) {
         for (uint64_t i = 0; i < o.cycle_index->multiplicities.size(); ++i) {
             w.u64(o.cycle_index->multiplicities[i]);

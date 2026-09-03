@@ -67,6 +67,9 @@ lk_status lk_family_partitions(lk_context *ctx, uint64_t total, uint64_t max_par
                                uint64_t max_multiplicity, uint64_t distinct, uint64_t odd, lk_handle *out);
 lk_status lk_family_compositions(lk_context *ctx, uint64_t total, uint64_t parts, uint64_t max_part, lk_handle *out);
 lk_status lk_family_standard_tableaux(lk_context *ctx, lk_handle shape, lk_handle *out);
+lk_status lk_family_all_graphs(lk_context *ctx, uint64_t n, lk_handle *out);
+lk_status lk_family_edge_subgraphs(lk_context *ctx, lk_handle host, uint64_t k, lk_handle *out);
+lk_status lk_family_cayley_graphs(lk_context *ctx, lk_handle group, lk_handle *out);
 lk_status lk_family_size(lk_context *ctx, lk_handle family, uint64_t *size);
 lk_status lk_family_member(lk_context *ctx, lk_handle family, uint64_t index, lk_handle *out);
 

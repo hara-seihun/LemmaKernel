@@ -15,6 +15,7 @@ here, once, and matches the runtime's canonical orders and the Lean reference ex
 """
 from __future__ import annotations
 
+import functools
 import itertools
 
 from .interchange import NATURALS, Count, Extremum, Family, First, Histogram, Hits, Integers, Matrix, Perms
@@ -163,11 +164,112 @@ def standard_tableaux(shape):
     yield from fill(shape, label)
 
 
+def graph_edges(n):
+    return [(i, j) for i in range(n) for j in range(i + 1, n)]
+
+
+def graph_from_mask(mask, n):
+    edges = graph_edges(n)
+    a = [[0] * n for _ in range(n)]
+    for q, (i, j) in enumerate(edges):
+        a[i][j] = a[j][i] = (mask >> (len(edges) - 1 - q)) & 1
+    return a
+
+
+def graph_mask(a):
+    mask = 0
+    for i, j in graph_edges(len(a)):
+        mask = (mask << 1) | int(bool(a[i][j]))
+    return mask
+
+
+def canonical_graph(a):
+    """Lexicographically least adjacency matrix, using ordered-partition individualisation."""
+    n = len(a)
+    assigned = []
+    best = None
+
+    def search(cells):
+        nonlocal best
+        if len(assigned) == n:
+            candidate = [[a[assigned[i]][assigned[j]] for j in range(n)] for i in range(n)]
+            flat = [x for row in candidate for x in row]
+            if best is None or flat < best[0]:
+                best = flat, candidate
+            return
+        first = cells[0]
+        tried = []
+        for v in first:
+            if any(all(w in (u, v) or a[u][w] == a[v][w] for cell in cells for w in cell) for u in tried):
+                continue
+            tried.append(v)
+            assigned.append(v)
+            refined = []
+            for cell in cells:
+                zero = [w for w in cell if w != v and not a[v][w]]
+                one = [w for w in cell if w != v and a[v][w]]
+                if zero:
+                    refined.append(zero)
+                if one:
+                    refined.append(one)
+            search(refined)
+            assigned.pop()
+
+    search([list(range(n))])
+    return best[1]
+
+
+@functools.lru_cache(maxsize=None)
+def all_graph_masks(n):
+    if n == 1:
+        return (0,)
+    found = set()
+    for parent_mask in all_graph_masks(n - 1):
+        parent = graph_from_mask(parent_mask, n - 1)
+        for neighbourhood in range(1 << (n - 1)):
+            a = [[0] * n for _ in range(n)]
+            for i in range(n - 1):
+                a[i][:n - 1] = parent[i]
+                a[i][n - 1] = a[n - 1][i] = (neighbourhood >> (n - 2 - i)) & 1
+            found.add(graph_mask(canonical_graph(a)))
+    return tuple(sorted(found))
+
+
+def inverse_classes(elements):
+    identity = list(range(len(elements[0])))
+    used = {tuple(identity)}
+    classes = []
+    for g in elements:
+        if tuple(g) in used:
+            continue
+        inverse = next(h for h in elements if compose(g, h) == identity)
+        classes.append([g] if inverse == g else [g, inverse])
+        used.add(tuple(g))
+        used.add(tuple(inverse))
+    return classes
+
+
+def cayley_graph_members(gens):
+    elements = perm_closure(gens)
+    classes = inverse_classes(elements)
+    index = {tuple(g): i for i, g in enumerate(elements)}
+    for bits in itertools.product(range(2), repeat=len(classes)):
+        a = [[0] * len(elements) for _ in elements]
+        selected = [s for bit, cls in zip(bits, classes) if bit for s in cls]
+        for i, g in enumerate(elements):
+            for s in selected:
+                j = index[tuple(compose(g, s))]
+                a[i][j] = a[j][i] = 1
+        yield a
+
+
 def prime(f: Family) -> int:
     if f.kind in ("group_tables", "range", "words", "partitions", "compositions", "standard_tableaux"):
         return NATURALS
     if f.kind == "group_elements":
         return f.children[0].p if isinstance(f.children[0], Matrix) else 0
+    if f.kind in ("all_graphs", "edge_subgraphs", "cayley_graphs"):
+        return 2
     if "p" in f.params:
         return f.params["p"]
     child = f.children[0]
@@ -235,6 +337,21 @@ def iter_members(f: Family):
         (shape_obj,) = f.children
         shape = shape_obj.member(0)[0]
         yield from standard_tableaux(shape)
+    elif f.kind == "all_graphs":
+        for mask in all_graph_masks(f.params["n"]):
+            yield graph_from_mask(mask, f.params["n"])
+    elif f.kind == "edge_subgraphs":
+        (host,) = f.children
+        a = host.member(0)
+        edges = [(i, j) for i, j in graph_edges(len(a)) if a[i][j]]
+        for chosen in itertools.combinations(edges, f.params["k"]):
+            g = [[0] * len(a) for _ in a]
+            for i, j in chosen:
+                g[i][j] = g[j][i] = 1
+            yield g
+    elif f.kind == "cayley_graphs":
+        (gens,) = f.children
+        yield from cayley_graph_members(gens.tolist())
     else:
         raise ValueError(f"unknown family {f.kind}")
 

@@ -319,6 +319,20 @@ class Degrees:
 
 
 @dataclass
+class DegreeSequences:
+    count: int
+    n: int
+    entries: object
+
+    def member(self, i: int):
+        return [int(x) for x in self.entries[i * self.n:(i + 1) * self.n]]
+
+    def encode(self) -> bytes:
+        return encode("graphs.degree_sequences", {"count": self.count, "n": self.n},
+                      pack_entries(self.entries, NATURALS))
+
+
+@dataclass
 class BurnsideCounts:
     values: list[int]
 
@@ -695,8 +709,9 @@ class Family:
 
 KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphGroups,
          "gfp.basis": Basis, "gfp.solutions": Solutions, "gfp.inverses": Inverses,
-         "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
-         "burnside.cycle_index": CycleIndex, "circulants.spectra": Spectra, "designs.matrix": U64Matrices,
+         "gfp.witness": Witness, "graphs.degree_sequences": DegreeSequences,
+         "burnside.counts": BurnsideCounts, "burnside.cycle_index": CycleIndex,
+         "circulants.spectra": Spectra, "designs.matrix": U64Matrices,
          "polytopes_small.vectors": U64Vectors,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
          "automorphisms.generators": PermutationGenerators, "posets.mobius": MobiusMatrices,
@@ -773,6 +788,8 @@ def decode_at(buf: bytes, offset: int):
         offs = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
         vals = list(struct.unpack_from(f"<{offs[-1]}Q", pl, 8 * (q["count"] + 1)))
         return Degrees(q["count"], offs, vals), end
+    if k == "graphs.degree_sequences":
+        return DegreeSequences(q["count"], q["n"], unpack_entries(pl, NATURALS, q["count"] * q["n"])), end
     if k == "burnside.counts":
         return BurnsideCounts(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "burnside.cycle_index":

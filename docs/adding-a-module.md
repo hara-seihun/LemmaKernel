@@ -54,19 +54,19 @@ gfp is the worked example of all of this; copy its shape.
 The runtime (`runtime/src/`) knows labelled field matrices with entries below the field-size tag
 (`gfp` requires a prime tag; `gfq` supplies an extension-field presentation), permutations (a
 `Matrix` with p = 0), and natural-number matrices (p = `NATURALS`, kind `lk.naturals`, no
-arithmetic meaning). It provides fifteen family kinds: `explicit`, `subsets` of a dictionary,
+arithmetic meaning). It provides eighteen family kinds: `explicit`, `subsets` of a dictionary,
 `subsets_of` another family, `grassmannian`, `all_matrices`, `symmetric_matrices`, the
 `transform`/`stack` wrappers, `group_elements` of a permutation group, `group_tables` from Cayley
-tables or permutation generators, `range`/`words` over naturals, constrained
-`partitions`/`compositions`, and standard Young tableaux. Look there before adding a family:
-k-subsets
+tables or permutation generators, graph families (`all_graphs`, `edge_subgraphs`,
+`cayley_graphs`), `range`/`words` over naturals, constrained `partitions`/`compositions`, and
+standard Young tableaux. Look there before adding a family: k-subsets
 of a group's elements is `subsets_of(group_elements(...))`, sign matrices are `all_matrices` over
-F_2 read as signs, a v-set is `range(0, v)`. A module over a different kind of object (graphs,
-polynomials) needs:
+F_2 read as signs, a v-set is `range(0, v)`, and simple graphs use adjacency matrices over F_2. A
+module over a different kind of object, such as polynomials, needs:
 
 - an object kind in `object.hpp` with its interchange encoding in `object.cpp` (header plus flat
   little-endian arrays; see `docs/interchange.md`);
-- families over that object in `family.hpp`/`family.cpp`, with a canonical order, a closed-form
+- families over that object in `family.hpp`/`family.cpp`, with a canonical order, an exact
   size, `member(index)` for unranking, `index_of` for ranking when a module will permute
   members (orbits does), and a depth-first `enumerate` if backends want to share prefix work;
 - if the module's operations produce one integer or boolean per member, `runtime/src/reduce.hpp`

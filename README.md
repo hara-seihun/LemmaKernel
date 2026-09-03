@@ -30,9 +30,10 @@ Vocabulary, in the order a request is built:
 - **family**: a description of a set of objects with a canonical order (`explicit`, `subsets`
   of a dictionary, `subsets_of` another family, `grassmannian`, `all_matrices`,
   `symmetric_matrices`, the `transform`/`stack` wrappers, `group_elements` of a permutation or
-  matrix group, `group_tables` from stored Cayley tables or permutation generators, `range`/`words`
-  of natural numbers, constrained `partitions`, `compositions`, and `standard_tableaux`). Family
-  sizes in the hundreds of millions are normal.
+  matrix group, `group_tables` from stored Cayley tables or permutation generators, graph
+  families (`all_graphs`, `edge_subgraphs`, `cayley_graphs`), `range`/`words` of natural numbers,
+  constrained `partitions`, `compositions`, and `standard_tableaux`). Family sizes in the
+  hundreds of millions are normal.
 - **operation**: what to compute per member (`gfp.rank`, `gfp.in_span`, `gfp.rref`, ...).
 - **reduction**: what to bring back. For booleans: `count`, `hits`, `first` (the least hit,
   stopping early), `all`. For integers: `histogram`, `sum`, `max`, `min` (with the member
@@ -95,6 +96,7 @@ and committed; the build refuses to configure if they are stale.
 | [gfp](modules/gfp/manifest.toml) | linear algebra over F_p on families of matrices: rank, rref, nullspace, span membership, solve, inverse, rref witness | `generic` (any p < 2^32, portable C++) |
 | [gfq](modules/gfq/manifest.toml) | linear algebra over explicitly presented GF(q): rank, rref, nullspace, span membership, solve, inverse | `generic` (polynomial-basis arithmetic for q < 2^32, portable C++) |
 | [graph_iso](modules/graph_iso/manifest.toml) | canonical forms, canonical vertex orders, and complete automorphism groups of undirected F_2 adjacency matrices, with loops allowed | `generic` (Weisfeiler-Lehman refinement and individualisation, portable C++) |
+| [graphs](modules/graphs/manifest.toml) | connectivity, girth, diameter, colouring, clique and independence numbers, bipartiteness, degree sequences, and canonical forms of simple graphs | `generic` (portable C++; exact searches for colouring, cliques, and canonical labelling) |
 | [hadamard](modules/hadamard/manifest.toml) | Hadamard, skew, regular and conference predicates for F_2 matrices read as signs, plus signed-equivalence canonical forms | `generic` (portable C++) |
 | [hypergraphs](modules/hypergraphs/manifest.toml) | uniform hypergraphs: linearity, weak colouring number, Berge cycles and girth, finite Turan searches, and two-colour Ramsey searches | `generic` (bit sets and backtracking, portable C++) |
 | [integer_partitions](modules/integer_partitions/manifest.toml) | constrained partitions and compositions: number of parts, largest part, and rank/crank distributions | `generic` (portable C++ enumeration) |

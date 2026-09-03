@@ -18,16 +18,17 @@ from pathlib import Path
 
 from . import interchange
 from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, Characters, Coefficients, Count, CurveGroups,
-                          CycleIndex, Degrees, Elements, Extremum, Family, First, GraphGroups, Histogram, Hits,
-                          Integers, Inverses, Matrix, MobiusMatrices, Partitions, Perms, PermutationGenerators,
-                          RskPairs, Solutions, Spectra, U64Matrices, U64Vectors, Witness, matrix, naturals, perms)
+                          CycleIndex, Degrees, DegreeSequences, Elements, Extremum, Family, First, GraphGroups,
+                          Histogram, Hits, Integers, Inverses, Matrix, MobiusMatrices, Partitions, Perms,
+                          PermutationGenerators, RskPairs, Solutions, Spectra, U64Matrices, U64Vectors, Witness, matrix,
+                          naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
            "Matrix", "Basis", "Solutions", "Inverses", "Witness", "BurnsideCounts", "CycleIndex", "Spectra",
-           "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "PermutationGenerators", "MobiusMatrices", "Characters", "RskPairs",
-           "CurveGroups", "Elements", "Degrees", "Coefficients", "Integers", "Count", "Histogram", "Hits", "First",
-           "Extremum", "Family", "GraphGroups", "NATURALS"]
+           "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "PermutationGenerators", "MobiusMatrices", "Characters",
+           "RskPairs", "CurveGroups", "Elements", "Degrees", "DegreeSequences", "Coefficients", "Integers", "Count",
+           "Histogram", "Hits", "First", "Extremum", "Family", "GraphGroups", "NATURALS"]
 
 
 class Error(RuntimeError):
@@ -87,6 +88,9 @@ _lib.lk_family_partitions.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctyp
                                       ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_compositions.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_standard_tableaux.argtypes = [_P, _H, ctypes.POINTER(_H)]
+_lib.lk_family_all_graphs.argtypes = [_P, ctypes.c_uint64, ctypes.POINTER(_H)]
+_lib.lk_family_edge_subgraphs.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
+_lib.lk_family_cayley_graphs.argtypes = [_P, _H, ctypes.POINTER(_H)]
 _lib.lk_family_size.argtypes = [_P, _H, ctypes.POINTER(ctypes.c_uint64)]
 _lib.lk_family_member.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_run.argtypes = [_P, ctypes.c_char_p, _H, ctypes.c_char_p, ctypes.POINTER(_Arg), ctypes.c_size_t, ctypes.POINTER(_H)]
@@ -163,10 +167,10 @@ class Handle:
 _PARAM_NAMES = {
     "gfp.matrix": ["p", "count", "rows", "cols"], "gfp.basis": ["p", "count", "cols"], "orbits.perms": ["n", "count"],
     "gfp.solutions": ["p", "count", "length"], "gfp.inverses": ["p", "count", "n"],
-    "gfp.witness": ["p", "count", "rows", "cols"], "burnside.counts": ["count"],
-    "burnside.cycle_index": ["degree", "count", "denominator"], "circulants.spectra": ["n", "count"],
-    "designs.matrix": ["count", "rows", "cols"], "polytopes_small.vectors": ["count", "length"],
-    "perm_groups.partition": ["count", "n"],
+    "gfp.witness": ["p", "count", "rows", "cols"], "graphs.degree_sequences": ["count", "n"],
+    "burnside.counts": ["count"], "burnside.cycle_index": ["degree", "count", "denominator"],
+    "circulants.spectra": ["n", "count"], "designs.matrix": ["count", "rows", "cols"],
+    "polytopes_small.vectors": ["count", "length"], "perm_groups.partition": ["count", "n"],
     "perm_groups.bsgs": ["count", "n"], "automorphisms.generators": ["count", "order"],
     "posets.mobius": ["count"], "young.characters": ["count"], "young.rsk_pairs": ["count", "length"],
     "elliptic_curves_fp.group": ["count"], "polynomials_fq.elements": ["p", "count"],
@@ -341,6 +345,26 @@ class Context:
             shape = naturals([list(shape)])
         s = self._keep(shape)
         self._check(_lib.lk_family_standard_tableaux(self._ptr, s._h, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def all_graphs(self, n: int) -> Handle:
+        """One lexicographically least adjacency matrix for each simple graph on `n` vertices."""
+        out = _H()
+        self._check(_lib.lk_family_all_graphs(self._ptr, n, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def edge_subgraphs(self, host, k: int) -> Handle:
+        """Every spanning k-edge subgraph of one simple host graph."""
+        out = _H()
+        h = self._keep(host)
+        self._check(_lib.lk_family_edge_subgraphs(self._ptr, h._h, k, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def cayley_graphs(self, group) -> Handle:
+        """Cayley graphs for every inverse-closed nonidentity connection set of a permutation group."""
+        out = _H()
+        g = self._keep(group)
+        self._check(_lib.lk_family_cayley_graphs(self._ptr, g._h, ctypes.byref(out)))
         return self._wrap(out)
 
     def size(self, family) -> int:

@@ -168,6 +168,11 @@ struct Integers {
     std::vector<uint64_t> values;
 };
 
+struct DegreeSequences {
+    uint64_t count = 0, n = 0;
+    std::vector<Entry> entries;
+};
+
 struct Count {
     uint64_t value = 0, visited = 0, family_size = 0;
 };
@@ -223,6 +228,7 @@ struct Object {
     std::shared_ptr<SrgParams> srg_params;
     std::shared_ptr<SrgSpectra> srg_spectra;
     std::shared_ptr<Integers> integers;
+    std::shared_ptr<DegreeSequences> degree_sequences;
     std::shared_ptr<Count> count;
     std::shared_ptr<Histogram> histogram;
     std::shared_ptr<Hits> hits;

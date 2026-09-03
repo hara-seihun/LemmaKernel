@@ -1,7 +1,9 @@
 #include "family.hpp"
+#include "graph.hpp"
 
 #include <algorithm>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <map>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
@@ -133,6 +135,60 @@ struct CompositionCounter {
 
 uint64_t effective_bound(uint64_t bound, uint64_t total) { return bound ? std::min(bound, total) : total; }
 
+Result<const std::vector<uint64_t> *> all_graph_representatives(uint64_t n) {
+    using R = Result<const std::vector<uint64_t> *>;
+    if (n == 0 || n > 8) return R::failure(INVALID, "all_graphs: need 1 <= n <= 8");
+    static std::mutex mu;
+    static std::map<uint64_t, std::shared_ptr<const std::vector<uint64_t>>> cache{
+        {1, std::make_shared<const std::vector<uint64_t>>(std::vector<uint64_t>{0})}};
+    std::lock_guard<std::mutex> lock(mu);
+    for (uint64_t order = 2; order <= n; ++order) {
+        if (cache.contains(order)) continue;
+        const auto &parents = *cache.at(order - 1);
+        std::unordered_set<uint64_t> found;
+        uint64_t choices = 1ULL << (order - 1);
+        for (uint64_t parent_mask : parents) {
+            auto parent = graph::from_upper_mask(parent_mask, order - 1);
+            for (uint64_t neighbourhood = 0; neighbourhood < choices; ++neighbourhood) {
+                std::vector<Entry> a(order * order, 0);
+                for (uint64_t i = 0; i + 1 < order; ++i)
+                    for (uint64_t j = 0; j + 1 < order; ++j)
+                        a[i * order + j] = parent[i * (order - 1) + j];
+                for (uint64_t i = 0; i + 1 < order; ++i) {
+                    Entry edge = (Entry)((neighbourhood >> (order - 2 - i)) & 1);
+                    a[i * order + order - 1] = a[(order - 1) * order + i] = edge;
+                }
+                found.insert(graph::upper_mask(graph::canonical(a.data(), order), order));
+            }
+        }
+        std::vector<uint64_t> reps(found.begin(), found.end());
+        std::sort(reps.begin(), reps.end());
+        cache.emplace(order, std::make_shared<const std::vector<uint64_t>>(std::move(reps)));
+    }
+    return R::success(cache.at(n).get());
+}
+
+bool simple_graph_matrix(const Matrix &m) {
+    if (m.p != 2 || m.count != 1 || m.rows == 0 || m.rows != m.cols) return false;
+    for (uint64_t i = 0; i < m.rows; ++i) {
+        if (m.entries[i * m.rows + i] != 0) return false;
+        for (uint64_t j = i + 1; j < m.rows; ++j)
+            if (m.entries[i * m.rows + j] != m.entries[j * m.rows + i]) return false;
+    }
+    return true;
+}
+
+uint64_t permutation_index(const std::vector<Entry> &elements, uint64_t degree, const std::vector<Entry> &p) {
+    uint64_t count = elements.size() / degree, lo = 0, hi = count;
+    while (lo < hi) {
+        uint64_t mid = (lo + hi) / 2;
+        const Entry *at = elements.data() + mid * degree;
+        if (std::lexicographical_compare(at, at + degree, p.begin(), p.end())) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+
 } // namespace
 
 /* Pivot sets of a Grassmannian in lexicographic order with the leaf count under each. */
@@ -245,6 +301,9 @@ const char *family_kind_name(Family::Kind k) {
     case Family::Kind::Partitions: return "partitions";
     case Family::Kind::Compositions: return "compositions";
     case Family::Kind::StandardTableaux: return "standard_tableaux";
+    case Family::Kind::AllGraphs: return "all_graphs";
+    case Family::Kind::EdgeSubgraphs: return "edge_subgraphs";
+    case Family::Kind::CayleyGraphs: return "cayley_graphs";
     }
     return "?";
 }
@@ -253,6 +312,7 @@ uint64_t Family::prime() const {
     if (kind == Kind::Range || kind == Kind::Words || kind == Kind::Partitions ||
         kind == Kind::Compositions || kind == Kind::StandardTableaux)
         return NATURALS;
+    if (kind == Kind::AllGraphs || kind == Kind::EdgeSubgraphs || kind == Kind::CayleyGraphs) return 2;
     return child ? child->prime() : p;
 }
 
@@ -273,6 +333,9 @@ uint64_t Family::rows() const {
     case Kind::Partitions: return 1;
     case Kind::Compositions: return 1;
     case Kind::StandardTableaux: return data->cols;
+    case Kind::AllGraphs:
+    case Kind::EdgeSubgraphs:
+    case Kind::CayleyGraphs: return n;
     }
     return 0;
 }
@@ -294,6 +357,9 @@ uint64_t Family::cols() const {
     case Kind::Partitions: return n;
     case Kind::Compositions: return n;
     case Kind::StandardTableaux: return data->entries[0];
+    case Kind::AllGraphs:
+    case Kind::EdgeSubgraphs:
+    case Kind::CayleyGraphs: return n;
     }
     return 0;
 }
@@ -348,6 +414,13 @@ Result<uint64_t> Family::size() const {
         if (!g.ok) return Result<uint64_t>::failure(g.error.status, g.error.message);
         return Result<uint64_t>::success(g.value->size() / (data->rows * data->cols));
     }
+    case Kind::AllGraphs: {
+        auto reps = all_graph_representatives(n);
+        if (!reps.ok) return Result<uint64_t>::failure(reps.error.status, reps.error.message);
+        return Result<uint64_t>::success(reps.value->size());
+    }
+    case Kind::EdgeSubgraphs: return binom(h, k);
+    case Kind::CayleyGraphs: return pow_checked(2, h);
     }
     return Result<uint64_t>::failure(INTERNAL, "unknown family kind");
 }
@@ -368,7 +441,10 @@ Result<uint64_t> Family::top_count() const {
     case Kind::StandardTableaux: return size();
     case Kind::Transform:
     case Kind::Stack: return child->top_count();
-    case Kind::GroupElements: return size();
+    case Kind::GroupElements:
+    case Kind::AllGraphs:
+    case Kind::EdgeSubgraphs:
+    case Kind::CayleyGraphs: return size();
     }
     return Result<uint64_t>::failure(INTERNAL, "unknown family kind");
 }
@@ -570,6 +646,53 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         if (!g.ok) return fail(g.error.status, g.error.message);
         uint64_t stride = out.rows * out.cols;
         out.entries.assign(g.value->begin() + index * stride, g.value->begin() + (index + 1) * stride);
+        break;
+    }
+    case Kind::AllGraphs: {
+        auto reps = all_graph_representatives(n);
+        if (!reps.ok) return fail(reps.error.status, reps.error.message);
+        out.entries = graph::from_upper_mask((*reps.value)[index], n);
+        break;
+    }
+    case Kind::EdgeSubgraphs: {
+        std::vector<std::pair<uint64_t, uint64_t>> edges;
+        for (uint64_t i = 0; i < n; ++i)
+            for (uint64_t j = i + 1; j < n; ++j)
+                if (data->entries[i * n + j]) edges.emplace_back(i, j);
+        uint64_t remaining = index, prev = 0;
+        out.entries.assign(n * n, 0);
+        for (uint64_t q = 0; q < k; ++q) {
+            uint64_t c = prev;
+            for (;; ++c) {
+                auto below = binom(edges.size() - 1 - c, k - 1 - q);
+                if (!below.ok) return fail(below.error.status, below.error.message);
+                if (remaining < below.value) break;
+                remaining -= below.value;
+            }
+            auto [u, v] = edges[c];
+            out.entries[u * n + v] = out.entries[v * n + u] = 1;
+            prev = c + 1;
+        }
+        break;
+    }
+    case Kind::CayleyGraphs: {
+        const auto &elements_ = *elements;
+        uint64_t degree = data->cols, order = n;
+        out.entries.assign(order * order, 0);
+        std::vector<Entry> product(degree);
+        for (uint64_t c = 0; c < cayley_classes->size(); ++c) {
+            if (((index >> (cayley_classes->size() - 1 - c)) & 1) == 0) continue;
+            for (uint64_t s : (*cayley_classes)[c]) {
+                const Entry *right = elements_.data() + s * degree;
+                for (uint64_t g = 0; g < order; ++g) {
+                    const Entry *left = elements_.data() + g * degree;
+                    for (uint64_t x = 0; x < degree; ++x) product[x] = right[left[x]];
+                    uint64_t image = permutation_index(elements_, degree, product);
+                    if (image >= order) return fail(INTERNAL, "cayley_graphs: group product was not found");
+                    out.entries[g * order + image] = out.entries[image * order + g] = 1;
+                }
+            }
+        }
         break;
     }
     }
@@ -997,6 +1120,27 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
         }
         return ok();
     }
+    case Kind::AllGraphs:
+    case Kind::EdgeSubgraphs:
+    case Kind::CayleyGraphs: {
+        Matrix member;
+        for (uint64_t i = top_begin; i < top_end; ++i) {
+            auto st = member_into(i, member);
+            if (!st.ok) return st;
+            uint64_t pushed = 0;
+            Step step = Step::Descend;
+            for (uint64_t r = 0; r < member.rows; ++r) {
+                step = v.push(member.entries.data() + r * member.cols, i, 1);
+                ++pushed;
+                if (step != Step::Descend) break;
+            }
+            if (step == Step::Descend) v.leaf(i);
+            else if (step == Step::TakeAll) v.take_all(i, 1);
+            else v.skip_all(i, 1);
+            for (uint64_t r = 0; r < pushed; ++r) v.pop();
+        }
+        return ok();
+    }
     case Kind::Stack: {
         /* Stacked rows are pushed first so the consumer reduces them once per enumerate call;
          * rank, span and rref do not depend on row order, and order-dependent operations are
@@ -1297,6 +1441,35 @@ Result<std::shared_ptr<Family>> make_standard_tableaux(std::shared_ptr<Matrix> s
     return R::success(f);
 }
 
+Result<std::shared_ptr<Family>> make_all_graphs(uint64_t n) {
+    using R = Result<std::shared_ptr<Family>>;
+    auto reps = all_graph_representatives(n);
+    if (!reps.ok) return R::failure(reps.error.status, reps.error.message);
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::AllGraphs;
+    f->p = 2;
+    f->n = n;
+    return R::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_edge_subgraphs(std::shared_ptr<Matrix> host, uint64_t k) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (!simple_graph_matrix(*host))
+        return R::failure(INVALID, "edge_subgraphs: host must be one nonempty square symmetric zero-diagonal matrix over F_2");
+    uint64_t edges = 0;
+    for (uint64_t i = 0; i < host->rows; ++i)
+        for (uint64_t j = i + 1; j < host->cols; ++j) edges += host->entries[i * host->cols + j] != 0;
+    if (k > edges) return R::failure(INVALID, "edge_subgraphs: need 0 <= k <= the host edge count");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::EdgeSubgraphs;
+    f->data = std::move(host);
+    f->p = 2;
+    f->n = f->data->rows;
+    f->h = edges;
+    f->k = k;
+    return R::success(f);
+}
+
 Result<std::vector<Entry>> permutation_closure(const Matrix &generators, uint64_t limit) {
     using R = Result<std::vector<Entry>>;
     uint64_t n = generators.cols;
@@ -1432,6 +1605,50 @@ bool invertible_generator(const Matrix &m, uint64_t index) {
 }
 
 } // namespace
+
+Result<std::shared_ptr<Family>> make_cayley_graphs(std::shared_ptr<Matrix> generators) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (generators->p != 0 || generators->rows != 1 || generators->count == 0)
+        return R::failure(INVALID, "cayley_graphs: group must be a nonempty orbits.perms batch of generators");
+    auto closure = permutation_closure(*generators, 1ULL << 20);
+    if (!closure.ok) return R::failure(closure.error.status, closure.error.message);
+    uint64_t degree = generators->cols, order = closure.value.size() / degree;
+    std::vector<bool> used(order, false);
+    std::vector<std::vector<uint64_t>> classes;
+    used[0] = true;
+    for (uint64_t i = 1; i < order; ++i) {
+        if (used[i]) continue;
+        const Entry *left = closure.value.data() + i * degree;
+        uint64_t inverse = order;
+        for (uint64_t j = 0; j < order; ++j) {
+            const Entry *right = closure.value.data() + j * degree;
+            bool identity = true;
+            for (uint64_t x = 0; x < degree; ++x)
+                if (right[left[x]] != x) {
+                    identity = false;
+                    break;
+                }
+            if (identity) {
+                inverse = j;
+                break;
+            }
+        }
+        if (inverse == order) return R::failure(INTERNAL, "cayley_graphs: inverse was not found in group closure");
+        used[i] = used[inverse] = true;
+        classes.push_back(inverse == i ? std::vector<uint64_t>{i} : std::vector<uint64_t>{i, inverse});
+    }
+    if (classes.size() >= 64) return R::failure(INVALID, "cayley_graphs: inverse-closed connection sets do not fit in a 64-bit family index");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::CayleyGraphs;
+    f->data = std::move(generators);
+    f->p = 2;
+    f->n = order;
+    f->h = classes.size();
+    f->elements = std::make_shared<const std::vector<Entry>>(std::move(closure.value));
+    f->elements_ready.store(f->elements.get(), std::memory_order_release);
+    f->cayley_classes = std::make_shared<const std::vector<std::vector<uint64_t>>>(std::move(classes));
+    return R::success(f);
+}
 
 Result<std::shared_ptr<Family>> make_group_elements(std::shared_ptr<Matrix> generators) {
     using R = Result<std::shared_ptr<Family>>;

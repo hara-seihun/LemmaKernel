@@ -102,6 +102,24 @@ member = "lk.naturals"
 lean = "standardTableaux"
 summary = "Every standard Young tableau of a fixed positive partition shape, padded with zeros to its bounding rectangle. Order recursively places the largest entry in removable corners from the top row down."
 
+[[families]]
+name = "all_graphs"
+member = "gfp.matrix"
+lean = "allGraphs"
+summary = "One simple graph from each isomorphism class on 1 <= n <= 8 vertices, represented by its lexicographically least row-major adjacency matrix and ordered lexicographically. Generation adds one vertex at a time and rejects isomorphic augmentations."
+
+[[families]]
+name = "edge_subgraphs"
+member = "gfp.matrix"
+lean = "edgeSubgraphs"
+summary = "Every spanning k-edge subgraph of one simple host graph. Host edges are ordered by (u,v) with u < v, and subsets use lexicographic index-tuple order."
+
+[[families]]
+name = "cayley_graphs"
+member = "gfp.matrix"
+lean = "cayleyGraphs"
+summary = "Every undirected Cayley graph of a permutation group from an inverse-closed subset of its nonidentity elements. Inverse classes and vertices follow lexicographic permutation order; connection-set bits are lexicographic with the first class slowest."
+
 [[reductions]]
 name = "all"
 accepts = ["*"]

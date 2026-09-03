@@ -187,6 +187,59 @@ def renderTableau (shape : Vec) (f : Filling) : Mat :=
 def standardTableauMembers (shape : Vec) : List Mat :=
   (tableauFillings (shape.foldl (· + ·) 0) shape).map (renderTableau shape)
 
+/-! Simple graph families use symmetric zero-diagonal adjacency matrices over `F_2`. -/
+
+def insertions (x : α) : List α → List (List α)
+  | [] => [[x]]
+  | y :: ys => (x :: y :: ys) :: (insertions x ys).map (y :: ·)
+
+def permutations : List α → List (List α)
+  | [] => [[]]
+  | x :: xs => (permutations xs).flatMap (insertions x)
+
+def graphEdgePairs (n : Nat) : List (Nat × Nat) :=
+  (List.range n).flatMap fun i => ((List.range n).drop (i + 1)).map fun j => (i, j)
+
+def graphFromEdges (n : Nat) (edges : List (Nat × Nat)) : Mat :=
+  (List.range n).map fun i => (List.range n).map fun j =>
+    if (i, j) ∈ edges ∨ (j, i) ∈ edges then 1 else 0
+
+def graphFromDigits (n : Nat) (digits : List Nat) : Mat :=
+  graphFromEdges n ((List.zip (graphEdgePairs n) digits).filterMap fun (e, bit) => if bit = 1 then some e else none)
+
+def graphRelabel (g : Mat) (perm : Perm) : Mat :=
+  (List.range perm.length).map fun i => (List.range perm.length).map fun j =>
+    (g.getD (perm.getD i 0) []).getD (perm.getD j 0) 0
+
+/-- Lexicographically least row-major adjacency matrix over all vertex labellings. -/
+def graphCanonical (g : Mat) : Mat :=
+  (permutations (List.range g.length)).foldl (fun best perm =>
+    let candidate := graphRelabel g perm
+    if lexLe candidate.flatten best.flatten then candidate else best) g
+
+/-- One lexicographically least adjacency matrix from each graph isomorphism class. -/
+def allGraphMembers (n : Nat) : List Mat :=
+  ((tuples 2 (n * (n - 1) / 2)).map (graphFromDigits n)).filter fun g => graphCanonical g = g
+
+def graphEdges (g : Mat) : List (Nat × Nat) :=
+  (graphEdgePairs g.length).filter fun (i, j) => (g.getD i []).getD j 0 = 1
+
+def inverseClasses (elements : List Perm) : List (List Perm) :=
+  let id := identityPerm (elements.headD []).length
+  (elements.filter (· ≠ id)).foldl (fun classes g =>
+    if g ∈ classes.flatten then classes else
+      let inverse := elements.find? (fun h => compose g h = id) |>.getD g
+      classes ++ [if inverse = g then [g] else [g, inverse]]) []
+
+def cayleyGraph (elements : List Perm) (classes : List (List Perm)) (bits : List Nat) : Mat :=
+  let selected := ((List.zip classes bits).filterMap fun (c, bit) => if bit = 1 then some c else none).flatten
+  elements.map fun g => elements.map fun h => if selected.any fun s => compose g s = h then 1 else 0
+
+def cayleyGraphMembers (gens : List Perm) : List Mat :=
+  let elements := permElements gens
+  let classes := inverseClasses elements
+  (tuples 2 classes.length).map (cayleyGraph elements classes)
+
 inductive Family
   | explicit (p : Nat) (batch : List Mat)
   | subsets (p : Nat) (dictionary : List Vec) (k : Nat)
@@ -203,6 +256,9 @@ inductive Family
   | partitions (total maxPart maxParts maxMultiplicity distinct odd : Nat)
   | compositions (total parts maxPart : Nat)
   | standardTableaux (shape : Vec)
+  | allGraphs (n : Nat)
+  | edgeSubgraphs (host : Mat) (k : Nat)
+  | cayleyGraphs (gens : List Perm)
 
 /-- The tag a matrix carries in place of a prime when its entries are natural numbers rather than
 residues (`NATURALS` in `runtime/src/object.hpp`). An `explicit` or `subsets` family takes its
@@ -214,6 +270,7 @@ def naturals : Nat := 18446744073709551615
 def Family.p : Family → Nat
   | .explicit p _ | .subsets p _ _ | .grassmannian p _ _ | .allMatrices p _ _ | .symmetricMatrices p _ => p
   | .transform f _ | .stack f _ | .subsetsOf f _ => f.p
+  | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ => 2
   | .groupElements p _ => p
   | .groupTables _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ |
     .compositions _ _ _ | .standardTableaux _ => 0
@@ -252,6 +309,9 @@ def Family.members : Family → List Mat
     lengths.flatMap fun k => (compositionLists maximum total k).map fun xs =>
       [((xs ++ List.replicate total 0).take total)]
   | .standardTableaux shape => standardTableauMembers shape
+  | .allGraphs n => allGraphMembers n
+  | .edgeSubgraphs host k => (combos (graphEdges host) k).map (graphFromEdges host.length)
+  | .cayleyGraphs gens => cayleyGraphMembers gens
 
 /-- The dictionary a `subsets` or `subsets_of` family draws from, for modules whose groups act
 on dictionary positions. -/

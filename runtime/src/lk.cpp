@@ -312,6 +312,27 @@ lk_status lk_family_standard_tableaux(lk_context *ctx, lk_handle shape, lk_handl
     FAMILY_RESULT(make_standard_tableaux(m.value));
 }
 
+lk_status lk_family_all_graphs(lk_context *ctx, uint64_t n, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    FAMILY_RESULT(make_all_graphs(n));
+}
+
+lk_status lk_family_edge_subgraphs(lk_context *ctx, lk_handle host, uint64_t k, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    auto m = ctx->get_matrix(host, "host");
+    if (!m.ok) return ctx->set_error(m.error);
+    FAMILY_RESULT(make_edge_subgraphs(m.value, k));
+}
+
+lk_status lk_family_cayley_graphs(lk_context *ctx, lk_handle group, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    auto o = ctx->get(group);
+    if (!o.ok) return ctx->set_error(o.error);
+    if (!o.value->matrix || o.value->matrix->p != 0)
+        return ctx->set_error(LK_INVALID_ARGUMENT, "group must be an orbits.perms batch");
+    FAMILY_RESULT(make_cayley_graphs(o.value->matrix));
+}
+
 lk_status lk_run(lk_context *ctx, const char *op, lk_handle family, const char *reduction,
                  const lk_arg *args, size_t nargs, lk_handle *out) {
     if (!ctx || !op || !reduction || !out) return LK_INVALID_ARGUMENT;

@@ -1,0 +1,93 @@
+# graphs: invariants and canonical forms of finite simple undirected graphs.
+# A graph is one square symmetric zero-diagonal adjacency matrix over F_2.
+
+[module]
+name = "graphs"
+version = 1
+summary = "Core invariants of finite simple graphs: connectivity, girth, diameter, chromatic, clique and independence numbers, bipartiteness, degree sequences, and canonical adjacency matrices."
+lean = "lean"
+contract = "lean/Graphs/Contract.lean"
+reference = "lean/Graphs/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "graphs.degree_sequences"
+params = ["count", "n"]
+payload = "count*n u32 degrees"
+lean = "degreeSequence"
+summary = "One nonincreasing degree list of length n per graph."
+
+[[operations]]
+name = "connected"
+value = "boolean"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Whether every pair of vertices is joined by a path."
+
+[[operations]]
+name = "girth"
+value = "integer"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Length of a shortest cycle; 0 for a forest."
+
+[[operations]]
+name = "diameter"
+value = "integer"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Largest shortest-path distance when connected; n for a disconnected n-vertex graph. Thus the one-vertex graph has diameter 0."
+
+[[operations]]
+name = "chromatic_number"
+value = "integer"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Least number of colours in a proper vertex colouring."
+
+[[operations]]
+name = "clique_number"
+value = "integer"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Largest number of pairwise adjacent vertices."
+
+[[operations]]
+name = "independence_number"
+value = "integer"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Largest number of pairwise nonadjacent vertices."
+
+[[operations]]
+name = "is_bipartite"
+value = "boolean"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Whether the vertices admit a proper two-colouring."
+
+[[operations]]
+name = "degree_sequence"
+value = "graphs.degree_sequences"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "Vertex degrees sorted in nonincreasing order."
+
+[[operations]]
+name = "canonical_form"
+value = "gfp.matrix"
+families = ["explicit", "all_graphs", "edge_subgraphs", "cayley_graphs"]
+summary = "The lexicographically least row-major adjacency matrix among all vertex relabellings."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/graphs_generic.cpp"]
+accepts = "simple undirected adjacency matrices over F_2 from explicit, all_graphs, edge_subgraphs, or cayley_graphs families"
+summary = "Portable C++: breadth-first graph distances, DSATUR colouring, branch-and-bound clique search, and ordered-partition canonical labelling, threaded over family members."
+
+[[rejections]]
+case = "directed adjacency"
+error = "simple undirected"
+
+[[rejections]]
+case = "matrix family is not a graph family"
+error = "families only"
+
+[[rejections]]
+case = "all graphs on three vertices degree_sequence"
+op = "degree_sequence"
+reduction = "count"
+error = "does not accept"

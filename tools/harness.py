@@ -191,6 +191,14 @@ def lean_family(f: ic.Family) -> str:
     if f.kind == "standard_tableaux":
         (shape,) = f.children
         return f"(.{ctor} {L(shape.member(0)[0])})"
+    if f.kind == "all_graphs":
+        return f"(.{ctor} {q['n']})"
+    if f.kind == "edge_subgraphs":
+        (host,) = f.children
+        return f"(.{ctor} {L(host.member(0))} {q['k']})"
+    if f.kind == "cayley_graphs":
+        (gens,) = f.children
+        return f"(.{ctor} {L(gens.tolist())})"
     raise ValueError(f.kind)
 
 

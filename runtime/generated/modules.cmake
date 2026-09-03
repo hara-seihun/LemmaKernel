@@ -24,6 +24,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/graph_iso/backend
 # module graph_iso: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/graph_polynomials/backends/generic/graph_polynomials_generic.cpp)
 # module graph_polynomials: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/graphs/backends/generic/graphs_generic.cpp)
+# module graphs: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/hadamard/backends/generic/hadamard_generic.cpp)
 # module hadamard: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/hypergraphs/backends/generic/hypergraphs_generic.cpp)
