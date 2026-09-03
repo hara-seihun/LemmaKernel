@@ -1,0 +1,75 @@
+# set_systems: extremal predicates on finite set systems.
+# A member of `subsets_of(words(2, n), m)` is an m-set system on {0, ..., n-1}; each row is
+# the incidence word of one set. The outer family lists all m-element set systems in the
+# lexicographic order inherited from binary words.
+
+[module]
+name = "set_systems"
+version = 1
+summary = "Extremal predicates on m-set systems represented by subsets_of(words(2,n),m): intersection, antichains, sunflowers, degree, lower shadow, and exact EKR/Sperner extremality checks."
+lean = "lean"
+contract = "lean/Set_systems/Contract.lean"
+reference = "lean/Set_systems/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "is_intersecting"
+value = "boolean"
+families = ["subsets_of"]
+summary = "Every two distinct sets in the system intersect. A one-set system is intersecting."
+
+[[operations]]
+name = "is_antichain"
+value = "boolean"
+families = ["subsets_of"]
+summary = "No two distinct sets in the system contain one another."
+
+[[operations]]
+name = "is_sunflower_free"
+value = "boolean"
+args = { k = "int" }
+families = ["subsets_of"]
+summary = "The system contains no k distinct sets whose pairwise intersections are all equal; k must be at least 2."
+
+[[operations]]
+name = "max_degree"
+value = "integer"
+families = ["subsets_of"]
+summary = "Maximum, over ground elements, of the number of sets containing that element."
+
+[[operations]]
+name = "shadow_size"
+value = "integer"
+families = ["subsets_of"]
+summary = "Cardinality of the lower shadow: the union of all sets obtained by deleting one element from one member set."
+
+[[operations]]
+name = "is_ekr_extremal"
+value = "boolean"
+families = ["subsets_of"]
+summary = "True exactly for a nonempty r-uniform intersecting system on n points with r >= 1, n >= 2r, and size C(n-1,r-1)."
+
+[[operations]]
+name = "is_sperner_extremal"
+value = "boolean"
+families = ["subsets_of"]
+summary = "True exactly for an antichain on n points of size C(n,floor(n/2))."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/set_systems_generic.cpp"]
+accepts = "subsets_of(words(2,n),m); n <= 22 follows from the runtime's materialisation limit"
+summary = "Portable C++: depth-first outer-subset enumeration, pruning a subtree as soon as its prefix violates an intersection, antichain, sunflower, EKR, or Sperner predicate; incremental degrees and lower shadows."
+
+[[rejections]]
+case = "subsets of integers"
+error = "family of the form"
+
+[[rejections]]
+case = "ternary words"
+error = "family of the form"
+
+[[rejections]]
+case = "sunflower k=1"
+error = "k must be at least 2"
