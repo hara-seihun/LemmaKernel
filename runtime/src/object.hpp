@@ -117,6 +117,18 @@ struct Bsgs {
     std::vector<Entry> bases, strong;
 };
 
+/* One character table. A cell stores the sorted exponents of the eigenvalues of its class
+ * representative; their sum as powers of a primitive `conductor`-th root is the character value. */
+struct CharacterTable {
+    uint64_t order = 0, classes = 0, conductor = 0;
+    std::vector<uint64_t> representatives, class_sizes, degrees;
+    std::vector<Entry> spectra;
+};
+
+struct CharacterIndicators {
+    std::vector<int8_t> values;
+};
+
 /* A ragged list of permutation generators for each of `count` groups of the same order. */
 struct PermutationGenerators {
     uint64_t count = 0, order = 0;
@@ -219,6 +231,8 @@ struct Object {
     std::shared_ptr<U64Vectors> u64_vectors;
     std::shared_ptr<Partitions> partitions;
     std::shared_ptr<Bsgs> bsgs;
+    std::shared_ptr<CharacterTable> character_table;
+    std::shared_ptr<CharacterIndicators> character_indicators;
     std::shared_ptr<PermutationGenerators> permutation_generators;
     std::shared_ptr<SignedMatrices> signed_matrices;
     std::shared_ptr<Characters> characters;

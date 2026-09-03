@@ -17,18 +17,19 @@ import os
 from pathlib import Path
 
 from . import interchange
-from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, Characters, Coefficients, Count, CurveGroups,
-                          CycleIndex, Degrees, DegreeSequences, Elements, Extremum, Family, First, GraphGroups,
-                          Histogram, Hits, Integers, Inverses, Matrix, MobiusMatrices, Partitions, Perms,
-                          PermutationGenerators, RskPairs, Solutions, Spectra, U64Matrices, U64Vectors, Witness, matrix,
-                          naturals, perms)
+from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, CharacterIndicators, CharacterMultiplicities,
+                          CharacterTable, Characters, Coefficients, Count, CurveGroups, CycleIndex, Degrees,
+                          DegreeSequences, Elements, Extremum, Family, First, GraphGroups, Histogram, Hits, Integers,
+                          Inverses, Matrix, MobiusMatrices, Partitions, Perms, PermutationGenerators, RskPairs,
+                          Solutions, Spectra, U64Matrices, U64Vectors, Witness, matrix, naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
            "Matrix", "Basis", "Solutions", "Inverses", "Witness", "BurnsideCounts", "CycleIndex", "Spectra",
-           "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "PermutationGenerators", "MobiusMatrices", "Characters",
-           "RskPairs", "CurveGroups", "Elements", "Degrees", "DegreeSequences", "Coefficients", "Integers", "Count",
-           "Histogram", "Hits", "First", "Extremum", "Family", "GraphGroups", "NATURALS"]
+           "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "CharacterTable", "CharacterIndicators",
+           "CharacterMultiplicities", "PermutationGenerators", "MobiusMatrices", "Characters", "RskPairs",
+           "CurveGroups", "Elements", "Degrees", "DegreeSequences", "Coefficients", "Integers", "Count", "Histogram",
+           "Hits", "First", "Extremum", "Family", "GraphGroups", "NATURALS"]
 
 
 class Error(RuntimeError):
@@ -169,7 +170,9 @@ _PARAM_NAMES = {
     "gfp.solutions": ["p", "count", "length"], "gfp.inverses": ["p", "count", "n"],
     "gfp.witness": ["p", "count", "rows", "cols"], "graphs.degree_sequences": ["count", "n"],
     "burnside.counts": ["count"], "burnside.cycle_index": ["degree", "count", "denominator"],
-    "circulants.spectra": ["n", "count"], "designs.matrix": ["count", "rows", "cols"],
+    "characters.table": ["order", "classes", "conductor"], "characters.indicators": ["count"],
+    "characters.multiplicities": ["count"], "circulants.spectra": ["n", "count"],
+    "designs.matrix": ["count", "rows", "cols"],
     "polytopes_small.vectors": ["count", "length"], "perm_groups.partition": ["count", "n"],
     "perm_groups.bsgs": ["count", "n"], "automorphisms.generators": ["count", "order"],
     "posets.mobius": ["count"], "young.characters": ["count"], "young.rsk_pairs": ["count", "length"],

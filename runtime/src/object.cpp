@@ -392,7 +392,7 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->count = std::make_shared<Count>(Count{v.value, vis.value, fs.value});
         return R::success(o);
     }
-    if (h.kind == "integers" || h.kind == "burnside.counts") {
+    if (h.kind == "integers" || h.kind == "burnside.counts" || h.kind == "characters.multiplicities") {
         auto n = need(h, "count");
         if (!n.ok) return R::failure(n.error.status, n.error.message);
         if (n.value * 8 != h.payload_len) return R::failure(INVALID, h.kind + " payload length mismatch");
@@ -438,6 +438,56 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
             for (uint64_t j = 0; j < degree.value; ++j) index->cycles.push_back(r.u64());
         }
         o->cycle_index = index;
+        return R::success(o);
+    }
+    if (h.kind == "characters.table") {
+        auto order = need(h, "order"), classes = need(h, "classes"), conductor = need(h, "conductor");
+        for (auto *r : {&order, &classes, &conductor}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        if (order.value == 0 || classes.value == 0 || conductor.value == 0 || conductor.value >= (1ULL << 32))
+            return R::failure(INVALID, "characters.table needs positive order, classes, and a conductor below 2^32");
+        unsigned __int128 header_bytes = (unsigned __int128)classes.value * 3 * 8;
+        if (header_bytes > h.payload_len) return R::failure(INVALID, "characters.table payload truncated");
+        auto table = std::make_shared<CharacterTable>();
+        table->order = order.value; table->classes = classes.value; table->conductor = conductor.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i < classes.value; ++i) table->representatives.push_back(r.u64());
+        for (uint64_t i = 0; i < classes.value; ++i) table->class_sizes.push_back(r.u64());
+        unsigned __int128 degree_sum = 0;
+        for (uint64_t i = 0; i < classes.value; ++i) {
+            uint64_t degree = r.u64();
+            if (degree == 0) return R::failure(INVALID, "characters.table character degree is zero");
+            table->degrees.push_back(degree);
+            degree_sum += degree;
+        }
+        unsigned __int128 entries = degree_sum * classes.value;
+        if (header_bytes + entries * 4 != h.payload_len || entries > UINT64_MAX)
+            return R::failure(INVALID, "characters.table payload length mismatch");
+        r.entries(table->spectra, (uint64_t)entries, 4);
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "characters.table payload length mismatch");
+        uint64_t class_total = 0;
+        for (uint64_t i = 0; i < classes.value; ++i) {
+            if (table->representatives[i] >= order.value) return R::failure(INVALID, "characters.table representative index is outside the group");
+            if (UINT64_MAX - class_total < table->class_sizes[i]) return R::failure(INVALID, "characters.table class sizes overflow");
+            class_total += table->class_sizes[i];
+        }
+        if (class_total != order.value) return R::failure(INVALID, "characters.table class sizes do not sum to the group order");
+        for (Entry exponent : table->spectra)
+            if (exponent >= conductor.value) return R::failure(INVALID, "characters.table exponent is not reduced modulo the conductor");
+        o->character_table = std::move(table);
+        return R::success(o);
+    }
+    if (h.kind == "characters.indicators") {
+        auto count = need(h, "count");
+        if (!count.ok) return R::failure(count.error.status, count.error.message);
+        if (count.value != h.payload_len) return R::failure(INVALID, "characters.indicators payload length mismatch");
+        auto indicators = std::make_shared<CharacterIndicators>();
+        indicators->values.reserve(count.value);
+        for (uint64_t i = 0; i < count.value; ++i) {
+            int8_t value = static_cast<int8_t>(h.payload[i]);
+            if (value < -1 || value > 1) return R::failure(INVALID, "characters.indicators value is not -1, 0, or 1");
+            indicators->values.push_back(value);
+        }
+        o->character_indicators = std::move(indicators);
         return R::success(o);
     }
     if (h.kind == "graph_polynomials.coefficients") {
@@ -874,6 +924,9 @@ std::map<std::string, uint64_t> Object::params() const {
     if (u64_vectors) return {{"count", u64_vectors->count}, {"length", u64_vectors->length}};
     if (partitions) return {{"count", partitions->count}, {"n", partitions->n}};
     if (bsgs) return {{"count", bsgs->count}, {"n", bsgs->n}};
+    if (character_table) return {{"order", character_table->order}, {"classes", character_table->classes},
+                                 {"conductor", character_table->conductor}};
+    if (character_indicators) return {{"count", character_indicators->values.size()}};
     if (permutation_generators) return {{"count", permutation_generators->count}, {"order", permutation_generators->order}};
     if (signed_matrices) return {{"count", signed_matrices->count}};
     if (characters) return {{"count", characters->values.size()}};
@@ -971,6 +1024,15 @@ std::vector<uint8_t> encode(const Object &o) {
         w.entries(o.bsgs->bases, 4);
         w.entries(o.bsgs->strong, 4);
         write_header(out, "perm_groups.bsgs", o.params(), w.out);
+    } else if (o.character_table) {
+        w.u64s(o.character_table->representatives);
+        w.u64s(o.character_table->class_sizes);
+        w.u64s(o.character_table->degrees);
+        w.entries(o.character_table->spectra, 4);
+        write_header(out, "characters.table", o.params(), w.out);
+    } else if (o.character_indicators) {
+        for (int8_t value : o.character_indicators->values) w.out.push_back(static_cast<uint8_t>(value));
+        write_header(out, "characters.indicators", o.params(), w.out);
     } else if (o.permutation_generators) {
         w.u64s(o.permutation_generators->offsets);
         w.entries(o.permutation_generators->entries, 4);
@@ -1010,7 +1072,9 @@ std::vector<uint8_t> encode(const Object &o) {
         write_header(out, "strongly_regular.spectra", o.params(), w.out);
     } else if (o.integers) {
         w.u64s(o.integers->values);
-        write_header(out, o.kind == "burnside.counts" ? "burnside.counts" : "integers", o.params(), w.out);
+        const char *kind = o.kind == "burnside.counts" ? "burnside.counts" :
+                           o.kind == "characters.multiplicities" ? "characters.multiplicities" : "integers";
+        write_header(out, kind, o.params(), w.out);
     } else if (o.count) {
         write_header(out, "count", o.params(), {});
     } else if (o.histogram) {

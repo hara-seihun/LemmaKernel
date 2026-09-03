@@ -1,0 +1,90 @@
+# characters: exact ordinary character tables for finite abelian permutation groups.
+
+[module]
+name = "characters"
+version = 1
+summary = "Exact ordinary character tables, induction, restriction, and Frobenius-Schur indicators for finite abelian permutation groups. Classes and columns follow lexicographic group-element order; rows are sorted lexicographically by root exponents."
+lean = "lean"
+contract = "lean/Characters/Contract.lean"
+reference = "lean/Characters/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "characters.table"
+params = ["order", "classes", "conductor"]
+payload = "u64 representatives[classes], u64 class_sizes[classes], u64 degrees[classes], then for each row and class `degree[row]` u32 exponents in increasing order"
+lean = "table"
+summary = "One exact cyclotomic character table. A cell containing exponents a_1,...,a_d means sum_j zeta_conductor^a_j. Classes are ordered by the least group-element index and rows by (degree, then the flattened exponent multisets) lexicographically."
+
+[[kinds]]
+name = "characters.indicators"
+params = ["count"]
+payload = "count signed i8 values"
+lean = "indicator"
+summary = "Frobenius-Schur indicators, one signed value per character-table row in the same canonical order."
+
+[[kinds]]
+name = "characters.multiplicities"
+params = ["count"]
+payload = "count u64 values"
+lean = "multiplicity"
+summary = "Multiplicities in canonical character-table row order. This is the exact output of induction and restriction."
+
+[[operations]]
+name = "character_table"
+value = "characters.table"
+families = ["group_elements"]
+summary = "The complete ordinary irreducible character table of the abelian permutation group. Every irreducible has degree one; values are exact powers of a primitive root whose order is the group exponent."
+
+[[operations]]
+name = "frobenius_schur"
+value = "characters.indicators"
+families = ["group_elements"]
+summary = "The Frobenius-Schur indicator of every irreducible character, in character_table row order. For an abelian group this is 1 for real linear characters and 0 otherwise."
+
+[[operations]]
+name = "restrict"
+value = "characters.multiplicities"
+args = { character = "int", subgroup = "group" }
+families = ["group_elements"]
+summary = "Restrict the selected irreducible row of the ambient group to `subgroup`; return its irreducible multiplicities in the subgroup's canonical table order."
+
+[[operations]]
+name = "induce"
+value = "characters.multiplicities"
+args = { character = "int", subgroup = "group" }
+families = ["group_elements"]
+summary = "Induce the selected irreducible row of `subgroup` to the ambient group; return its irreducible multiplicities in the ambient group's canonical table order."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/characters_generic.cpp"]
+accepts = "abelian permutation groups of order at most 4096"
+summary = "Portable C++: closes the group, builds its multiplication table, finds a cyclic direct-product decomposition, and enumerates the dual group exactly."
+
+[[rejections]]
+case = "S3 table"
+error = "abelian"
+
+[[rejections]]
+case = "S3 indicators"
+error = "abelian"
+
+[[rejections]]
+case = "range is not a group"
+error = "group_elements"
+
+[[rejections]]
+case = "subgroup is not contained"
+error = "subgroup"
+
+[[rejections]]
+case = "character index is outside the table"
+error = "character index"
+
+[[rejections]]
+case = "C3 table"
+op = "character_table"
+reduction = "count"
+error = "does not accept"

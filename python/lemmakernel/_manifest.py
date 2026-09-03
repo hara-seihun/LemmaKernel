@@ -351,6 +351,75 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'value': 'integer'}],
   'rejections': [{'case': 'nonsquare explicit', 'error': 'square', 'op': 'charpoly'},
                  {'case': 'permutation group', 'error': 'no available backend', 'op': 'charpoly'}]},
+ {'backends': [{'accepts': 'abelian permutation groups of order at most 4096',
+                'name': 'generic',
+                'sources': ['backends/generic/characters_generic.cpp'],
+                'summary': 'Portable C++: closes the group, builds its multiplication table, finds a cyclic '
+                           'direct-product decomposition, and enumerates the dual group exactly.'}],
+  'kinds': [{'lean': 'table',
+             'name': 'characters.table',
+             'params': ['order', 'classes', 'conductor'],
+             'payload': 'u64 representatives[classes], u64 class_sizes[classes], u64 degrees[classes], then '
+                        'for each row and class `degree[row]` u32 exponents in increasing order',
+             'summary': 'One exact cyclotomic character table. A cell containing exponents a_1,...,a_d means '
+                        'sum_j zeta_conductor^a_j. Classes are ordered by the least group-element index and '
+                        'rows by (degree, then the flattened exponent multisets) lexicographically.'},
+            {'lean': 'indicator',
+             'name': 'characters.indicators',
+             'params': ['count'],
+             'payload': 'count signed i8 values',
+             'summary': 'Frobenius-Schur indicators, one signed value per character-table row in the same '
+                        'canonical order.'},
+            {'lean': 'multiplicity',
+             'name': 'characters.multiplicities',
+             'params': ['count'],
+             'payload': 'count u64 values',
+             'summary': 'Multiplicities in canonical character-table row order. This is the exact output of '
+                        'induction and restriction.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Characters/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'characters',
+             'reference': 'lean/Characters/Reference.lean',
+             'summary': 'Exact ordinary character tables, induction, restriction, and Frobenius-Schur '
+                        'indicators for finite abelian permutation groups. Classes and columns follow '
+                        'lexicographic group-element order; rows are sorted lexicographically by root '
+                        'exponents.',
+             'version': 1},
+  'operations': [{'families': ['group_elements'],
+                  'name': 'character_table',
+                  'summary': 'The complete ordinary irreducible character table of the abelian permutation '
+                             'group. Every irreducible has degree one; values are exact powers of a '
+                             'primitive root whose order is the group exponent.',
+                  'value': 'characters.table'},
+                 {'families': ['group_elements'],
+                  'name': 'frobenius_schur',
+                  'summary': 'The Frobenius-Schur indicator of every irreducible character, in '
+                             'character_table row order. For an abelian group this is 1 for real linear '
+                             'characters and 0 otherwise.',
+                  'value': 'characters.indicators'},
+                 {'args': {'character': 'int', 'subgroup': 'group'},
+                  'families': ['group_elements'],
+                  'name': 'restrict',
+                  'summary': 'Restrict the selected irreducible row of the ambient group to `subgroup`; '
+                             "return its irreducible multiplicities in the subgroup's canonical table order.",
+                  'value': 'characters.multiplicities'},
+                 {'args': {'character': 'int', 'subgroup': 'group'},
+                  'families': ['group_elements'],
+                  'name': 'induce',
+                  'summary': 'Induce the selected irreducible row of `subgroup` to the ambient group; return '
+                             "its irreducible multiplicities in the ambient group's canonical table order.",
+                  'value': 'characters.multiplicities'}],
+  'rejections': [{'case': 'S3 table', 'error': 'abelian'},
+                 {'case': 'S3 indicators', 'error': 'abelian'},
+                 {'case': 'range is not a group', 'error': 'group_elements'},
+                 {'case': 'subgroup is not contained', 'error': 'subgroup'},
+                 {'case': 'character index is outside the table', 'error': 'character index'},
+                 {'case': 'C3 table',
+                  'error': 'does not accept',
+                  'op': 'character_table',
+                  'reduction': 'count'}]},
  {'backends': [{'accepts': '1 <= n < 2^32; natural-number connection sets in explicit, subsets, or '
                            'subsets_of families; range families for is_ci',
                 'name': 'generic',

@@ -466,6 +466,80 @@ class Bsgs:
 
 
 @dataclass
+class CharacterTable:
+    """One exact cyclotomic character table.
+
+    A cell is the sorted list of exponents of its representative's eigenvalues. With conductor
+    `e`, `[a, b]` denotes `zeta_e^a + zeta_e^b`. Spectra are flattened by row, then class.
+    """
+    order: int
+    classes: int
+    conductor: int
+    representatives: list[int]
+    class_sizes: list[int]
+    degrees: list[int]
+    spectra: object
+
+    @property
+    def count(self) -> int:
+        return 1
+
+    def row(self, i: int):
+        degree = self.degrees[i]
+        start = sum(self.degrees[:i]) * self.classes
+        return [[int(x) for x in self.spectra[start + c * degree:start + (c + 1) * degree]]
+                for c in range(self.classes)]
+
+    def member(self, i: int):
+        if i != 0:
+            raise IndexError(i)
+        return ((self.order, self.conductor), (self.representatives, self.class_sizes),
+                (self.degrees, [self.row(r) for r in range(self.classes)]))
+
+    def encode(self) -> bytes:
+        if not (len(self.representatives) == len(self.class_sizes) == len(self.degrees) == self.classes):
+            raise ValueError("character table class arrays have the wrong length")
+        expected = sum(self.degrees) * self.classes
+        if len(self.spectra) != expected:
+            raise ValueError(f"character table needs {expected} spectral exponents, got {len(self.spectra)}")
+        arrays = self.representatives + self.class_sizes + self.degrees
+        payload = struct.pack(f"<{len(arrays)}Q", *arrays) + pack_entries(self.spectra, 0)
+        return encode("characters.table", {"order": self.order, "classes": self.classes,
+                                            "conductor": self.conductor}, payload)
+
+
+@dataclass
+class CharacterIndicators:
+    values: list[int]
+
+    @property
+    def count(self) -> int:
+        return len(self.values)
+
+    def member(self, i: int):
+        return int(self.values[i])
+
+    def encode(self) -> bytes:
+        return encode("characters.indicators", {"count": self.count}, struct.pack(f"<{self.count}b", *self.values))
+
+
+@dataclass
+class CharacterMultiplicities:
+    values: list[int]
+
+    @property
+    def count(self) -> int:
+        return len(self.values)
+
+    def member(self, i: int):
+        return int(self.values[i])
+
+    def encode(self) -> bytes:
+        return encode("characters.multiplicities", {"count": self.count},
+                      struct.pack(f"<{self.count}Q", *self.values))
+
+
+@dataclass
 class PermutationGenerators:
     """One canonical list of permutation generators per group in a group_tables family."""
     count: int
@@ -711,7 +785,9 @@ KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphG
          "gfp.basis": Basis, "gfp.solutions": Solutions, "gfp.inverses": Inverses,
          "gfp.witness": Witness, "graphs.degree_sequences": DegreeSequences,
          "burnside.counts": BurnsideCounts, "burnside.cycle_index": CycleIndex,
-         "circulants.spectra": Spectra, "designs.matrix": U64Matrices,
+         "characters.table": CharacterTable, "characters.indicators": CharacterIndicators,
+         "characters.multiplicities": CharacterMultiplicities, "circulants.spectra": Spectra,
+         "designs.matrix": U64Matrices,
          "polytopes_small.vectors": U64Vectors,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
          "automorphisms.generators": PermutationGenerators, "posets.mobius": MobiusMatrices,
@@ -833,6 +909,19 @@ def decode_at(buf: bytes, offset: int):
         bases = unpack_entries(pl[pos:pos + base_bytes], 0, base_offsets[-1])
         strong = unpack_entries(pl[pos + base_bytes:], 0, strong_offsets[-1] * n)
         return Bsgs(count, n, base_offsets, strong_offsets, bases, strong), end
+    if k == "characters.table":
+        classes = q["classes"]
+        words = list(struct.unpack_from(f"<{3 * classes}Q", pl, 0))
+        representatives = words[:classes]
+        class_sizes = words[classes:2 * classes]
+        degrees = words[2 * classes:]
+        rest = pl[24 * classes:]
+        spectra = unpack_entries(rest, 0, sum(degrees) * classes)
+        return CharacterTable(q["order"], classes, q["conductor"], representatives, class_sizes, degrees, spectra), end
+    if k == "characters.indicators":
+        return CharacterIndicators(list(struct.unpack_from(f"<{q['count']}b", pl, 0))), end
+    if k == "characters.multiplicities":
+        return CharacterMultiplicities(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "automorphisms.generators":
         noff = q["count"] + 1
         offsets = list(struct.unpack_from(f"<{noff}Q", pl, 0))
