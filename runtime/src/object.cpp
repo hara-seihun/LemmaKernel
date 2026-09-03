@@ -371,6 +371,16 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         for (uint64_t i = 0; i < n.value; ++i) o->integers->values.push_back(r.u64());
         return R::success(o);
     }
+    if (h.kind == "elliptic_curves_fp.group") {
+        auto n = need(h, "count");
+        if (!n.ok) return R::failure(n.error.status, n.error.message);
+        if (n.value * 16 != h.payload_len) return R::failure(INVALID, "elliptic_curves_fp.group payload length mismatch");
+        Reader r{h.payload, h.payload + h.payload_len};
+        o->curve_groups = std::make_shared<CurveGroups>();
+        o->curve_groups->count = n.value;
+        for (uint64_t i = 0; i < 2 * n.value; ++i) o->curve_groups->orders.push_back(r.u64());
+        return R::success(o);
+    }
     if (h.kind == "burnside.cycle_index") {
         auto degree = need(h, "degree"), count = need(h, "count"), denominator = need(h, "denominator");
         for (auto *r : {&degree, &count, &denominator}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -643,6 +653,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (permutation_generators) return {{"count", permutation_generators->count}, {"order", permutation_generators->order}};
     if (characters) return {{"count", characters->values.size()}};
     if (rsk_pairs) return {{"count", rsk_pairs->count}, {"length", rsk_pairs->length}};
+    if (curve_groups) return {{"count", curve_groups->count}};
     if (integers) return {{"count", integers->values.size()}};
     if (count) return {{"value", count->value}, {"visited", count->visited}, {"family_size", count->family_size}};
     if (histogram) return {{"visited", histogram->visited}, {"family_size", histogram->family_size}, {"bins", histogram->bins.size()}};
@@ -721,6 +732,9 @@ std::vector<uint8_t> encode(const Object &o) {
         w.entries(o.rsk_pairs->insertion, 4);
         w.entries(o.rsk_pairs->recording, 4);
         write_header(out, "young.rsk_pairs", o.params(), w.out);
+    } else if (o.curve_groups) {
+        w.u64s(o.curve_groups->orders);
+        write_header(out, "elliptic_curves_fp.group", o.params(), w.out);
     } else if (o.integers) {
         w.u64s(o.integers->values);
         write_header(out, o.kind == "burnside.counts" ? "burnside.counts" : "integers", o.params(), w.out);

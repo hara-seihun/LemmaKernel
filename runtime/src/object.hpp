@@ -101,6 +101,13 @@ struct RskPairs {
     std::vector<Entry> shapes, insertion, recording;
 };
 
+/* Per member: the invariant factors (n1, n2) of the group of points of an elliptic curve,
+ * n1 | n2, two entries per member. */
+struct CurveGroups {
+    uint64_t count = 0;
+    std::vector<uint64_t> orders;
+};
+
 struct Integers {
     std::vector<uint64_t> values;
 };
@@ -149,6 +156,7 @@ struct Object {
     std::shared_ptr<PermutationGenerators> permutation_generators;
     std::shared_ptr<Characters> characters;
     std::shared_ptr<RskPairs> rsk_pairs;
+    std::shared_ptr<CurveGroups> curve_groups;
     std::shared_ptr<Integers> integers;
     std::shared_ptr<Count> count;
     std::shared_ptr<Histogram> histogram;

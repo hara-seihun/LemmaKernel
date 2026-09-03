@@ -421,6 +421,25 @@ class RskPairs:
 
 
 @dataclass
+class CurveGroups:
+    """Per member: the invariant factors (n1, n2) of the group of points of an elliptic curve."""
+    orders: list[tuple[int, int]]
+
+    @property
+    def count(self) -> int:
+        return len(self.orders)
+
+    def member(self, i: int):
+        n1, n2 = self.orders[i]
+        return int(n1), int(n2)
+
+    def encode(self) -> bytes:
+        words = [x for pair in self.orders for x in pair]
+        return encode("elliptic_curves_fp.group", {"count": self.count},
+                      struct.pack(f"<{len(words)}Q", *words))
+
+
+@dataclass
 class Integers:
     values: list[int]
 
@@ -520,8 +539,8 @@ KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "gfp.basis": Basis, "gfp.s
          "burnside.cycle_index": CycleIndex, "designs.matrix": U64Matrices,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
          "automorphisms.generators": PermutationGenerators, "young.characters": Characters,
-         "young.rsk_pairs": RskPairs, "integers": Integers, "count": Count, "histogram": Histogram,
-         "hits": Hits, "first": First, "extremum": Extremum}
+         "young.rsk_pairs": RskPairs, "elliptic_curves_fp.group": CurveGroups, "integers": Integers,
+         "count": Count, "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
 
 
 def kind_of(obj) -> str:
@@ -613,6 +632,9 @@ def decode_at(buf: bytes, offset: int):
         insertion = unpack_entries(pl[4 * n:4 * (n + square)], NATURALS, square)
         recording = unpack_entries(pl[4 * (n + square):], NATURALS, square)
         return RskPairs(q["count"], q["length"], shapes, insertion, recording), end
+    if k == "elliptic_curves_fp.group":
+        words = struct.unpack_from(f"<{2 * q['count']}Q", pl, 0)
+        return CurveGroups([(words[2 * i], words[2 * i + 1]) for i in range(q["count"])]), end
     if k == "integers":
         return Integers(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "count":

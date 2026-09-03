@@ -1,0 +1,107 @@
+# elliptic_curves_fp: elliptic curves in short Weierstrass form over a prime field.
+# This file is the only declaration of the module. tools/manifest.py generates the C registry,
+# the runtime description, the CMake source list, the Lake libraries and the Python manifest from it.
+
+[module]
+name = "elliptic_curves_fp"
+version = 1
+summary = """
+Curves y^2 = x^3 + a*x + b over F_p (p prime, p > 3) on families of 1 x 2 members (a, b): point \
+counts, singularity, supersingularity, j-invariants, F_p-isomorphism classes and group structure. \
+Canonical choices. A member is one row of two entries, a = M[0][0] and b = M[0][1]; families whose \
+members have another shape, and primes 2 and 3, are refused rather than reinterpreted. point_count \
+is the number of F_p-points of the projective cubic y^2*z = x^3 + a*x*z^2 + b*z^3, so it counts the \
+one point at infinity [0:1:0] and is defined for singular (a, b) as well. j_invariant is \
+1728*4a^3/(4a^3+27b^2) in F_p, and p (a value outside F_p) when the pair is singular. The \
+isomorphism class of (a, b) is its orbit {(u^4*a, u^6*b) : u in F_p^*}, which for a nonsingular \
+pair is exactly the F_p-isomorphism class of the curve; its canonical representative is the \
+lexicographically least pair of the orbit. group_structure is the pair (n1, n2) of invariant \
+factors with n1 | n2 and E(F_p) = Z/n1 x Z/n2, and (0, 0) for a singular pair.\
+"""
+lean = "lean"
+contract = "lean/Elliptic_curves_fp/Contract.lean"
+reference = "lean/Elliptic_curves_fp/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "elliptic_curves_fp.group"
+params = ["count"]
+payload = "u64 pairs (n1, n2), one per member"
+lean = "group"
+summary = "Per member: the invariant factors (n1, n2) of E(F_p), n1 | n2 and n1*n2 = point_count; (0, 0) for a singular member."
+
+[[operations]]
+name = "point_count"
+value = "integer"
+summary = "Number of F_p-points of y^2*z = x^3 + a*x*z^2 + b*z^3, the affine solutions of y^2 = x^3 + a*x + b plus the point at infinity."
+
+[[operations]]
+name = "nonsingular"
+value = "boolean"
+summary = "Whether 4*a^3 + 27*b^2 is nonzero in F_p, equivalently the discriminant -16*(4*a^3+27*b^2) is nonzero and (a, b) is an elliptic curve."
+
+[[operations]]
+name = "supersingular"
+value = "boolean"
+summary = "Whether the member is nonsingular and its point count is p + 1, equivalently the trace of Frobenius vanishes (p > 3)."
+
+[[operations]]
+name = "j_invariant"
+value = "integer"
+summary = "1728*4*a^3 / (4*a^3 + 27*b^2) in F_p, as a representative in 0..p-1; p for a singular member, which has no j-invariant."
+
+[[operations]]
+name = "is_canonical"
+value = "boolean"
+summary = "Whether (a, b) is the lexicographically least pair of its isomorphism class {(u^4*a, u^6*b) : u in F_p^*}; counting these counts F_p-isomorphism classes of curves."
+
+[[operations]]
+name = "class_size"
+value = "integer"
+summary = "Number of distinct pairs in {(u^4*a, u^6*b) : u in F_p^*}, the size of the member's isomorphism class inside the p^2 pairs."
+
+[[operations]]
+name = "group_structure"
+value = "elliptic_curves_fp.group"
+summary = "Invariant factors (n1, n2) of E(F_p) with n1 | n2 and n1*n2 = point_count; n2 is the group exponent. (0, 0) for a singular member."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/elliptic_curves_fp_generic.cpp"]
+accepts = "any prime 3 < p < 2^32; any family of 1 x 2 members; any operation"
+summary = "Portable C++: per request a table of square-root counts and of fourth and sixth powers, shared by every member; per member a linear pass over x, and for group_structure the point list with orders from the factorisation of the group order."
+
+# Requests that must be refused. `case` names a case from cases.py.
+[[rejections]]
+case = "F_3 pairs"
+op = "point_count"
+error = "prime p > 3"
+
+[[rejections]]
+case = "stacked pairs F_5"
+op = "point_count"
+error = "1 x 2"
+
+[[rejections]]
+case = "plane points F_5"
+op = "j_invariant"
+error = "1 x 2"
+
+[[rejections]]
+case = "reduction rejections F_7"
+op = "point_count"
+reduction = "count"
+error = "does not accept integer"
+
+[[rejections]]
+case = "reduction rejections F_7"
+op = "nonsingular"
+reduction = "histogram"
+error = "does not accept boolean"
+
+[[rejections]]
+case = "reduction rejections F_7"
+op = "group_structure"
+reduction = "histogram"
+error = "does not accept"

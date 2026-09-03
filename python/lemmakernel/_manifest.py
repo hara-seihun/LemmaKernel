@@ -386,6 +386,83 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'error': 'does not accept',
                   'op': 'difference_multiset',
                   'reduction': 'count'}]},
+ {'backends': [{'accepts': 'any prime 3 < p < 2^32; any family of 1 x 2 members; any operation',
+                'name': 'generic',
+                'sources': ['backends/generic/elliptic_curves_fp_generic.cpp'],
+                'summary': 'Portable C++: per request a table of square-root counts and of fourth and sixth '
+                           'powers, shared by every member; per member a linear pass over x, and for '
+                           'group_structure the point list with orders from the factorisation of the group '
+                           'order.'}],
+  'kinds': [{'lean': 'group',
+             'name': 'elliptic_curves_fp.group',
+             'params': ['count'],
+             'payload': 'u64 pairs (n1, n2), one per member',
+             'summary': 'Per member: the invariant factors (n1, n2) of E(F_p), n1 | n2 and n1*n2 = '
+                        'point_count; (0, 0) for a singular member.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Elliptic_curves_fp/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'elliptic_curves_fp',
+             'reference': 'lean/Elliptic_curves_fp/Reference.lean',
+             'summary': 'Curves y^2 = x^3 + a*x + b over F_p (p prime, p > 3) on families of 1 x 2 members '
+                        '(a, b): point counts, singularity, supersingularity, j-invariants, F_p-isomorphism '
+                        'classes and group structure. Canonical choices. A member is one row of two entries, '
+                        'a = M[0][0] and b = M[0][1]; families whose members have another shape, and primes '
+                        '2 and 3, are refused rather than reinterpreted. point_count is the number of '
+                        'F_p-points of the projective cubic y^2*z = x^3 + a*x*z^2 + b*z^3, so it counts the '
+                        'one point at infinity [0:1:0] and is defined for singular (a, b) as well. '
+                        'j_invariant is 1728*4a^3/(4a^3+27b^2) in F_p, and p (a value outside F_p) when the '
+                        'pair is singular. The isomorphism class of (a, b) is its orbit {(u^4*a, u^6*b) : u '
+                        'in F_p^*}, which for a nonsingular pair is exactly the F_p-isomorphism class of the '
+                        'curve; its canonical representative is the lexicographically least pair of the '
+                        'orbit. group_structure is the pair (n1, n2) of invariant factors with n1 | n2 and '
+                        'E(F_p) = Z/n1 x Z/n2, and (0, 0) for a singular pair.',
+             'version': 1},
+  'operations': [{'name': 'point_count',
+                  'summary': 'Number of F_p-points of y^2*z = x^3 + a*x*z^2 + b*z^3, the affine solutions of '
+                             'y^2 = x^3 + a*x + b plus the point at infinity.',
+                  'value': 'integer'},
+                 {'name': 'nonsingular',
+                  'summary': 'Whether 4*a^3 + 27*b^2 is nonzero in F_p, equivalently the discriminant '
+                             '-16*(4*a^3+27*b^2) is nonzero and (a, b) is an elliptic curve.',
+                  'value': 'boolean'},
+                 {'name': 'supersingular',
+                  'summary': 'Whether the member is nonsingular and its point count is p + 1, equivalently '
+                             'the trace of Frobenius vanishes (p > 3).',
+                  'value': 'boolean'},
+                 {'name': 'j_invariant',
+                  'summary': '1728*4*a^3 / (4*a^3 + 27*b^2) in F_p, as a representative in 0..p-1; p for a '
+                             'singular member, which has no j-invariant.',
+                  'value': 'integer'},
+                 {'name': 'is_canonical',
+                  'summary': 'Whether (a, b) is the lexicographically least pair of its isomorphism class '
+                             '{(u^4*a, u^6*b) : u in F_p^*}; counting these counts F_p-isomorphism classes '
+                             'of curves.',
+                  'value': 'boolean'},
+                 {'name': 'class_size',
+                  'summary': 'Number of distinct pairs in {(u^4*a, u^6*b) : u in F_p^*}, the size of the '
+                             "member's isomorphism class inside the p^2 pairs.",
+                  'value': 'integer'},
+                 {'name': 'group_structure',
+                  'summary': 'Invariant factors (n1, n2) of E(F_p) with n1 | n2 and n1*n2 = point_count; n2 '
+                             'is the group exponent. (0, 0) for a singular member.',
+                  'value': 'elliptic_curves_fp.group'}],
+  'rejections': [{'case': 'F_3 pairs', 'error': 'prime p > 3', 'op': 'point_count'},
+                 {'case': 'stacked pairs F_5', 'error': '1 x 2', 'op': 'point_count'},
+                 {'case': 'plane points F_5', 'error': '1 x 2', 'op': 'j_invariant'},
+                 {'case': 'reduction rejections F_7',
+                  'error': 'does not accept integer',
+                  'op': 'point_count',
+                  'reduction': 'count'},
+                 {'case': 'reduction rejections F_7',
+                  'error': 'does not accept boolean',
+                  'op': 'nonsingular',
+                  'reduction': 'histogram'},
+                 {'case': 'reduction rejections F_7',
+                  'error': 'does not accept',
+                  'op': 'group_structure',
+                  'reduction': 'histogram'}]},
  {'backends': [{'accepts': 'any p < 2^32; any family; any operation',
                 'name': 'generic',
                 'sources': ['backends/generic/gfp_generic.cpp'],

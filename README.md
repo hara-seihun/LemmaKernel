@@ -88,6 +88,7 @@ and committed; the build refuses to configure if they are stale.
 | [cayley](modules/cayley/manifest.toml) | simple undirected Cayley graphs of finite permutation groups: connectivity, regularity, girth, diameter, graph automorphism order, and the CI property of a connection set | `generic` (exact group closure, graph search, partition refinement and individualisation, portable C++) |
 | [designs](modules/designs/manifest.toml) | whole-family tests and data for finite block designs: t-design multiplicities, resolutions, dual 2-designs, intersections, and Kramer-Mesner matrices | `generic` (portable C++) |
 | [difference_sets](modules/difference_sets/manifest.toml) | difference sets, difference multisets, regular partial difference sets, and relative difference sets in finite permutation groups | `generic` (depth-first multiplicity pruning, portable C++) |
+| [elliptic_curves_fp](modules/elliptic_curves_fp/manifest.toml) | curves `y^2 = x^3 + ax + b` over `F_p` (`p > 3`) from families of `(a, b)` pairs: point counts, singularity, supersingularity, j-invariants, `F_p`-isomorphism classes and the invariant factors of `E(F_p)` | `generic` (per-request square-root tables, per-member third differences, portable C++) |
 | [gfp](modules/gfp/manifest.toml) | linear algebra over F_p on families of matrices: rank, rref, nullspace, span membership, solve, inverse, rref witness | `generic` (any p < 2^32, portable C++) |
 | [gfq](modules/gfq/manifest.toml) | linear algebra over explicitly presented GF(q): rank, rref, nullspace, span membership, solve, inverse | `generic` (polynomial-basis arithmetic for q < 2^32, portable C++) |
 | [hadamard](modules/hadamard/manifest.toml) | Hadamard, skew, regular and conference predicates for F_2 matrices read as signs, plus signed-equivalence canonical forms | `generic` (portable C++) |
@@ -124,8 +125,13 @@ groups act on `subsets` families, matrix groups on `grassmannian` and `all_matri
 (on the right, `M ↦ M A`). `tools/bench.py` compares each module's generic backend with the
 naive Python implementation on inputs small enough for naive to finish, so every row is a
 byte-for-byte agreement; single-threaded ratios on this machine run from about 40× (Grassmannian
-orbits, where each step is an elimination) to about 1700× (independence of subsets), and higher
-where the backend changes the algorithm (Burnside counts from cycle types).
+orbits, where each step is an elimination) to a few thousand× (independence of subsets;
+isomorphism classes of elliptic curves), and higher where the backend changes the algorithm
+(Burnside counts from cycle types).
+
+`elliptic_curves_fp` reads a `1 x 2` member as the pair `(a, b)` of `y^2 = x^3 + ax + b`, so
+`all_matrices(p, 1, 2)` is every curve over `F_p` and a histogram of `point_count` over it is the
+isogeny classes; families of another shape are refused rather than reinterpreted.
 
 `residues` reads a `range` family as residues and takes the modulus as an argument, except
 `least_primitive_root`, whose member is the modulus. Where mathematics leaves a choice it makes
