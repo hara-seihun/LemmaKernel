@@ -1,0 +1,72 @@
+# circulants: Cayley graphs and digraphs on cyclic groups.
+
+[module]
+name = "circulants"
+version = 1
+summary = "Circulant graphs and digraphs on Z_n from families of connection sets: exact character spectra, isomorphism and canonical representatives at Adam orders, and the cyclic CI/DCI classification."
+lean = "lean"
+contract = "lean/Circulants/Contract.lean"
+reference = "lean/Circulants/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "circulants.spectra"
+params = ["n", "count"]
+payload = "(count*n + 1) u64 row offsets, then u32 exponents; row j represents the eigenvalue sum_e zeta_n^e, with multiplicity"
+lean = "spectrum"
+summary = "Exact character-ordered spectra. For member i and character j, row j lists the sorted exponents in the fixed expression sum_e zeta_n^e. Characters are ordered 0,...,n-1."
+
+[[operations]]
+name = "spectrum"
+value = "circulants.spectra"
+args = { n = "int", directed = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "The n adjacency eigenvalues in character order. Each is returned exactly as the sorted exponents j*s mod n in sum_(s in S) zeta_n^(j*s). For directed=0, S is first replaced by (S union -S) minus {0}; for directed=1 it is used as given."
+
+[[operations]]
+name = "isomorphic"
+value = "boolean"
+args = { n = "int", directed = "int", target = "vector" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Whether each circulant is isomorphic to Cay(Z_n,target), at orders where Adam's multiplier criterion is complete. The directed case accepts n not divisible by 8 or an odd prime square; the undirected case also accepts 8, 9 and 18. Undirected connection sets mean (S union -S) minus {0}."
+
+[[operations]]
+name = "is_canonical"
+value = "boolean"
+args = { n = "int", directed = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Whether the sorted connection set is the lexicographically least unit multiple in its isomorphism class, at the same Adam orders as isomorphic. For directed=0, only the inverse-closed representative (S union -S) minus {0} can be canonical."
+
+[[operations]]
+name = "is_ci"
+value = "boolean"
+args = { directed = "int" }
+families = ["range"]
+summary = "For each positive n in the range, whether Z_n is a DCI-group (directed=1) or CI-group (directed=0): DCI iff 8 does not divide n and no odd prime square divides n; CI has the same orders plus 8, 9 and 18."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/circulants_generic.cpp"]
+accepts = "1 <= n < 2^32; natural-number connection sets in explicit, subsets, or subsets_of families; range families for is_ci"
+summary = "Portable C++: unit-multiplier orbit tests and exact character sums, threaded over family members; cyclic CI/DCI orders by the corrected Adam classification."
+
+[[rejections]]
+case = "directed order 8 is outside Adam"
+error = "multiplier criterion"
+
+[[rejections]]
+case = "invalid directed flag"
+error = "directed"
+
+[[rejections]]
+case = "connection set containing zero"
+error = "identity-free"
+
+[[rejections]]
+case = "zero order spectrum"
+error = "n must satisfy"
+
+[[rejections]]
+case = "is_ci on connection sets"
+error = "range families only"

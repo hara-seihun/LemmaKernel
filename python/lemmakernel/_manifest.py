@@ -332,6 +332,67 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'value': 'integer'}],
   'rejections': [{'case': 'nonsquare explicit', 'error': 'square', 'op': 'charpoly'},
                  {'case': 'permutation group', 'error': 'no available backend', 'op': 'charpoly'}]},
+ {'backends': [{'accepts': '1 <= n < 2^32; natural-number connection sets in explicit, subsets, or '
+                           'subsets_of families; range families for is_ci',
+                'name': 'generic',
+                'sources': ['backends/generic/circulants_generic.cpp'],
+                'summary': 'Portable C++: unit-multiplier orbit tests and exact character sums, threaded '
+                           'over family members; cyclic CI/DCI orders by the corrected Adam '
+                           'classification.'}],
+  'kinds': [{'lean': 'spectrum',
+             'name': 'circulants.spectra',
+             'params': ['n', 'count'],
+             'payload': '(count*n + 1) u64 row offsets, then u32 exponents; row j represents the eigenvalue '
+                        'sum_e zeta_n^e, with multiplicity',
+             'summary': 'Exact character-ordered spectra. For member i and character j, row j lists the '
+                        'sorted exponents in the fixed expression sum_e zeta_n^e. Characters are ordered '
+                        '0,...,n-1.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Circulants/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'circulants',
+             'reference': 'lean/Circulants/Reference.lean',
+             'summary': 'Circulant graphs and digraphs on Z_n from families of connection sets: exact '
+                        'character spectra, isomorphism and canonical representatives at Adam orders, and '
+                        'the cyclic CI/DCI classification.',
+             'version': 1},
+  'operations': [{'args': {'directed': 'int', 'n': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'spectrum',
+                  'summary': 'The n adjacency eigenvalues in character order. Each is returned exactly as '
+                             'the sorted exponents j*s mod n in sum_(s in S) zeta_n^(j*s). For directed=0, S '
+                             'is first replaced by (S union -S) minus {0}; for directed=1 it is used as '
+                             'given.',
+                  'value': 'circulants.spectra'},
+                 {'args': {'directed': 'int', 'n': 'int', 'target': 'vector'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'isomorphic',
+                  'summary': 'Whether each circulant is isomorphic to Cay(Z_n,target), at orders where '
+                             "Adam's multiplier criterion is complete. The directed case accepts n not "
+                             'divisible by 8 or an odd prime square; the undirected case also accepts 8, 9 '
+                             'and 18. Undirected connection sets mean (S union -S) minus {0}.',
+                  'value': 'boolean'},
+                 {'args': {'directed': 'int', 'n': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'is_canonical',
+                  'summary': 'Whether the sorted connection set is the lexicographically least unit multiple '
+                             'in its isomorphism class, at the same Adam orders as isomorphic. For '
+                             'directed=0, only the inverse-closed representative (S union -S) minus {0} can '
+                             'be canonical.',
+                  'value': 'boolean'},
+                 {'args': {'directed': 'int'},
+                  'families': ['range'],
+                  'name': 'is_ci',
+                  'summary': 'For each positive n in the range, whether Z_n is a DCI-group (directed=1) or '
+                             'CI-group (directed=0): DCI iff 8 does not divide n and no odd prime square '
+                             'divides n; CI has the same orders plus 8, 9 and 18.',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'directed order 8 is outside Adam', 'error': 'multiplier criterion'},
+                 {'case': 'invalid directed flag', 'error': 'directed'},
+                 {'case': 'connection set containing zero', 'error': 'identity-free'},
+                 {'case': 'zero order spectrum', 'error': 'n must satisfy'},
+                 {'case': 'is_ci on connection sets', 'error': 'range families only'}]},
  {'backends': [{'accepts': 'block families with canonical standard-basis block members; permutation groups '
                            'for Kramer-Mesner matrices',
                 'name': 'generic',

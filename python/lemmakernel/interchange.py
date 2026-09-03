@@ -355,6 +355,27 @@ class CycleIndex:
 
 
 @dataclass
+class Spectra:
+    """Exact character spectra. Each row lists exponents in a sum of powers of zeta_n."""
+    n: int
+    count: int
+    offsets: list[int]
+    exponents: object
+
+    def member(self, i: int):
+        first = i * self.n
+        return [[int(x) for x in self.exponents[self.offsets[first + j]:self.offsets[first + j + 1]]]
+                for j in range(self.n)]
+
+    def tolist(self):
+        return [self.member(i) for i in range(self.count)]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.offsets)}Q", *self.offsets) + pack_entries(self.exponents, NATURALS)
+        return encode("circulants.spectra", {"n": self.n, "count": self.count}, payload)
+
+
+@dataclass
 class U64Matrices:
     """A batch of fixed-shape natural-number matrices with 64-bit entries."""
     count: int
@@ -657,7 +678,7 @@ class Family:
 KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphGroups,
          "gfp.basis": Basis, "gfp.solutions": Solutions, "gfp.inverses": Inverses,
          "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
-         "burnside.cycle_index": CycleIndex, "designs.matrix": U64Matrices,
+         "burnside.cycle_index": CycleIndex, "circulants.spectra": Spectra, "designs.matrix": U64Matrices,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
          "automorphisms.generators": PermutationGenerators, "posets.mobius": MobiusMatrices,
          "young.characters": Characters,
@@ -740,6 +761,20 @@ def decode_at(buf: bytes, offset: int):
         words = struct.unpack_from(f"<{q['count'] * width}Q", pl, 0)
         terms = [(words[i * width], list(words[i * width + 1:(i + 1) * width])) for i in range(q["count"])]
         return CycleIndex(q["degree"], q["denominator"], terms), end
+    if k == "circulants.spectra":
+        rows = q["count"] * q["n"]
+        offset_bytes = 8 * (rows + 1)
+        if q["n"] == 0 or q["n"] >= 1 << 32 or len(pl) < offset_bytes:
+            raise ValueError("circulants.spectra payload length mismatch")
+        offsets = list(struct.unpack_from(f"<{rows + 1}Q", pl, 0))
+        if offsets[0] != 0 or any(a > b for a, b in zip(offsets, offsets[1:])):
+            raise ValueError("circulants.spectra offsets are not ordered")
+        exponents = unpack_entries(pl[offset_bytes:], NATURALS, offsets[-1])
+        for row in range(rows):
+            values = exponents[offsets[row]:offsets[row + 1]]
+            if any(int(e) >= q["n"] for e in values) or any(a > b for a, b in zip(values, values[1:])):
+                raise ValueError("circulants.spectra rows must contain sorted exponents below n")
+        return Spectra(q["n"], q["count"], offsets, exponents), end
     if k == "designs.matrix":
         n = q["count"] * q["rows"] * q["cols"]
         if len(pl) != n * 8:

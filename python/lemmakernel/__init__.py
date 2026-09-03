@@ -20,14 +20,14 @@ from . import interchange
 from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, Characters, Coefficients, Count, CurveGroups,
                           CycleIndex, Degrees, Elements, Extremum, Family, First, GraphGroups, Histogram, Hits,
                           Integers, Inverses, Matrix, MobiusMatrices, Partitions, Perms, PermutationGenerators,
-                          RskPairs, Solutions, U64Matrices, Witness, matrix, naturals, perms)
+                          RskPairs, Solutions, Spectra, U64Matrices, Witness, matrix, naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
-           "Matrix", "Basis", "Solutions", "Inverses", "Witness", "BurnsideCounts", "CycleIndex", "U64Matrices",
-           "Partitions", "Bsgs", "PermutationGenerators", "MobiusMatrices", "Characters", "RskPairs", "CurveGroups",
-           "Elements", "Degrees", "Coefficients", "Integers", "Count", "Histogram", "Hits", "First", "Extremum",
-           "Family", "GraphGroups", "NATURALS"]
+           "Matrix", "Basis", "Solutions", "Inverses", "Witness", "BurnsideCounts", "CycleIndex", "Spectra",
+           "U64Matrices", "Partitions", "Bsgs", "PermutationGenerators", "MobiusMatrices", "Characters", "RskPairs",
+           "CurveGroups", "Elements", "Degrees", "Coefficients", "Integers", "Count", "Histogram", "Hits", "First",
+           "Extremum", "Family", "GraphGroups", "NATURALS"]
 
 
 class Error(RuntimeError):
@@ -164,12 +164,12 @@ _PARAM_NAMES = {
     "gfp.matrix": ["p", "count", "rows", "cols"], "gfp.basis": ["p", "count", "cols"], "orbits.perms": ["n", "count"],
     "gfp.solutions": ["p", "count", "length"], "gfp.inverses": ["p", "count", "n"],
     "gfp.witness": ["p", "count", "rows", "cols"], "burnside.counts": ["count"],
-    "burnside.cycle_index": ["degree", "count", "denominator"], "designs.matrix": ["count", "rows", "cols"],
-    "perm_groups.partition": ["count", "n"], "perm_groups.bsgs": ["count", "n"],
-    "automorphisms.generators": ["count", "order"], "posets.mobius": ["count"], "young.characters": ["count"],
-    "young.rsk_pairs": ["count", "length"], "elliptic_curves_fp.group": ["count"],
-    "polynomials_fq.elements": ["p", "count"], "polynomials_fq.degrees": ["count"],
-    "integers": ["count"],
+    "burnside.cycle_index": ["degree", "count", "denominator"], "circulants.spectra": ["n", "count"],
+    "designs.matrix": ["count", "rows", "cols"], "perm_groups.partition": ["count", "n"],
+    "perm_groups.bsgs": ["count", "n"], "automorphisms.generators": ["count", "order"],
+    "posets.mobius": ["count"], "young.characters": ["count"], "young.rsk_pairs": ["count", "length"],
+    "elliptic_curves_fp.group": ["count"], "polynomials_fq.elements": ["p", "count"],
+    "polynomials_fq.degrees": ["count"], "integers": ["count"],
     "count": ["value", "visited", "family_size"], "histogram": ["visited", "family_size", "bins"],
     "hits": ["p", "rows", "cols", "total", "visited", "family_size", "count", "materialised"],
     "lk.naturals": ["count", "rows", "cols"],

@@ -411,6 +411,35 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->coefficients = coefficients;
         return R::success(o);
     }
+    if (h.kind == "circulants.spectra") {
+        auto n = need(h, "n"), count = need(h, "count");
+        for (auto *r : {&n, &count}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        if (n.value == 0 || n.value >= (1ULL << 32))
+            return R::failure(INVALID, "circulants.spectra: need 1 <= n < 2^32");
+        unsigned __int128 rows = (unsigned __int128)count.value * n.value;
+        unsigned __int128 offset_bytes = (rows + 1) * 8;
+        if (offset_bytes > h.payload_len || rows + 1 > SIZE_MAX / sizeof(uint64_t))
+            return R::failure(INVALID, "circulants.spectra payload length mismatch");
+        auto spectra = std::make_shared<Spectra>();
+        spectra->n = n.value; spectra->count = count.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        spectra->offsets.resize((size_t)(rows + 1));
+        for (uint64_t i = 0; i <= (uint64_t)rows; ++i) spectra->offsets[i] = r.u64();
+        if (r.bad || spectra->offsets.front() != 0 ||
+            !std::is_sorted(spectra->offsets.begin(), spectra->offsets.end()) ||
+            (unsigned __int128)spectra->offsets.back() * 4 != (uint64_t)(r.end - r.p))
+            return R::failure(INVALID, "circulants.spectra payload length mismatch");
+        r.entries(spectra->exponents, spectra->offsets.back(), 4);
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "circulants.spectra payload length mismatch");
+        for (uint64_t row = 0; row < (uint64_t)rows; ++row) {
+            auto first = spectra->exponents.begin() + spectra->offsets[row];
+            auto last = spectra->exponents.begin() + spectra->offsets[row + 1];
+            if (!std::is_sorted(first, last) || std::any_of(first, last, [&](Entry e) { return e >= n.value; }))
+                return R::failure(INVALID, "circulants.spectra rows must contain sorted exponents below n");
+        }
+        o->spectra = spectra;
+        return R::success(o);
+    }
     if (h.kind == "histogram") {
         auto vis = need(h, "visited"), fs = need(h, "family_size"), bins = need(h, "bins");
         for (auto *r : {&vis, &fs, &bins}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -784,6 +813,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (degrees) return {{"count", degrees->count}};
     if (cycle_index) return {{"degree", cycle_index->degree}, {"count", cycle_index->multiplicities.size()},
                              {"denominator", cycle_index->denominator}};
+    if (spectra) return {{"n", spectra->n}, {"count", spectra->count}};
     if (u64_matrices) return {{"count", u64_matrices->count}, {"rows", u64_matrices->rows}, {"cols", u64_matrices->cols}};
     if (partitions) return {{"count", partitions->count}, {"n", partitions->n}};
     if (bsgs) return {{"count", bsgs->count}, {"n", bsgs->n}};
@@ -861,6 +891,10 @@ std::vector<uint8_t> encode(const Object &o) {
                 w.u64(o.cycle_index->cycles[i * o.cycle_index->degree + j]);
         }
         write_header(out, "burnside.cycle_index", o.params(), w.out);
+    } else if (o.spectra) {
+        w.u64s(o.spectra->offsets);
+        w.entries(o.spectra->exponents, 4);
+        write_header(out, "circulants.spectra", o.params(), w.out);
     } else if (o.u64_matrices) {
         w.u64s(o.u64_matrices->entries);
         write_header(out, "designs.matrix", o.params(), w.out);

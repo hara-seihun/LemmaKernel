@@ -90,6 +90,12 @@ struct CycleIndex {
     std::vector<uint64_t> cycles;
 };
 
+struct Spectra {
+    uint64_t n = 0, count = 0;
+    std::vector<uint64_t> offsets;
+    std::vector<Entry> exponents;
+};
+
 struct U64Matrices {
     uint64_t count = 0, rows = 0, cols = 0;
     std::vector<uint64_t> entries;
@@ -198,6 +204,7 @@ struct Object {
     std::shared_ptr<Elements> elements;
     std::shared_ptr<Degrees> degrees;
     std::shared_ptr<CycleIndex> cycle_index;
+    std::shared_ptr<Spectra> spectra;
     std::shared_ptr<U64Matrices> u64_matrices;
     std::shared_ptr<Partitions> partitions;
     std::shared_ptr<Bsgs> bsgs;

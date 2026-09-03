@@ -8,6 +8,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/cayley/backends/g
 # module cayley: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/char_poly/backends/generic/char_poly_generic.cpp)
 # module char_poly: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/circulants/backends/generic/circulants_generic.cpp)
+# module circulants: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/designs/backends/generic/designs_generic.cpp)
 # module designs: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/difference_sets/backends/generic/difference_sets_generic.cpp)
