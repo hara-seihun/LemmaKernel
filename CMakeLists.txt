@@ -19,6 +19,7 @@ add_library(lemmakernel SHARED
   runtime/src/lk.cpp
   runtime/src/object.cpp
   runtime/src/family.cpp
+  runtime/src/group_catalogue_data.cpp
   runtime/generated/manifest.cpp)
 if(CMAKE_GENERATOR MATCHES "Ninja")
   set_property(GLOBAL PROPERTY JOB_POOLS compile_pool=4 link_pool=1)

@@ -83,6 +83,13 @@ Result<std::shared_ptr<Family>> make_group_elements(std::shared_ptr<Matrix> gene
 /* A batch of Cayley tables, or the Cayley table of a group given by permutation generators. */
 Result<std::shared_ptr<Family>> make_group_tables(std::shared_ptr<Matrix> tables);
 Result<std::shared_ptr<Family>> make_generated_group(std::shared_ptr<Matrix> generators);
+/* Every group of order n up to isomorphism, from the stored catalogue in
+ * group_catalogue_data.cpp; see tools/group_catalogue.py for how those tables were made. */
+Result<std::shared_ptr<Family>> make_group_catalogue(uint64_t n);
+extern const uint8_t group_catalogue_counts[];
+extern const uint32_t group_catalogue_offsets[];
+extern const uint8_t group_catalogue_entries[];
+extern const uint64_t group_catalogue_max_order;
 /* k-subsets of another family's members, each member flattened to one row of rows*cols entries.
  * The inner family is materialised once; it must have at most 2^22 members. */
 Result<std::shared_ptr<Family>> make_subsets_of(std::shared_ptr<Family> inner, uint64_t k);

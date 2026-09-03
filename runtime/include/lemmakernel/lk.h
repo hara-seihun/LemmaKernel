@@ -59,6 +59,8 @@ lk_status lk_family_group_elements(lk_context *ctx, lk_handle generators, lk_han
 /* Stored Cayley tables, or one group converted from permutation generators. */
 lk_status lk_family_group_tables(lk_context *ctx, lk_handle tables, lk_handle *out);
 lk_status lk_family_generated_group(lk_context *ctx, lk_handle generators, lk_handle *out);
+/* Every group of order n up to isomorphism, from the catalogue stored in the library. */
+lk_status lk_family_group_catalogue(lk_context *ctx, uint64_t n, lk_handle *out);
 lk_status lk_family_subsets_of(lk_context *ctx, lk_handle family, uint64_t k, lk_handle *out);
 lk_status lk_family_symmetric_matrices(lk_context *ctx, uint64_t p, uint64_t n, lk_handle *out);
 lk_status lk_family_alternating_matrices(lk_context *ctx, uint64_t p, uint64_t n, lk_handle *out);

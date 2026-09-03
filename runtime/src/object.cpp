@@ -1062,6 +1062,43 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->coset_representations = reps;
         return R::success(o);
     }
+    if (h.kind == "small_groups.subgroups") {
+        auto count = need(h, "count"), degree = need(h, "degree");
+        for (auto *r : {&count, &degree}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        if ((unsigned __int128)count.value * degree.value != h.payload_len)
+            return R::failure(INVALID, "small_groups.subgroups payload length mismatch");
+        auto s = std::make_shared<Subgroups>();
+        s->count = count.value;
+        s->degree = degree.value;
+        s->entries.assign(h.payload, h.payload + h.payload_len);
+        for (uint8_t flag : s->entries)
+            if (flag > 1) return R::failure(INVALID, "small_groups.subgroups membership flag is not 0 or 1");
+        o->subgroups = s;
+        return R::success(o);
+    }
+    if (h.kind == "small_groups.series") {
+        auto count = need(h, "count"), degree = need(h, "degree");
+        for (auto *r : {&count, &degree}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        if (count.value == UINT64_MAX || (unsigned __int128)(count.value + 1) * 8 > h.payload_len)
+            return R::failure(INVALID, "small_groups.series offsets truncated");
+        auto s = std::make_shared<GroupSeries>();
+        s->count = count.value;
+        s->degree = degree.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i <= count.value; ++i) s->offsets.push_back(r.u64());
+        if (r.bad || s->offsets[0] != 0)
+            return R::failure(INVALID, "small_groups.series offsets are truncated or do not start at zero");
+        for (uint64_t i = 1; i < s->offsets.size(); ++i)
+            if (s->offsets[i] < s->offsets[i - 1])
+                return R::failure(INVALID, "small_groups.series offsets are not increasing");
+        if ((unsigned __int128)s->offsets.back() * degree.value != (uint64_t)(r.end - r.p))
+            return R::failure(INVALID, "small_groups.series payload length mismatch");
+        s->entries.assign(r.p, r.end);
+        for (uint8_t flag : s->entries)
+            if (flag > 1) return R::failure(INVALID, "small_groups.series membership flag is not 0 or 1");
+        o->group_series = s;
+        return R::success(o);
+    }
     if (h.kind == "posets.mobius") {
         auto count = need(h, "count");
         if (!count.ok) return R::failure(count.error.status, count.error.message);
@@ -1193,6 +1230,8 @@ std::map<std::string, uint64_t> Object::params() const {
     if (character_indicators) return {{"count", character_indicators->values.size()}};
     if (permutation_generators) return {{"count", permutation_generators->count}, {"order", permutation_generators->order}};
     if (subgroup_lists) return {{"count", subgroup_lists->count}};
+    if (subgroups) return {{"count", subgroups->count}, {"degree", subgroups->degree}};
+    if (group_series) return {{"count", group_series->count}, {"degree", group_series->degree}};
     if (weight_enumerators) return {{"count", weight_enumerators->count}, {"n", weight_enumerators->n}};
     if (signed_matrices) return {{"count", signed_matrices->count}};
     if (characters) return {{"count", characters->values.size()}};
@@ -1333,6 +1372,13 @@ std::vector<uint8_t> encode(const Object &o) {
         w.u64s(o.subgroup_lists->subgroup_offsets);
         w.u64s(o.subgroup_lists->elements);
         write_header(out, "subgroups.lists", o.params(), w.out);
+    } else if (o.subgroups) {
+        w.bytes(o.subgroups->entries);
+        write_header(out, "small_groups.subgroups", o.params(), w.out);
+    } else if (o.group_series) {
+        w.u64s(o.group_series->offsets);
+        w.bytes(o.group_series->entries);
+        write_header(out, "small_groups.series", o.params(), w.out);
     } else if (o.weight_enumerators) {
         w.u64s(o.weight_enumerators->coefficients);
         write_header(out, "linear_codes.weight_enumerators", o.params(), w.out);

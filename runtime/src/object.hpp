@@ -173,6 +173,20 @@ struct CharacterIndicators {
     std::vector<int8_t> values;
 };
 
+/* One subgroup of each of `count` groups of order `degree`, as membership flags per label. */
+struct Subgroups {
+    uint64_t count = 0, degree = 0;
+    std::vector<uint8_t> entries;
+};
+
+/* A ragged chain of subgroups for each of `count` groups of order `degree`. Offsets count
+ * subgroups, so subgroup r occupies entries[r * degree .. (r + 1) * degree). */
+struct GroupSeries {
+    uint64_t count = 0, degree = 0;
+    std::vector<uint64_t> offsets;
+    std::vector<uint8_t> entries;
+};
+
 /* A ragged list of permutation generators for each of `count` groups of the same order. */
 struct PermutationGenerators {
     uint64_t count = 0, order = 0;
@@ -313,6 +327,8 @@ struct Object {
     std::shared_ptr<CharacterIndicators> character_indicators;
     std::shared_ptr<PermutationGenerators> permutation_generators;
     std::shared_ptr<SubgroupLists> subgroup_lists;
+    std::shared_ptr<Subgroups> subgroups;
+    std::shared_ptr<GroupSeries> group_series;
     std::shared_ptr<WeightEnumerators> weight_enumerators;
     std::shared_ptr<SignedMatrices> signed_matrices;
     std::shared_ptr<Characters> characters;

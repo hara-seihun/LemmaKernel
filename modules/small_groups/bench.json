@@ -1,0 +1,34 @@
+{
+ "module": "small_groups",
+ "fingerprint": {
+  "module": "cbd64012567376edd964c7254a9ad1a43ca91e4912a62c06ea9f0b8c8415cba2",
+  "runtime": "b0411000faf24c104d853c9c3cd8f40903ce407562658581e40598d86d747bd0",
+  "dependencies": [],
+  "combined": "7c0ae9d5988780996645a4d2d0ad7a31ee9e08d9683ebe23f2f0fd03c6337615"
+ },
+ "measured_at": "2026-09-03T06:40:42+00:00",
+ "commit": "efbc9b746816f1a7bd97a30746e2ebdb3766a26b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "order64_subgroup_lattices",
+   "what": "how many subgroups each of eighteen groups of order 64 has, from the 7 of the cyclic group to the 2,825 of the elementary abelian one",
+   "op": "small_groups.subgroup_count",
+   "reduction": "histogram",
+   "members": 18,
+   "naive_s": 3.8046502890065312,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.012807807885110378,
+   "kernel_all_threads_s": 0.006753711029887199,
+   "threads": 32,
+   "speedup_1_thread": 297.05710166293164,
+   "speedup_all_threads": 563.3421791619172,
+   "answer": "Histogram(visited=18, family_size=18, bins=[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0"
+  }
+ ]
+}

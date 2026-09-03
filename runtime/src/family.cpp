@@ -1528,6 +1528,21 @@ Result<std::shared_ptr<Family>> make_group_tables(std::shared_ptr<Matrix> tables
     return R::success(f);
 }
 
+Result<std::shared_ptr<Family>> make_group_catalogue(uint64_t n) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (n == 0 || n > group_catalogue_max_order)
+        return R::failure(INVALID, "group_catalogue: the stored catalogue covers orders 1.." +
+                                       std::to_string(group_catalogue_max_order) + ", not " + std::to_string(n));
+    auto tables = std::make_shared<Matrix>();
+    tables->p = NATURALS;
+    tables->count = group_catalogue_counts[n - 1];
+    tables->rows = n;
+    tables->cols = n;
+    const uint8_t *first = group_catalogue_entries + group_catalogue_offsets[n - 1];
+    tables->entries.assign(first, first + tables->count * n * n);
+    return make_group_tables(std::move(tables));
+}
+
 Result<std::shared_ptr<Family>> make_subsets(std::shared_ptr<Matrix> dictionary, uint64_t k) {
     /* The dictionary is a list of row vectors: either one rows x cols matrix or a batch of
      * 1 x cols vectors. Both are the same flat data; keep it as a batch of vectors. */

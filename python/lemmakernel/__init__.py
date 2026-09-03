@@ -20,10 +20,11 @@ from . import interchange
 from .interchange import (GRAMS, NATURALS, Basis, Bsgs, BurnsideCounts, CharacterIndicators,
                           CharacterMultiplicities, CharacterTable, Characters, Coefficients, CosetRepresentations,
                           Count, CurveGroups, CycleIndex, Degrees, DegreeSequences, Elements, Expansions, Extremum,
-                          Factorisation, Family, First, GraphGroups, Histogram, Hits, Integers, Inverses, Matrix, MobiusMatrices,
-                          Partitions, Perms, PermutationGenerators, QuadraticUnits, RegularSubgroups, RskPairs,
-                          ShortVectors, SignedMatrices, Solutions, Spectra, SubgroupLists, ThetaSeries, U64Matrices,
-                          U64Vectors, WeightEnumerators, Witness, gram, matrix, naturals, perms)
+                          Factorisation, Family, First, GraphGroups, GroupSeries, Histogram, Hits, Integers, Inverses,
+                          Matrix, MobiusMatrices, Partitions, Perms, PermutationGenerators, QuadraticUnits,
+                          RegularSubgroups, RskPairs, ShortVectors, SignedMatrices, Solutions, Spectra, Subgroups,
+                          SubgroupLists, ThetaSeries, U64Matrices, U64Vectors, WeightEnumerators, Witness, gram,
+                          matrix, naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "gram", "perms", "naturals", "interchange", "MODULES",
@@ -33,7 +34,7 @@ __all__ = ["Context", "Handle", "Error", "describe", "matrix", "gram", "perms", 
            "MobiusMatrices", "Characters", "RskPairs", "CurveGroups", "Elements", "Degrees", "DegreeSequences",
            "Expansions", "QuadraticUnits", "Coefficients", "ThetaSeries", "ShortVectors", "CosetRepresentations",
            "SignedMatrices", "Factorisation", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family",
-           "GraphGroups", "RegularSubgroups", "NATURALS", "GRAMS"]
+           "GraphGroups", "RegularSubgroups", "Subgroups", "GroupSeries", "NATURALS", "GRAMS"]
 
 
 class Error(RuntimeError):
@@ -84,6 +85,7 @@ _lib.lk_family_transform.argtypes = [_P, _H, _H, ctypes.POINTER(_H)]
 _lib.lk_family_stack.argtypes = [_P, _H, _H, ctypes.POINTER(_H)]
 _lib.lk_family_group_elements.argtypes = [_P, _H, ctypes.POINTER(_H)]
 _lib.lk_family_group_tables.argtypes = [_P, _H, ctypes.POINTER(_H)]
+_lib.lk_family_group_catalogue.argtypes = [_P, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_generated_group.argtypes = [_P, _H, ctypes.POINTER(_H)]
 _lib.lk_family_subsets_of.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_symmetric_matrices.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
@@ -183,7 +185,9 @@ _PARAM_NAMES = {
     "designs.matrix": ["count", "rows", "cols"],
     "polytopes_small.vectors": ["count", "length"], "perm_groups.partition": ["count", "n"],
     "perm_groups.bsgs": ["count", "n"], "automorphisms.generators": ["count", "order"],
-    "subgroups.lists": ["count"], "posets.mobius": ["count"], "young.characters": ["count"], "young.rsk_pairs": ["count", "length"],
+    "subgroups.lists": ["count"],
+    "small_groups.subgroups": ["count", "degree"], "small_groups.series": ["count", "degree"],
+    "posets.mobius": ["count"], "young.characters": ["count"], "young.rsk_pairs": ["count", "length"],
     "elliptic_curves_fp.group": ["count"], "polynomials_fq.elements": ["p", "count"],
     "polynomials_fq.degrees": ["count"], "coset_enumeration.representations": ["count", "generators", "max_cosets"],
     "lk.signed_matrices": ["count", "rows", "cols"], "integers": ["count"],
@@ -309,6 +313,12 @@ class Context:
         out = _H()
         t = self._keep(tables)
         self._check(_lib.lk_family_group_tables(self._ptr, t._h, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def group_catalogue(self, n: int) -> Handle:
+        """Every group of order n up to isomorphism, from the catalogue stored in the library."""
+        out = _H()
+        self._check(_lib.lk_family_group_catalogue(self._ptr, n, ctypes.byref(out)))
         return self._wrap(out)
 
     def generated_group(self, generators) -> Handle:

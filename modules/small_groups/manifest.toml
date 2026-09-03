@@ -1,0 +1,109 @@
+# small_groups: invariants of finite groups given as multiplication tables.
+
+[module]
+name = "small_groups"
+version = 1
+summary = "Finite groups from group_tables families, including the stored catalogue of every group of order n: order, exponent, centre, conjugacy classes, derived series, nilpotence, solvability, and how many subgroups and normal subgroups a group has. Element labels are the table's own 0..n-1; a subgroup comes back as its labels in increasing order, the derived series stops at its first stable term, and derived length counts the steps to that term."
+lean = "lean"
+contract = "lean/Small_groups/Contract.lean"
+reference = "lean/Small_groups/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "small_groups.subgroups"
+params = ["count", "degree"]
+payload = "count*degree u8 membership flags"
+lean = "subgroup"
+summary = "One subgroup per input group, given by its element labels in increasing order."
+
+[[kinds]]
+name = "small_groups.series"
+params = ["count", "degree"]
+payload = "u64 offsets[count+1], then offsets[count]*degree u8 membership flags"
+lean = "series"
+summary = "One finite chain of subgroups per input group, each term given by its element labels in increasing order; the offsets delimit the groups."
+
+[[operations]]
+name = "order"
+value = "integer"
+families = ["group_tables"]
+summary = "The number of elements of the group, that is the side of its table."
+
+[[operations]]
+name = "exponent"
+value = "integer"
+families = ["group_tables"]
+summary = "The least common multiple of the element orders."
+
+[[operations]]
+name = "centre"
+value = "small_groups.subgroups"
+families = ["group_tables"]
+summary = "The centre {x : xy = yx for every y}, as the increasing list of its labels."
+
+[[operations]]
+name = "centre_order"
+value = "integer"
+families = ["group_tables"]
+summary = "The number of elements of the centre."
+
+[[operations]]
+name = "class_count"
+value = "integer"
+families = ["group_tables"]
+summary = "The number of conjugacy classes."
+
+[[operations]]
+name = "derived_series"
+value = "small_groups.series"
+families = ["group_tables"]
+summary = "G, [G,G], [[G,G],[G,G]], ... as increasing label lists, ending at the first term H with [H,H] = H. A solvable group therefore ends with the identity subgroup and a perfect group returns [G] alone."
+
+[[operations]]
+name = "derived_length"
+value = "integer"
+families = ["group_tables"]
+summary = "The number of steps the derived series takes to become stationary, so the derived length of a solvable group, 0 for a perfect group."
+
+[[operations]]
+name = "is_nilpotent"
+value = "boolean"
+families = ["group_tables"]
+summary = "Whether the lower central series G, [G,G], [[G,G],G], ... reaches the identity subgroup."
+
+[[operations]]
+name = "is_solvable"
+value = "boolean"
+families = ["group_tables"]
+summary = "Whether the derived series reaches the identity subgroup."
+
+[[operations]]
+name = "subgroup_count"
+value = "integer"
+families = ["group_tables"]
+summary = "The number of subgroups, counting the trivial subgroup and the whole group."
+
+[[operations]]
+name = "normal_subgroup_count"
+value = "integer"
+families = ["group_tables"]
+summary = "The number of normal subgroups, counting the trivial subgroup and the whole group."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/small_groups_generic.cpp"]
+accepts = "every group_tables family; the runtime has already checked the group laws of each table"
+summary = "Portable C++: subgroups as bit sets closed under multiplication, subgroups grown from smaller ones by one element at a time, and independent input groups split across threads."
+
+[[rejections]]
+case = "explicit naturals are not a group family"
+error = "group_tables"
+
+[[rejections]]
+case = "field matrix is not a group family"
+error = "group_tables"
+
+[[rejections]]
+case = "range is not a group family"
+error = "group_tables"

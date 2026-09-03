@@ -272,6 +272,11 @@ lk_status lk_family_generated_group(lk_context *ctx, lk_handle generators, lk_ha
     FAMILY_RESULT(make_generated_group(o.value->matrix));
 }
 
+lk_status lk_family_group_catalogue(lk_context *ctx, uint64_t n, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    FAMILY_RESULT(make_group_catalogue(n));
+}
+
 lk_status lk_family_subsets_of(lk_context *ctx, lk_handle family, uint64_t k, lk_handle *out) {
     if (!ctx || !out) return LK_INVALID_ARGUMENT;
     auto f = ctx->get_family(family);

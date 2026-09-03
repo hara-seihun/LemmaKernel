@@ -760,6 +760,39 @@ class SubgroupLists:
 
 
 @dataclass
+class Subgroups:
+    """One subgroup per group of a group_tables family, as membership flags for labels."""
+    count: int
+    degree: int
+    entries: object
+
+    def member(self, i: int):
+        flags = self.entries[i * self.degree:(i + 1) * self.degree]
+        return [j for j, present in enumerate(flags) if present]
+
+    def encode(self) -> bytes:
+        return encode("small_groups.subgroups", {"count": self.count, "degree": self.degree},
+                      bytes(int(x) for x in self.entries))
+
+
+@dataclass
+class GroupSeries:
+    """One chain of subgroups per group, each subgroup as membership flags for labels."""
+    count: int
+    degree: int
+    offsets: list[int]
+    entries: object
+
+    def member(self, i: int):
+        return [[j for j, present in enumerate(self.entries[r * self.degree:(r + 1) * self.degree]) if present]
+                for r in range(self.offsets[i], self.offsets[i + 1])]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.offsets)}Q", *self.offsets) + bytes(int(x) for x in self.entries)
+        return encode("small_groups.series", {"count": self.count, "degree": self.degree}, payload)
+
+
+@dataclass
 class MobiusMatrices:
     """A ragged batch of signed square matrices, one Möbius matrix per poset."""
     count: int
@@ -1051,6 +1084,7 @@ KINDS = {"gfp.matrix": Matrix, "lattices.gram": Matrix, "orbits.perms": Perms, "
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
          "automorphisms.generators": PermutationGenerators, "subgroups.lists": SubgroupLists,
          "posets.mobius": MobiusMatrices,
+         "small_groups.subgroups": Subgroups, "small_groups.series": GroupSeries,
          "young.characters": Characters, "young.rsk_pairs": RskPairs,
          "elliptic_curves_fp.group": CurveGroups, "polynomials_fq.elements": Elements,
          "polynomials_fq.degrees": Degrees, "graph_polynomials.coefficients": Coefficients,
@@ -1231,6 +1265,24 @@ def decode_at(buf: bytes, offset: int):
         pos += 8 * subgroup_count
         elements = list(struct.unpack_from(f"<{subgroup_offsets[-1]}Q", pl, pos))
         return SubgroupLists(q["count"], group_offsets, subgroup_offsets, elements), end
+    if k == "small_groups.subgroups":
+        if len(pl) != q["count"] * q["degree"]:
+            raise ValueError("small_groups.subgroups payload length mismatch")
+        entries = list(pl)
+        if any(x > 1 for x in entries):
+            raise ValueError("small_groups.subgroups membership flag is not 0 or 1")
+        return Subgroups(q["count"], q["degree"], entries), end
+    if k == "small_groups.series":
+        offset_bytes = 8 * (q["count"] + 1)
+        if len(pl) < offset_bytes:
+            raise ValueError("small_groups.series offsets truncated")
+        offsets = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
+        entries = list(pl[offset_bytes:])
+        if offsets[0] != 0 or offsets != sorted(offsets) or len(entries) != offsets[-1] * q["degree"]:
+            raise ValueError("small_groups.series payload length mismatch")
+        if any(x > 1 for x in entries):
+            raise ValueError("small_groups.series membership flag is not 0 or 1")
+        return GroupSeries(q["count"], q["degree"], offsets, entries), end
     if k == "posets.mobius":
         count = q["count"]
         offset_bytes = 8 * (count + 1)
