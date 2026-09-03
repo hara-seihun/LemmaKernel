@@ -62,6 +62,12 @@ struct Witness {
     std::vector<Entry> r, t;
 };
 
+struct CycleIndex {
+    uint64_t degree = 0, denominator = 0;
+    std::vector<uint64_t> multiplicities;
+    std::vector<uint64_t> cycles;
+};
+
 struct Integers {
     std::vector<uint64_t> values;
 };
@@ -103,6 +109,7 @@ struct Object {
     std::shared_ptr<Solutions> solutions;
     std::shared_ptr<Inverses> inverses;
     std::shared_ptr<Witness> witness;
+    std::shared_ptr<CycleIndex> cycle_index;
     std::shared_ptr<Integers> integers;
     std::shared_ptr<Count> count;
     std::shared_ptr<Histogram> histogram;

@@ -269,6 +269,42 @@ class Witness:
 
 
 @dataclass
+class BurnsideCounts:
+    values: list[int]
+
+    @property
+    def count(self) -> int:
+        return len(self.values)
+
+    def member(self, i: int):
+        return int(self.values[i])
+
+    def encode(self) -> bytes:
+        return encode("burnside.counts", {"count": self.count}, struct.pack(f"<{self.count}Q", *self.values))
+
+
+@dataclass
+class CycleIndex:
+    degree: int
+    denominator: int
+    terms: list[tuple[int, list[int]]]
+
+    @property
+    def count(self) -> int:
+        return len(self.terms)
+
+    def member(self, i: int):
+        multiplicity, cycles = self.terms[i]
+        return self.denominator, multiplicity, cycles
+
+    def encode(self) -> bytes:
+        words = [word for multiplicity, cycles in self.terms for word in (multiplicity, *cycles)]
+        return encode("burnside.cycle_index", {"degree": self.degree, "count": self.count,
+                                                "denominator": self.denominator},
+                      struct.pack(f"<{len(words)}Q", *words))
+
+
+@dataclass
 class Integers:
     values: list[int]
 
@@ -364,8 +400,9 @@ class Family:
 
 
 KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "gfp.basis": Basis, "gfp.solutions": Solutions,
-         "gfp.inverses": Inverses, "gfp.witness": Witness, "integers": Integers, "count": Count,
-         "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
+         "gfp.inverses": Inverses, "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
+         "burnside.cycle_index": CycleIndex, "integers": Integers, "count": Count, "histogram": Histogram,
+         "hits": Hits, "first": First, "extremum": Extremum}
 
 
 def kind_of(obj) -> str:
@@ -419,6 +456,13 @@ def decode_at(buf: bytes, offset: int):
         nr = q["count"] * q["rows"] * q["cols"]
         nt = q["count"] * q["rows"] * q["rows"]
         return Witness(q["p"], q["count"], q["rows"], q["cols"], unpack_entries(pl[:nr * w], q["p"], nr), unpack_entries(pl[nr * w:], q["p"], nt)), end
+    if k == "burnside.counts":
+        return BurnsideCounts(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
+    if k == "burnside.cycle_index":
+        width = q["degree"] + 1
+        words = struct.unpack_from(f"<{q['count'] * width}Q", pl, 0)
+        terms = [(words[i * width], list(words[i * width + 1:(i + 1) * width])) for i in range(q["count"])]
+        return CycleIndex(q["degree"], q["denominator"], terms), end
     if k == "integers":
         return Integers(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "count":

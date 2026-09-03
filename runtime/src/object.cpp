@@ -324,13 +324,29 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->count = std::make_shared<Count>(Count{v.value, vis.value, fs.value});
         return R::success(o);
     }
-    if (h.kind == "integers") {
+    if (h.kind == "integers" || h.kind == "burnside.counts") {
         auto n = need(h, "count");
         if (!n.ok) return R::failure(n.error.status, n.error.message);
-        if (n.value * 8 != h.payload_len) return R::failure(INVALID, "integers payload length mismatch");
+        if (n.value * 8 != h.payload_len) return R::failure(INVALID, h.kind + " payload length mismatch");
         Reader r{h.payload, h.payload + h.payload_len};
         o->integers = std::make_shared<Integers>();
         for (uint64_t i = 0; i < n.value; ++i) o->integers->values.push_back(r.u64());
+        return R::success(o);
+    }
+    if (h.kind == "burnside.cycle_index") {
+        auto degree = need(h, "degree"), count = need(h, "count"), denominator = need(h, "denominator");
+        for (auto *r : {&degree, &count, &denominator}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        unsigned __int128 words = (unsigned __int128)count.value * (degree.value + 1);
+        if (words * 8 != h.payload_len) return R::failure(INVALID, "burnside.cycle_index payload length mismatch");
+        auto index = std::make_shared<CycleIndex>();
+        index->degree = degree.value;
+        index->denominator = denominator.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i < count.value; ++i) {
+            index->multiplicities.push_back(r.u64());
+            for (uint64_t j = 0; j < degree.value; ++j) index->cycles.push_back(r.u64());
+        }
+        o->cycle_index = index;
         return R::success(o);
     }
     if (h.kind == "histogram") {
@@ -473,6 +489,8 @@ std::map<std::string, uint64_t> Object::params() const {
     if (solutions) return {{"p", solutions->p}, {"count", solutions->count}, {"length", solutions->length}};
     if (inverses) return {{"p", inverses->p}, {"count", inverses->count}, {"n", inverses->n}};
     if (witness) return {{"p", witness->p}, {"count", witness->count}, {"rows", witness->rows}, {"cols", witness->cols}};
+    if (cycle_index) return {{"degree", cycle_index->degree}, {"count", cycle_index->multiplicities.size()},
+                             {"denominator", cycle_index->denominator}};
     if (integers) return {{"count", integers->values.size()}};
     if (count) return {{"value", count->value}, {"visited", count->visited}, {"family_size", count->family_size}};
     if (histogram) return {{"visited", histogram->visited}, {"family_size", histogram->family_size}, {"bins", histogram->bins.size()}};
@@ -520,9 +538,16 @@ std::vector<uint8_t> encode(const Object &o) {
         w.entries(o.witness->r, entry_width(o.witness->p));
         w.entries(o.witness->t, entry_width(o.witness->p));
         write_header(out, "gfp.witness", o.params(), w.out);
+    } else if (o.cycle_index) {
+        for (uint64_t i = 0; i < o.cycle_index->multiplicities.size(); ++i) {
+            w.u64(o.cycle_index->multiplicities[i]);
+            for (uint64_t j = 0; j < o.cycle_index->degree; ++j)
+                w.u64(o.cycle_index->cycles[i * o.cycle_index->degree + j]);
+        }
+        write_header(out, "burnside.cycle_index", o.params(), w.out);
     } else if (o.integers) {
         w.u64s(o.integers->values);
-        write_header(out, "integers", o.params(), w.out);
+        write_header(out, o.kind == "burnside.counts" ? "burnside.counts" : "integers", o.params(), w.out);
     } else if (o.count) {
         write_header(out, "count", o.params(), {});
     } else if (o.histogram) {

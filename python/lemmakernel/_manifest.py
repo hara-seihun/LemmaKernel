@@ -88,7 +88,60 @@ RUNTIME = {'families': [{'lean': 'explicit',
                  'name': 'min',
                  'summary': 'The smallest value and the least index attaining it, materialised (kind '
                             '`extremum`).'}]}
-MODULES = [{'backends': [{'accepts': 'any p < 2^32; any family; any operation',
+MODULES = [{'backends': [{'accepts': 'permutation groups on subsets, subsets_of, and words; group closure up to 2^26 '
+                           'elements',
+                'name': 'generic',
+                'sources': ['backends/generic/burnside_generic.cpp'],
+                'summary': 'Portable C++: closes the generator group, groups elements by cycle-count vector, '
+                           "uses subset generating functions and Polya's q^cycles formula, and never "
+                           'enumerates the acted-on family.'}],
+  'kinds': [{'lean': 'count',
+             'name': 'burnside.counts',
+             'params': ['count'],
+             'payload': 'count u64 values',
+             'summary': 'A batch of unsigned counts. orbit_count and fixed_count each return a batch of '
+                        'one.'},
+            {'lean': 'cycleIndexTerm',
+             'name': 'burnside.cycle_index',
+             'params': ['degree', 'count', 'denominator'],
+             'payload': 'For each of count terms: u64 multiplicity, then degree u64 cycle counts '
+                        'c_1,...,c_degree',
+             'summary': 'The cycle index (1/denominator) sum multiplicity*product_i x_i^c_i. Terms are '
+                        'sorted lexicographically by (c_1,...,c_degree), and zero coefficients are '
+                        'omitted.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Burnside/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'burnside',
+             'reference': 'lean/Burnside/Reference.lean',
+             'summary': 'Burnside and Polya orbit counts for permutation groups on subsets and words, '
+                        'computed from cycle types without enumerating the acted-on family.',
+             'version': 1},
+  'operations': [{'args': {'group': 'group'},
+                  'families': ['subsets', 'subsets_of', 'words'],
+                  'name': 'orbit_count',
+                  'summary': 'Number of orbits of the family under a permutation group. Subsets use '
+                             'dictionary positions; words use coordinate positions. Returns one count and '
+                             'never enumerates family members.',
+                  'value': 'burnside.counts'},
+                 {'args': {'group': 'group'},
+                  'families': ['subsets', 'subsets_of', 'words'],
+                  'name': 'cycle_index',
+                  'summary': "Cycle index of the permutation group on the family's positions. One canonical "
+                             'sparse term is returned for each distinct cycle-count vector.',
+                  'value': 'burnside.cycle_index'},
+                 {'args': {'g': 'perms'},
+                  'families': ['subsets', 'subsets_of', 'words'],
+                  'name': 'fixed_count',
+                  'summary': 'Number of family members fixed by the single permutation g. Returns one count '
+                             'without enumerating family members.',
+                  'value': 'burnside.counts'}],
+  'rejections': [{'case': 'permutations on a range', 'error': 'families only'},
+                 {'case': 'C4 on length-five words', 'error': 'positions'},
+                 {'case': 'matrix group on words', 'error': 'permutation'},
+                 {'case': 'two permutations passed as g', 'error': 'single permutation'}]},
+ {'backends': [{'accepts': 'any p < 2^32; any family; any operation',
                 'name': 'generic',
                 'sources': ['backends/generic/gfp_generic.cpp'],
                 'summary': 'Portable C++: depth-first enumeration with an incremental echelon basis shared '

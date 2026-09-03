@@ -2,7 +2,7 @@
 # Lk is the runtime's reference (families, reductions) and contract; then one library
 # per module: its executable reference and contract (against Mathlib).
 name = "LemmaKernel"
-defaultTargets = ["Lk", "Gfp", "Orbits", "Subspace_orbits"]
+defaultTargets = ["Lk", "Burnside", "Gfp", "Orbits", "Subspace_orbits"]
 
 [[require]]
 name = "mathlib"
@@ -13,6 +13,11 @@ rev = "v4.33.0"
 name = "Lk"
 srcDir = "runtime/lean"
 roots = ["Lk"]
+
+[[lean_lib]]
+name = "Burnside"
+srcDir = "modules/burnside/lean"
+roots = ["Burnside"]
 
 [[lean_lib]]
 name = "Gfp"

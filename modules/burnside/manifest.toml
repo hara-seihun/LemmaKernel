@@ -1,0 +1,68 @@
+# burnside: orbit counts from cycle types, without enumerating the acted-on family.
+
+[module]
+name = "burnside"
+version = 1
+summary = "Burnside and Polya orbit counts for permutation groups on subsets and words, computed from cycle types without enumerating the acted-on family."
+lean = "lean"
+contract = "lean/Burnside/Contract.lean"
+reference = "lean/Burnside/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "burnside.counts"
+params = ["count"]
+payload = "count u64 values"
+lean = "count"
+summary = "A batch of unsigned counts. orbit_count and fixed_count each return a batch of one."
+
+[[kinds]]
+name = "burnside.cycle_index"
+params = ["degree", "count", "denominator"]
+payload = "For each of count terms: u64 multiplicity, then degree u64 cycle counts c_1,...,c_degree"
+lean = "cycleIndexTerm"
+summary = "The cycle index (1/denominator) sum multiplicity*product_i x_i^c_i. Terms are sorted lexicographically by (c_1,...,c_degree), and zero coefficients are omitted."
+
+[[operations]]
+name = "orbit_count"
+value = "burnside.counts"
+args = { group = "group" }
+families = ["subsets", "subsets_of", "words"]
+summary = "Number of orbits of the family under a permutation group. Subsets use dictionary positions; words use coordinate positions. Returns one count and never enumerates family members."
+
+[[operations]]
+name = "cycle_index"
+value = "burnside.cycle_index"
+args = { group = "group" }
+families = ["subsets", "subsets_of", "words"]
+summary = "Cycle index of the permutation group on the family's positions. One canonical sparse term is returned for each distinct cycle-count vector."
+
+[[operations]]
+name = "fixed_count"
+value = "burnside.counts"
+args = { g = "perms" }
+families = ["subsets", "subsets_of", "words"]
+summary = "Number of family members fixed by the single permutation g. Returns one count without enumerating family members."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/burnside_generic.cpp"]
+accepts = "permutation groups on subsets, subsets_of, and words; group closure up to 2^26 elements"
+summary = "Portable C++: closes the generator group, groups elements by cycle-count vector, uses subset generating functions and Polya's q^cycles formula, and never enumerates the acted-on family."
+
+[[rejections]]
+case = "permutations on a range"
+error = "families only"
+
+[[rejections]]
+case = "C4 on length-five words"
+error = "positions"
+
+[[rejections]]
+case = "matrix group on words"
+error = "permutation"
+
+[[rejections]]
+case = "two permutations passed as g"
+error = "single permutation"
