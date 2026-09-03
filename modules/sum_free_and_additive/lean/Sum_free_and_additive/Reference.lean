@@ -109,9 +109,8 @@ def isSmallDoubling (modulus num den : Nat) (xs : List Nat) : Bool :=
 
 /-! ## Dispatch -/
 
-/-- Each constructor takes the operation's arguments in the manifest's name order, which is how
-the harness renders a request: `isSmallDoubling` therefore reads `bound_den`, `bound_num`,
-`modulus`. -/
+/-- The harness passes arguments by name, so each binder is the camelCase of the manifest's
+argument name. -/
 inductive Op
   | isSumFree (modulus : Nat)
   | isSidon (modulus : Nat)
@@ -120,7 +119,7 @@ inductive Op
   | differenceSetSize (modulus : Nat)
   | schurTripleCount (modulus : Nat)
   | maxDifferenceMultiplicity (modulus : Nat)
-  | isSmallDoubling (den num modulus : Nat)
+  | isSmallDoubling (boundDen boundNum modulus : Nat)
 
 def Op.modulus : Op → Nat
   | .isSumFree m | .isSidon m | .isApFree _ m | .sumsetSize m | .differenceSetSize m
@@ -131,7 +130,7 @@ def Op.modulus : Op → Nat
 bound needs a nonzero denominator. -/
 def Op.argsOk : Op → Bool
   | .isApFree length _ => 2 ≤ length
-  | .isSmallDoubling den _ _ => 1 ≤ den
+  | .isSmallDoubling boundDen _ _ => 1 ≤ boundDen
   | _ => true
 
 inductive Value
@@ -146,7 +145,8 @@ def run (op : Op) (f : Family) (red : Red) : Result Value :=
   | .isSumFree n => reduceBool red ms (sets.map (isSumFree n))
   | .isSidon n => reduceBool red ms (sets.map (isSidon n))
   | .isApFree length n => reduceBool red ms (sets.map (isApFree length n))
-  | .isSmallDoubling den num n => reduceBool red ms (sets.map (isSmallDoubling n num den))
+  | .isSmallDoubling boundDen boundNum n =>
+    reduceBool red ms (sets.map (isSmallDoubling n boundNum boundDen))
   | .sumsetSize n => reduceInt red ms (sets.map (sumsetSize n))
   | .differenceSetSize n => reduceInt red ms (sets.map (differenceSetSize n))
   | .schurTripleCount n => reduceInt red ms (sets.map (schurTripleCount n))
