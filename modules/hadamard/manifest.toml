@@ -1,0 +1,75 @@
+# hadamard: predicates and equivalence canonical forms for sign matrices.
+# A matrix over F_2 encodes signs entrywise as 0 = +1 and 1 = -1. This uses the runtime's
+# all_matrices(2, rows, cols) family rather than introducing a second binary matrix family.
+
+[module]
+name = "hadamard"
+version = 1
+summary = "Hadamard, skew, regular and conference tests for F_2 matrices read as signs (0 = +1, 1 = -1), plus the lexicographically least form under signed row and column permutations."
+lean = "lean"
+contract = "lean/Hadamard/Contract.lean"
+reference = "lean/Hadamard/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "is_hadamard"
+value = "boolean"
+summary = "Whether the member is square and its sign lift H satisfies H H^T = n I."
+
+[[operations]]
+name = "is_skew"
+value = "boolean"
+summary = "Whether the member is square and its sign lift H satisfies H + H^T = 2 I. This tests skew type and does not also require the Hadamard property."
+
+[[operations]]
+name = "is_regular"
+value = "boolean"
+summary = "Whether the member is square and every row sum and every column sum of its sign lift are one common integer."
+
+[[operations]]
+name = "is_conference"
+value = "boolean"
+summary = "Whether n >= 2, every diagonal bit is 0, and replacing that +1 diagonal by zero gives C C^T = (n-1) I. Requiring diagonal bits 0 makes the encoding unique."
+
+[[operations]]
+name = "canonical_form"
+value = "gfp.matrix"
+summary = "The row-major lexicographically least F_2 matrix obtainable by permuting and independently negating rows and columns. Bits use 0 = +1 and 1 = -1."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/hadamard_generic.cpp"]
+accepts = "any F_2 matrix family; canonical_form enumerates row permutations and chooses the best column order"
+summary = "Portable C++: threaded member evaluation; sign dot products use bit equality, and canonical forms enumerate row orders while sorting normalised columns."
+
+[[rejections]]
+case = "ternary sign input"
+op = "is_hadamard"
+error = "no available backend accepts"
+
+[[rejections]]
+case = "ternary sign input"
+op = "is_skew"
+error = "no available backend accepts"
+
+[[rejections]]
+case = "ternary sign input"
+op = "is_regular"
+error = "no available backend accepts"
+
+[[rejections]]
+case = "ternary sign input"
+op = "is_conference"
+error = "no available backend accepts"
+
+[[rejections]]
+case = "ternary sign input"
+op = "canonical_form"
+error = "no available backend accepts"
+
+[[rejections]]
+case = "canonical form with count"
+op = "canonical_form"
+reduction = "count"
+error = "does not accept"
