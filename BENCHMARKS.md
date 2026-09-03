@@ -25,9 +25,9 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | char_poly | explicit_6x6_charpoly | 10,000 | 26.1 s~ | 0.00697 s | 3,745× | 21,203× |
 | gfp | subsets_independent | 38,760 | 0.507 s | 0.000246 s | 2,060× | 1,762× |
 | matrix_groups | orders of GL4 generator pairs | 10 | 2.81 s | 0.00144 s | 1,954× | 5,450× |
+| automorphisms | order8_catalogue | 4 | 0.134 s | 7.3e-05 s | 1,839× | 78× |
 | projective_sets | pg32_six_sets | 5,005 | 2.95 s | 0.00176 s | 1,673× | 5,674× |
 | graph_iso | random_graph_8_form | 1 | 0.0739 s | 4.7e-05 s | 1,572× | 1,744× |
-| automorphisms | order8_catalogue | 4 | 0.0782 s | 5.31e-05 s | 1,471× | 1,009× |
 | set_systems | antichains_64_choose_5 | 7,624,512 | 16.6 s~ | 0.0204 s | 815× | 4,420× |
 | posets | divisor_heights_100000 | 100,000 | 123 s~ | 0.17 s | 725× | 11,326× |
 | vertex_transitive | cycle_8_regular_subgroups | 1 | 0.0752 s | 0.000136 s | 552× | 572× |
@@ -62,7 +62,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 
 | module | case | what | members | naive | kernel ×1 | kernel ×all | speedup ×1 | speedup ×all |
 |---|---|---|---:|---:|---:|---:|---:|---:|
-| automorphisms | order8_catalogue | automorphism orders for four stored groups of order 8: C8, C4xC2, C2^3, and D8 | 4 | 0.0782 s | 5.31e-05 s | 7.75e-05 s | 1,471× | 1,009× |
+| automorphisms | order8_catalogue | automorphism orders for four stored groups of order 8: C8, C4xC2, C2^3, and D8 | 4 | 0.134 s | 7.3e-05 s | 0.00171 s | 1,839× | 78× |
 | bilinear_invariants | rank census of symmetric 5x5 forms | rank distribution of all 32,768 symmetric 5x5 matrices over F_2 | 32,768 | 0.28 s | 0.00576 s | 0.00132 s | 49× | 212× |
 | boolean_functions | degree2_n5_nonlinearity | largest nonlinearity among all 65,536 Boolean functions of degree at most two in five variables | 65,536 | 2.71 s | 0.035 s | 0.00615 s | 78× | 441× |
 | boolean_functions | quadratic_n6_bent | bent functions among all 2,097,152 zero-constant quadratic forms in six variables | 2,097,152 | 221 s~ | 2.48 s | 0.187 s | 89× | 1,179× |
