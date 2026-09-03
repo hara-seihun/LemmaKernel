@@ -312,16 +312,18 @@ lk_status lk_run(lk_context *ctx, const char *op, lk_handle family, const char *
         if (!req.handle_args.count(e) && !req.int_args.count(e))
             return ctx->set_error(LK_INVALID_ARGUMENT, "missing argument " + e + " for " + full + "/" + req.reduction);
 
+    /* A pinned backend applies to requests for its own module; other modules select as usual. */
+    bool pinned = !ctx->backend_selector.empty() && ctx->backend_selector.rfind(req.module + ".", 0) == 0;
     const Backend *chosen = nullptr;
     for (const auto &b : backends()) {
         if (b.module != req.module) continue;
         std::string id = b.module + "." + b.name;
-        if (!ctx->backend_selector.empty() && id != ctx->backend_selector) continue;
+        if (pinned && id != ctx->backend_selector) continue;
         if (!b.available() || !b.accepts(req)) continue;
         if (!chosen || b.specificity > chosen->specificity) chosen = &b;
     }
     if (!chosen) {
-        if (!ctx->backend_selector.empty())
+        if (pinned)
             return ctx->set_error(LK_UNSUPPORTED, "backend " + ctx->backend_selector + " does not accept this request");
         return ctx->set_error(LK_UNSUPPORTED, "no available backend accepts " + full + " on this family");
     }

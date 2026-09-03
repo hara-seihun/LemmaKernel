@@ -17,11 +17,11 @@ import os
 from pathlib import Path
 
 from . import interchange
-from .interchange import (Basis, Count, Family, Histogram, Hits, Integers, Inverses, Matrix, Solutions,
-                          Witness, matrix)
+from .interchange import (Basis, Count, Family, Histogram, Hits, Integers, Inverses, Matrix, Perms, Solutions,
+                          Witness, matrix, perms)
 from ._manifest import MODULES
 
-__all__ = ["Context", "Handle", "Error", "describe", "matrix", "interchange", "MODULES",
+__all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "interchange", "MODULES", "Perms",
            "Matrix", "Basis", "Solutions", "Inverses", "Witness", "Integers", "Count", "Histogram", "Hits", "Family"]
 
 
@@ -71,6 +71,7 @@ _lib.lk_family_grassmannian.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ct
 _lib.lk_family_all_matrices.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_transform.argtypes = [_P, _H, _H, ctypes.POINTER(_H)]
 _lib.lk_family_stack.argtypes = [_P, _H, _H, ctypes.POINTER(_H)]
+_lib.lk_family_group_elements.argtypes = [_P, _H, ctypes.POINTER(_H)]
 _lib.lk_family_size.argtypes = [_P, _H, ctypes.POINTER(ctypes.c_uint64)]
 _lib.lk_family_member.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_run.argtypes = [_P, ctypes.c_char_p, _H, ctypes.c_char_p, ctypes.POINTER(_Arg), ctypes.c_size_t, ctypes.POINTER(_H)]
@@ -145,7 +146,7 @@ class Handle:
 
 
 _PARAM_NAMES = {
-    "gfp.matrix": ["p", "count", "rows", "cols"], "gfp.basis": ["p", "count", "cols"],
+    "gfp.matrix": ["p", "count", "rows", "cols"], "gfp.basis": ["p", "count", "cols"], "orbits.perms": ["n", "count"],
     "gfp.solutions": ["p", "count", "length"], "gfp.inverses": ["p", "count", "n"],
     "gfp.witness": ["p", "count", "rows", "cols"], "integers": ["count"],
     "count": ["value", "visited", "family_size"], "histogram": ["visited", "family_size", "bins"],
@@ -209,6 +210,9 @@ class Context:
     def matrix(self, p: int, data, rows: int | None = None, cols: int | None = None) -> Handle:
         return self.put(matrix(p, data, rows, cols))
 
+    def perms(self, n: int, data) -> Handle:
+        return self.put(perms(n, data))
+
     # families
     def explicit(self, batch) -> Handle:
         out = _H()
@@ -242,6 +246,12 @@ class Context:
         out = _H()
         f, m = self._keep(family), self._keep(rows)
         self._check(_lib.lk_family_stack(self._ptr, f._h, m._h, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def group_elements(self, generators) -> Handle:
+        out = _H()
+        g = self._keep(generators)
+        self._check(_lib.lk_family_group_elements(self._ptr, g._h, ctypes.byref(out)))
         return self._wrap(out)
 
     def size(self, family) -> int:

@@ -190,10 +190,16 @@ Result<uint64_t> Family::top_count() const {
 }
 
 Result<Matrix> Family::member(uint64_t index) const {
-    auto sz = size();
-    if (!sz.ok) return Result<Matrix>::failure(sz.error.status, sz.error.message);
-    if (index >= sz.value) return Result<Matrix>::failure(INVALID, "member index out of range");
     Matrix out;
+    auto st = member_into(index, out);
+    if (!st.ok) return Result<Matrix>::failure(st.error.status, st.error.message);
+    return Result<Matrix>::success(std::move(out));
+}
+
+Status Family::member_into(uint64_t index, Matrix &out) const {
+    auto sz = size();
+    if (!sz.ok) return fail(sz.error.status, sz.error.message);
+    if (index >= sz.value) return fail(INVALID, "member index out of range");
     out.p = prime();
     out.count = 1;
     out.rows = rows();
@@ -209,7 +215,7 @@ Result<Matrix> Family::member(uint64_t index) const {
             uint64_t c = prev;
             for (;; ++c) {
                 auto below = binom(D - 1 - c, k - 1 - j);
-                if (!below.ok) return Result<Matrix>::failure(below.error.status, below.error.message);
+                if (!below.ok) return fail(below.error.status, below.error.message);
                 if (remaining < below.value) break;
                 remaining -= below.value;
             }
@@ -220,29 +226,24 @@ Result<Matrix> Family::member(uint64_t index) const {
     }
     case Kind::Grassmannian: {
         auto tr = pivot_table();
-        if (!tr.ok) return Result<Matrix>::failure(tr.error.status, tr.error.message);
+        if (!tr.ok) return fail(tr.error.status, tr.error.message);
         const PivotTable &t = *tr.value;
         auto it = std::upper_bound(t.offsets.begin(), t.offsets.end(), index);
         uint64_t s = (uint64_t)(it - t.offsets.begin()) - 1;
         uint64_t rem = index - t.offsets[s];
         const auto &piv = t.sets[s];
-        const auto &fr = t.free_counts[s];
         out.entries.assign(h * n, 0);
-        std::vector<uint64_t> radix(h);
-        for (uint64_t j = 0; j < h; ++j) radix[j] = pow_checked(p, fr[j]).value;
-        for (uint64_t j = 0; j < h; ++j) {
-            uint64_t below = 1;
-            for (uint64_t i = j + 1; i < h; ++i) below *= radix[i];
-            uint64_t digits = rem / below;
-            rem %= below;
+        /* The free entries, row-major, are the base-p digits of `rem`, most significant first;
+         * peel them off from the last position backwards. */
+        for (int64_t j = (int64_t)h - 1; j >= 0; --j) {
             Entry *row = out.entries.data() + j * n;
             row[piv[j]] = 1;
-            std::vector<uint64_t> cols_free;
-            for (uint64_t col = piv[j] + 1; col < n; ++col)
-                if (!std::binary_search(piv.begin(), piv.end(), (uint32_t)col)) cols_free.push_back(col);
-            for (int64_t q = (int64_t)cols_free.size() - 1; q >= 0; --q) {
-                row[cols_free[q]] = (Entry)(digits % p);
-                digits /= p;
+            int64_t next_piv = (int64_t)h - 1;
+            for (int64_t col = (int64_t)n - 1; col > (int64_t)piv[j]; --col) {
+                while (next_piv > j && (int64_t)piv[next_piv] > col) --next_piv;
+                if (next_piv > j && (int64_t)piv[next_piv] == col) continue;
+                row[col] = (Entry)(rem % p);
+                rem /= p;
             }
         }
         break;
@@ -258,7 +259,7 @@ Result<Matrix> Family::member(uint64_t index) const {
     }
     case Kind::Transform: {
         auto inner = child->member(index);
-        if (!inner.ok) return inner;
+        if (!inner.ok) return fail(inner.error.status, inner.error.message);
         out.entries.assign(out.rows * out.cols, 0);
         for (uint64_t r = 0; r < out.rows; ++r)
             for (uint64_t i = 0; i < inner.value.cols; ++i) {
@@ -272,30 +273,32 @@ Result<Matrix> Family::member(uint64_t index) const {
     }
     case Kind::Stack: {
         auto inner = child->member(index);
-        if (!inner.ok) return inner;
+        if (!inner.ok) return fail(inner.error.status, inner.error.message);
         out.entries = inner.value.entries;
         out.entries.insert(out.entries.end(), data->entries.begin(), data->entries.end());
         break;
     }
     case Kind::GroupElements: {
         auto g = group_elements();
-        if (!g.ok) return Result<Matrix>::failure(g.error.status, g.error.message);
+        if (!g.ok) return fail(g.error.status, g.error.message);
         out.entries.assign(g.value->begin() + index * out.cols, g.value->begin() + (index + 1) * out.cols);
         break;
     }
     }
-    return Result<Matrix>::success(std::move(out));
+    return ok();
 }
 
 Result<const PivotTable *> Family::pivot_table() const {
     using R = Result<const PivotTable *>;
     if (kind != Kind::Grassmannian) return R::failure(INVALID, "not a grassmannian family");
+    if (auto *ready = pivots_ready.load(std::memory_order_acquire)) return R::success(ready);
     static std::mutex mu;
     std::lock_guard<std::mutex> lock(mu);
     if (!pivots) {
         auto t = build_pivot_table(p, n, h);
         if (!t.ok) return R::failure(t.error.status, t.error.message);
         pivots = std::make_shared<const PivotTable>(std::move(t.value));
+        pivots_ready.store(pivots.get(), std::memory_order_release);
     }
     return R::success(pivots.get());
 }
@@ -303,12 +306,14 @@ Result<const PivotTable *> Family::pivot_table() const {
 Result<const std::vector<Entry> *> Family::group_elements() const {
     using R = Result<const std::vector<Entry> *>;
     if (kind != Kind::GroupElements) return R::failure(INVALID, "not a group_elements family");
+    if (auto *ready = elements_ready.load(std::memory_order_acquire)) return R::success(ready);
     static std::mutex mu;
     std::lock_guard<std::mutex> lock(mu);
     if (!elements) {
         auto c = permutation_closure(*data, 1ULL << 26);
         if (!c.ok) return R::failure(c.error.status, c.error.message);
         elements = std::make_shared<const std::vector<Entry>>(std::move(c.value));
+        elements_ready.store(elements.get(), std::memory_order_release);
     }
     return R::success(elements.get());
 }
@@ -346,7 +351,9 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
         auto tr = pivot_table();
         if (!tr.ok) return R::failure(tr.error.status, tr.error.message);
         const PivotTable &t = *tr.value;
-        std::vector<uint32_t> piv(h);
+        uint32_t piv_buf[64];
+        std::vector<uint32_t> piv_heap;
+        uint32_t *piv = h <= 64 ? piv_buf : (piv_heap.resize(h), piv_heap.data());
         for (uint64_t j = 0; j < h; ++j) {
             const Entry *row = mem.entries.data() + j * n;
             uint64_t lead = n;
@@ -355,15 +362,16 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
                 return R::failure(INVALID, "index_of: member is not in reduced row echelon form");
             piv[j] = (uint32_t)lead;
         }
-        auto it = std::lower_bound(t.sets.begin(), t.sets.end(), piv);
-        if (it == t.sets.end() || *it != piv) return R::failure(INTERNAL, "index_of: pivot set not found");
+        auto less = [&](const std::vector<uint32_t> &a, const uint32_t *b) { return std::lexicographical_compare(a.begin(), a.end(), b, b + h); };
+        auto it = std::lower_bound(t.sets.begin(), t.sets.end(), piv, less);
+        if (it == t.sets.end() || !std::equal(it->begin(), it->end(), piv)) return R::failure(INTERNAL, "index_of: pivot set not found");
         uint64_t s = (uint64_t)(it - t.sets.begin());
         uint64_t index = t.offsets[s];
         uint64_t rem = 0;
         for (uint64_t j = 0; j < h; ++j) {
             const Entry *row = mem.entries.data() + j * n;
             for (uint64_t c = 0; c < n; ++c) {
-                bool is_piv = std::binary_search(piv.begin(), piv.end(), (uint32_t)c);
+                bool is_piv = std::binary_search(piv, piv + h, (uint32_t)c);
                 if (is_piv || c < piv[j]) {
                     if (row[c] != (c == piv[j] ? 1u : 0u)) return R::failure(INVALID, "index_of: member is not in reduced row echelon form");
                 } else rem = rem * p + row[c];

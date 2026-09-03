@@ -17,7 +17,7 @@ bytes     payload
 All integers little-endian. Kinds, their parameters, and their payload layouts are declared in
 each module's manifest (`[[kinds]]`) and in the runtime's own kinds below. Entries over F_p are
 packed at the smallest width holding p−1: 1 byte for p < 2^8, 2 for p < 2^16, 4 for p < 2^32,
-8 otherwise.
+8 otherwise. Permutations (`orbits.perms`, p = 0) are packed as 4-byte point indices.
 
 Runtime kinds (not module-specific):
 

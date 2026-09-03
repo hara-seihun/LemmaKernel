@@ -1,5 +1,6 @@
 #pragma once
 #include "object.hpp"
+#include <atomic>
 
 namespace lk {
 
@@ -17,10 +18,13 @@ struct Family {
     std::shared_ptr<Family> child;
     uint64_t p = 0, k = 0, n = 0, h = 0, m = 0;
     /* GroupElements: every element of the generated permutation group, sorted lexicographically,
-     * computed on first use (count x n entries). */
+     * computed on first use (count x n entries). Read through the atomic pointer so that the
+     * per-member fast path takes no lock. */
     mutable std::shared_ptr<const std::vector<Entry>> elements;
+    mutable std::atomic<const std::vector<Entry> *> elements_ready{nullptr};
     /* Grassmannian: pivot sets and offsets, computed on first use. */
     mutable std::shared_ptr<const PivotTable> pivots;
+    mutable std::atomic<const PivotTable *> pivots_ready{nullptr};
 
     uint64_t prime() const; /* 0 for permutation members */
     uint64_t rows() const; /* rows of one member */
@@ -28,6 +32,8 @@ struct Family {
     Result<uint64_t> size() const;
     bool is_explicit() const;
     Result<Matrix> member(uint64_t index) const;
+    /* member() into caller-owned storage; `out.entries` is reused when already large enough. */
+    Status member_into(uint64_t index, Matrix &out) const;
     /* Inverse of member(): the canonical index of a member given as its rows. Only kinds with a
      * closed-form order support it (subsets, grassmannian, all_matrices, group_elements). */
     Result<uint64_t> index_of(const Matrix &member) const;

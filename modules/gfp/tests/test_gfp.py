@@ -22,49 +22,13 @@ sys.path.insert(0, str(ROOT))
 import lemmakernel as lk  # noqa: E402
 from lemmakernel import interchange as ic  # noqa: E402
 from tools.leancheck import LeanCheck  # noqa: E402
+from tools.leanterms import L, lean_family, lean_red, random_batch  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("gfp_naive", ROOT / "modules" / "gfp" / "naive" / "naive.py")
 naive = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(naive)
 
 BACKENDS = [b for b in lk.describe()["available_backends"] if b.startswith("gfp.")]
-
-
-# ---- interchange objects as Lean terms ----------------------------------------------------------
-
-def L(x) -> str:
-    """Lean literal for nested lists of ints / Options / tuples."""
-    if x is None:
-        return "none"
-    if isinstance(x, tuple):
-        return "(" + ", ".join(L(v) for v in x) + ")"
-    if isinstance(x, (list,)):
-        return "[" + ", ".join(L(v) for v in x) + "]"
-    if hasattr(x, "tolist"):
-        return L(x.tolist()) if not isinstance(x, ic.Matrix) else L(x.tolist())
-    return str(int(x))
-
-
-def lean_family(f: ic.Family) -> str:
-    q = f.params
-    if f.kind == "explicit":
-        (b,) = f.children
-        return f"(.explicit {b.p} {L(b.tolist())})"
-    if f.kind == "subsets":
-        (d,) = f.children
-        vecs = [m[0] for m in d.tolist()] if d.rows == 1 else d.member(0)
-        return f"(.subsets {d.p} {L(vecs)} {q['k']})"
-    if f.kind == "grassmannian":
-        return f"(.grassmannian {q['p']} {q['n']} {q['h']})"
-    if f.kind == "all_matrices":
-        return f"(.allMatrices {q['p']} {q['rows']} {q['cols']})"
-    if f.kind == "transform":
-        inner, c = f.children
-        return f"(.transform {lean_family(inner)} {L(c.member(0))})"
-    if f.kind == "stack":
-        inner, rows = f.children
-        return f"(.stack {lean_family(inner)} {L(rows.member(0))})"
-    raise ValueError(f.kind)
 
 
 def lean_op(op: str, args: dict) -> str:
@@ -75,10 +39,6 @@ def lean_op(op: str, args: dict) -> str:
         return f"(.solve {L([m[0] for m in args['rhs'].tolist()])})"
     return {"rank": ".rank", "nullity": ".nullity", "full_row_rank": ".fullRowRank", "full_col_rank": ".fullColRank",
             "rref": ".rref", "nullspace": ".nullspace", "inverse": ".inverse", "rref_witness": ".rrefWitness"}[name]
-
-
-def lean_red(red: str, args: dict) -> str:
-    return f"(.hits {args['limit']})" if red == "hits" else "." + red
 
 
 def lean_result(r) -> str:
@@ -111,23 +71,6 @@ def run_claim(op, family_desc, red, args):
 
 
 # ---- inputs -------------------------------------------------------------------------------------
-
-def random_batch(rng, p, count, rows, cols):
-    """Batches with a mix of generic, singular and structured members."""
-    mats = []
-    for i in range(count):
-        m = [[rng.randrange(p) for _ in range(cols)] for _ in range(rows)]
-        if i % 4 == 1 and rows > 1:
-            m[-1] = list(m[0])
-        if i % 4 == 2:
-            m[0] = [0] * cols
-            for r in m:
-                r[-1] = 0
-        if i % 4 == 3:
-            m = [[rng.randrange(p) if rng.random() < 0.3 else 0 for _ in range(cols)] for _ in range(rows)]
-        mats.append(m)
-    return lk.matrix(p, mats)
-
 
 PRIMES = [2, 3, 5, 7, 251, 257, 65521, 65537, 4294967291]
 

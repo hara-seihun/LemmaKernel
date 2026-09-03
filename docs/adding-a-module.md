@@ -29,14 +29,17 @@ gfp is the worked example of all of this; copy its shape.
 
 ## Runtime pieces you may need to extend
 
-The runtime (`runtime/src/`) currently knows one member type, matrices over F_p, and six family
-kinds. A module over a different kind of object (permutations, graphs, polynomials) needs:
+The runtime (`runtime/src/`) knows matrices over F_p and permutations (a `Matrix` with p = 0),
+and seven family kinds. A module over a different kind of object (graphs, polynomials) needs:
 
 - an object kind in `object.hpp` with its interchange encoding in `object.cpp` (header plus flat
   little-endian arrays; see `docs/interchange.md`);
 - families over that object in `family.hpp`/`family.cpp`, with a canonical order, a closed-form
-  size, `member(index)` for unranking, and a depth-first `enumerate` if backends want to share
-  prefix work;
+  size, `member(index)` for unranking, `index_of` for ranking when a module will permute
+  members (orbits does), and a depth-first `enumerate` if backends want to share prefix work;
+- if the module's operations produce one integer or boolean per member, `runtime/src/reduce.hpp`
+  already implements the reductions (`Accumulator`, `assemble`, `parallel_ranges`); gfp and
+  orbits both use it;
 - the matching `lk_family_*` constructors in `lk.h`, and their Python wrappers.
 
 Keep the C ABI additive: new functions, never changed signatures.

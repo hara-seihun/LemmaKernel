@@ -2,3 +2,5 @@
 
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/gfp/backends/generic/gfp_generic.cpp)
 # module gfp: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/orbits/backends/generic/orbits_generic.cpp)
+# module orbits: backends ['generic']

@@ -51,9 +51,13 @@ struct EchelonBasis {
     std::vector<Entry> rows;
     std::vector<uint32_t> pivots;
     std::vector<Entry> scratch;
+    mutable std::vector<uint64_t> order_buf;
+    mutable std::vector<Entry> sorted_buf;
+    mutable std::vector<uint32_t> piv_buf;
 
     EchelonBasis(uint64_t p, uint64_t c) : f(p), cols(c), scratch(c) {}
     uint64_t rank() const { return pivots.size(); }
+    void clear() { rows.clear(); pivots.clear(); }
     Entry *row(uint64_t i) { return rows.data() + i * cols; }
     const Entry *row(uint64_t i) const { return rows.data() + i * cols; }
 
@@ -100,11 +104,14 @@ struct EchelonBasis {
                 Entry c = out[e * cols + piv[i]];
                 if (c) f.subtract_multiple(out.data() + e * cols, out.data() + i * cols, c, cols);
             }
-        std::vector<uint64_t> order(r);
+        auto &order = order_buf;
+        order.resize(r);
         for (uint64_t i = 0; i < r; ++i) order[i] = i;
         std::sort(order.begin(), order.end(), [&](uint64_t a, uint64_t b) { return piv[a] < piv[b]; });
-        std::vector<Entry> sorted(r * cols);
-        std::vector<uint32_t> sp(r);
+        auto &sorted = sorted_buf;
+        auto &sp = piv_buf;
+        sorted.resize(r * cols);
+        sp.resize(r);
         for (uint64_t i = 0; i < r; ++i) {
             std::copy(out.begin() + order[i] * cols, out.begin() + (order[i] + 1) * cols, sorted.begin() + i * cols);
             sp[i] = piv[order[i]];

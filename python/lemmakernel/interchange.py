@@ -23,6 +23,8 @@ except ImportError:  # numpy is optional; entries fall back to lists
 
 
 def entry_width(p: int) -> int:
+    if p == 0:  # permutations: point indices
+        return 4
     if p < 1 << 8:
         return 1
     if p < 1 << 16:
@@ -152,6 +154,32 @@ def matrix(p: int, data, rows: int | None = None, cols: int | None = None) -> Ma
         for r in m:
             flat.extend(int(x) % p for x in r)
     return Matrix(p, len(mats), rows, cols, flat)
+
+
+@dataclass
+class Perms:
+    """A batch of `count` permutations of {0..n-1}; entry g*n+i is the image of point i under g."""
+    n: int
+    count: int
+    entries: object
+
+    def member(self, i: int):
+        return [int(x) for x in self.entries[i * self.n:(i + 1) * self.n]]
+
+    def tolist(self):
+        return [self.member(i) for i in range(self.count)]
+
+    def encode(self) -> bytes:
+        return encode("orbits.perms", {"n": self.n, "count": self.count}, pack_entries(self.entries, 0))
+
+
+def perms(n: int, data) -> Perms:
+    """Build a Perms batch from a list of permutations (each a list of n images)."""
+    data = [list(map(int, g)) for g in data]
+    for g in data:
+        if sorted(g) != list(range(n)):
+            raise ValueError(f"{g} is not a permutation of 0..{n - 1}")
+    return Perms(n, len(data), [x for g in data for x in g])
 
 
 @dataclass
@@ -302,6 +330,8 @@ def decode_at(buf: bytes, offset: int):
     if k == "gfp.matrix":
         n = q["count"] * q["rows"] * q["cols"]
         return Matrix(q["p"], q["count"], q["rows"], q["cols"], unpack_entries(pl, q["p"], n)), end
+    if k == "orbits.perms":
+        return Perms(q["n"], q["count"], unpack_entries(pl, 0, q["count"] * q["n"])), end
     if k == "gfp.basis":
         offs = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
         rest = pl[8 * (q["count"] + 1):]

@@ -27,7 +27,8 @@ typedef enum lk_status {
 } lk_status;
 
 /* Context: backend selection, thread budget, last error. `backend` is NULL or "auto" for
- * automatic selection, or a backend name from lk_describe() (e.g. "gfp.generic") to force one. */
+ * automatic selection, or a backend name from lk_describe() (e.g. "gfp.generic") to force it for
+ * that module's requests; other modules keep automatic selection. */
 lk_status lk_context_create(const char *backend, lk_context **out);
 void lk_context_destroy(lk_context *ctx);
 lk_status lk_context_set_threads(lk_context *ctx, uint32_t threads);

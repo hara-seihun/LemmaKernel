@@ -14,6 +14,10 @@ G = ctx.grassmannian(p=2, n=10, h=4)                # all 4-dim subspaces of F_2
 F = ctx.stack(G, lk.matrix(2, [[1,1,0,0,1,0,1,1,0,1], [0,1,1,1,0,0,0,1,1,0]]))
 hits = ctx.value("gfp.in_span", F, "hits", target=lk.matrix(2, [[1,0,1,1,0,0,1,0,1,1]]), limit=4)
 hits.total, hits.family_size, hits.members.tolist()  # how many, out of how many, and four witnesses
+
+D24 = ctx.perms(24, [[(i + 1) % 24 for i in range(24)], [(-i) % 24 for i in range(24)]])
+beads = ctx.subsets(lk.matrix(2, [[int(i == j) for j in range(24)] for i in range(24)]), 8)
+ctx.value("orbits.is_canonical", beads, "count", group=D24).value   # 15581 bracelets, 8 black of 24 beads
 ```
 
 `lk.describe()` lists every module compiled in: its object kinds, families, operations,
@@ -23,9 +27,9 @@ anything Python can do, C can do with the same names.
 
 Vocabulary, in the order a request is built:
 
-- **family**: a description of a set of matrices with a canonical order (`explicit`, `subsets`,
-  `grassmannian`, `all_matrices`, and `transform`/`stack` wrappers). Family sizes in the
-  hundreds of millions are normal.
+- **family**: a description of a set of objects with a canonical order (`explicit`, `subsets`,
+  `grassmannian`, `all_matrices`, the `transform`/`stack` wrappers, and `group_elements` of a
+  permutation group). Family sizes in the hundreds of millions are normal.
 - **operation**: what to compute per member (`gfp.rank`, `gfp.in_span`, `gfp.rref`, ...).
 - **reduction**: what to bring back (`count`, `histogram`, `hits`, or `all`).
 
@@ -37,7 +41,7 @@ the call fails. That is the completeness check for a non-existence answer.
 ```
 cmake -S . -B build -G Ninja && ninja -C build      # liblemmakernel.so
 pytest -n auto modules                              # every module's tests
-modules/gfp/bench/bench.py                          # kernel vs naive, with headline speed-ups
+modules/*/bench/bench.py                            # kernel vs naive, with headline speed-ups
 ```
 
 The Lean side (`lake build`) needs Mathlib; `.lake/packages` is a hardlink copy of
@@ -48,7 +52,7 @@ need the module's `Reference` (no Mathlib import) and take a few seconds each.
 
 ```
 runtime/        the C ABI, object encoding, family enumeration, backend registry
-modules/gfp/    one module: manifest, Lean contract and reference, backends, naive, tests, bench
+modules/NAME/   one module: manifest, Lean contract and reference, backends, naive, tests, bench
 python/         the binding; python/lemmakernel/_manifest.py is generated
 tools/          manifest.py (generator and checker), leancheck.py (the test oracle)
 docs/           how to add a module or a backend
@@ -62,6 +66,14 @@ and committed; the build refuses to configure if they are stale.
 | module | what it computes | backends |
 |---|---|---|
 | [gfp](modules/gfp/manifest.toml) | linear algebra over F_p on families of matrices: rank, rref, nullspace, span membership, solve, inverse, rref witness | `generic` (any p < 2^32, portable C++) |
+| [orbits](modules/orbits/manifest.toml) | finite groups acting on families: orbit representatives (`is_canonical`), canonical index, orbit size, stabiliser order, fixed points for Burnside, and the projective action that turns a matrix group into permutations of points | `generic` (per-member orbit search, portable C++) |
+
+An orbit is a permutation of member indices; the representative is the least index. Permutation
+groups act on `subsets` families, matrix groups on `grassmannian` and `all_matrices` families
+(on the right, `M ↦ M A`). Speed-ups over the naive Python implementation, from
+`modules/orbits/bench/bench.py` on this machine, run from about 60× (Grassmannian orbits, where
+each step is an elimination) to 4800× single-threaded (bracelets) and beyond 10^5× for Burnside
+counts, which the backend computes from cycle types instead of by enumeration.
 
 To add to this table, read [docs/adding-a-module.md](docs/adding-a-module.md). To make an
 existing module faster, read [docs/adding-a-backend.md](docs/adding-a-backend.md).
