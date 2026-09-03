@@ -1,0 +1,58 @@
+# graph_iso: canonical labelling and automorphism groups of finite undirected graphs.
+
+[module]
+name = "graph_iso"
+version = 1
+summary = "Canonical labelling and complete automorphism groups of finite undirected F_2 adjacency matrices. Loops are allowed. The canonical form is the lexicographically least row-major adjacency matrix over all vertex orders; the canonical label is the lexicographically least order attaining it; automorphisms are returned in lexicographic order."
+lean = "lean"
+contract = "lean/Graph_iso/Contract.lean"
+reference = "lean/Graph_iso/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "graph_iso.groups"
+params = ["count", "n"]
+payload = "u64 offsets[count+1], then offsets[count]*n u32 images"
+lean = "group"
+summary = "One automorphism group per input graph. Each group is its complete list of vertex permutations, sorted lexicographically; offsets delimit the groups."
+
+[[operations]]
+name = "canonical_form"
+value = "gfp.matrix"
+families = ["explicit", "symmetric_matrices"]
+summary = "For each graph A, the lexicographically least row-major matrix A[q[i],q[j]] over all vertex orders q."
+
+[[operations]]
+name = "canonical_label"
+value = "orbits.perms"
+families = ["explicit", "symmetric_matrices"]
+summary = "For each graph, the lexicographically least vertex order q attaining canonical_form. Entry q[i] is the old vertex assigned new label i."
+
+[[operations]]
+name = "automorphism_group"
+value = "graph_iso.groups"
+families = ["explicit", "symmetric_matrices"]
+summary = "For each graph A, every permutation g satisfying A[g[i],g[j]] = A[i,j], sorted lexicographically. Returning every element removes any choice of generators."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/graph_iso_generic.cpp"]
+accepts = "Undirected square adjacency matrices over F_2 with at least one vertex"
+summary = "Portable C++: one-dimensional Weisfeiler-Lehman refinement plus individualisation, exact branch-and-bound canonical search, and colour-refined automorphism backtracking; threads over family members."
+
+[[rejections]]
+case = "ternary adjacency"
+error = "over F_2"
+
+[[rejections]]
+case = "rectangular adjacency"
+error = "square"
+
+[[rejections]]
+case = "directed adjacency"
+error = "symmetric"
+
+[[rejections]]
+case = "all matrices family"
+error = "families only"

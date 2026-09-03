@@ -626,6 +626,49 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'transform over a prime field', 'error': 'defined on'},
                  {'case': 'nonsquare inverse', 'error': 'square'},
                  {'case': 'Grassmannian solve', 'error': 'explicit families only'}]},
+ {'backends': [{'accepts': 'Undirected square adjacency matrices over F_2 with at least one vertex',
+                'name': 'generic',
+                'sources': ['backends/generic/graph_iso_generic.cpp'],
+                'summary': 'Portable C++: one-dimensional Weisfeiler-Lehman refinement plus '
+                           'individualisation, exact branch-and-bound canonical search, and colour-refined '
+                           'automorphism backtracking; threads over family members.'}],
+  'kinds': [{'lean': 'group',
+             'name': 'graph_iso.groups',
+             'params': ['count', 'n'],
+             'payload': 'u64 offsets[count+1], then offsets[count]*n u32 images',
+             'summary': 'One automorphism group per input graph. Each group is its complete list of vertex '
+                        'permutations, sorted lexicographically; offsets delimit the groups.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Graph_iso/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'graph_iso',
+             'reference': 'lean/Graph_iso/Reference.lean',
+             'summary': 'Canonical labelling and complete automorphism groups of finite undirected F_2 '
+                        'adjacency matrices. Loops are allowed. The canonical form is the lexicographically '
+                        'least row-major adjacency matrix over all vertex orders; the canonical label is the '
+                        'lexicographically least order attaining it; automorphisms are returned in '
+                        'lexicographic order.',
+             'version': 1},
+  'operations': [{'families': ['explicit', 'symmetric_matrices'],
+                  'name': 'canonical_form',
+                  'summary': 'For each graph A, the lexicographically least row-major matrix A[q[i],q[j]] '
+                             'over all vertex orders q.',
+                  'value': 'gfp.matrix'},
+                 {'families': ['explicit', 'symmetric_matrices'],
+                  'name': 'canonical_label',
+                  'summary': 'For each graph, the lexicographically least vertex order q attaining '
+                             'canonical_form. Entry q[i] is the old vertex assigned new label i.',
+                  'value': 'orbits.perms'},
+                 {'families': ['explicit', 'symmetric_matrices'],
+                  'name': 'automorphism_group',
+                  'summary': 'For each graph A, every permutation g satisfying A[g[i],g[j]] = A[i,j], sorted '
+                             'lexicographically. Returning every element removes any choice of generators.',
+                  'value': 'graph_iso.groups'}],
+  'rejections': [{'case': 'ternary adjacency', 'error': 'over F_2'},
+                 {'case': 'rectangular adjacency', 'error': 'square'},
+                 {'case': 'directed adjacency', 'error': 'symmetric'},
+                 {'case': 'all matrices family', 'error': 'families only'}]},
  {'backends': [{'accepts': 'any F_2 matrix family; canonical_form enumerates row permutations and chooses '
                            'the best column order',
                 'name': 'generic',

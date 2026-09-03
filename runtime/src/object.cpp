@@ -472,6 +472,39 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->rsk_pairs = pairs;
         return R::success(o);
     }
+    if (h.kind == "graph_iso.groups") {
+        using G = Result<std::shared_ptr<Object>>;
+        auto count = need(h, "count"), n = need(h, "n");
+        for (auto *r : {&count, &n}) if (!r->ok) return G::failure(r->error.status, r->error.message);
+        if (n.value == 0 || n.value >= (1ULL << 32))
+            return G::failure(INVALID, "graph_iso.groups: need 1 <= n < 2^32");
+        if (((unsigned __int128)count.value + 1) * 8 > h.payload_len)
+            return G::failure(INVALID, "graph_iso.groups offsets truncated");
+        auto groups = std::make_shared<GraphGroups>();
+        groups->count = count.value; groups->n = n.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i <= count.value; ++i) groups->offsets.push_back(r.u64());
+        if (r.bad || groups->offsets.front() != 0)
+            return G::failure(INVALID, "graph_iso.groups offsets must start at zero");
+        for (uint64_t i = 0; i < count.value; ++i)
+            if (groups->offsets[i] > groups->offsets[i + 1])
+                return G::failure(INVALID, "graph_iso.groups offsets must be nondecreasing");
+        if (groups->offsets.back() > UINT64_MAX / n.value)
+            return G::failure(INVALID, "graph_iso.groups entry count overflows u64");
+        r.entries(groups->entries, groups->offsets.back() * n.value, 4);
+        if (r.bad || r.p != r.end) return G::failure(INVALID, "graph_iso.groups payload length mismatch");
+        for (uint64_t g = 0; g < groups->offsets.back(); ++g) {
+            std::vector<bool> seen(n.value, false);
+            for (uint64_t i = 0; i < n.value; ++i) {
+                Entry e = groups->entries[g * n.value + i];
+                if (e >= n.value || seen[e])
+                    return G::failure(INVALID, "graph_iso.groups element " + std::to_string(g) + " is not a permutation of 0..n-1");
+                seen[e] = true;
+            }
+        }
+        o->graph_groups = groups;
+        return G::success(o);
+    }
     if (h.kind == "gfp.basis") {
         auto p = need(h, "p"), count = need(h, "count"), cols = need(h, "cols");
         for (auto *r : {&p, &count, &cols}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -642,6 +675,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (matrix && matrix->p == NATURALS) return {{"count", matrix->count}, {"rows", matrix->rows}, {"cols", matrix->cols}};
     if (matrix) return {{"p", matrix->p}, {"count", matrix->count}, {"rows", matrix->rows}, {"cols", matrix->cols}};
     if (basis) return {{"p", basis->p}, {"count", basis->count}, {"cols", basis->cols}};
+    if (graph_groups) return {{"count", graph_groups->count}, {"n", graph_groups->n}};
     if (solutions) return {{"p", solutions->p}, {"count", solutions->count}, {"length", solutions->length}};
     if (inverses) return {{"p", inverses->p}, {"count", inverses->count}, {"n", inverses->n}};
     if (witness) return {{"p", witness->p}, {"count", witness->count}, {"rows", witness->rows}, {"cols", witness->cols}};
@@ -689,6 +723,10 @@ std::vector<uint8_t> encode(const Object &o) {
         w.u64s(o.basis->offsets);
         w.entries(o.basis->entries, entry_width(o.basis->p));
         write_header(out, "gfp.basis", o.params(), w.out);
+    } else if (o.graph_groups) {
+        w.u64s(o.graph_groups->offsets);
+        w.entries(o.graph_groups->entries, 4);
+        write_header(out, "graph_iso.groups", o.params(), w.out);
     } else if (o.solutions) {
         w.bytes(o.solutions->solvable);
         w.entries(o.solutions->entries, entry_width(o.solutions->p));

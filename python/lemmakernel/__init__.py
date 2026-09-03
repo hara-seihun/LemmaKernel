@@ -18,14 +18,14 @@ from pathlib import Path
 
 from . import interchange
 from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, Characters, Count, CurveGroups, CycleIndex, Extremum,
-                          Family, First, Histogram, Hits, Integers, Inverses, Matrix, Partitions, Perms,
+                          Family, First, GraphGroups, Histogram, Hits, Integers, Inverses, Matrix, Partitions, Perms,
                           PermutationGenerators, RskPairs, Solutions, U64Matrices, Witness, matrix, naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
            "Matrix", "Basis", "Solutions", "Inverses", "Witness", "BurnsideCounts", "CycleIndex", "U64Matrices",
            "Partitions", "Bsgs", "PermutationGenerators", "Characters", "RskPairs", "CurveGroups", "Integers",
-           "Count", "Histogram", "Hits", "First", "Extremum", "Family", "NATURALS"]
+           "Count", "Histogram", "Hits", "First", "Extremum", "Family", "GraphGroups", "NATURALS"]
 
 
 class Error(RuntimeError):

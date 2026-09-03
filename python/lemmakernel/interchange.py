@@ -194,6 +194,23 @@ def perms(n: int, data) -> Perms:
 
 
 @dataclass
+class GraphGroups:
+    """One complete, lexicographically sorted automorphism group per graph."""
+    count: int
+    n: int
+    offsets: list[int]
+    entries: object
+
+    def member(self, i: int):
+        a, b = self.offsets[i], self.offsets[i + 1]
+        return [[int(x) for x in self.entries[g * self.n:(g + 1) * self.n]] for g in range(a, b)]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.offsets)}Q", *self.offsets) + pack_entries(self.entries, 0)
+        return encode("graph_iso.groups", {"count": self.count, "n": self.n}, payload)
+
+
+@dataclass
 class Basis:
     p: int
     count: int
@@ -534,8 +551,9 @@ class Family:
         return encode("family." + self.kind, self.params, b"".join(c.encode() for c in self.children))
 
 
-KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "gfp.basis": Basis, "gfp.solutions": Solutions,
-         "gfp.inverses": Inverses, "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
+KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphGroups,
+         "gfp.basis": Basis, "gfp.solutions": Solutions, "gfp.inverses": Inverses,
+         "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
          "burnside.cycle_index": CycleIndex, "designs.matrix": U64Matrices,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
          "automorphisms.generators": PermutationGenerators, "young.characters": Characters,
@@ -570,6 +588,11 @@ def decode_at(buf: bytes, offset: int):
         return Matrix(q["p"], q["count"], q["rows"], q["cols"], unpack_entries(pl, q["p"], n)), end
     if k == "orbits.perms":
         return Perms(q["n"], q["count"], unpack_entries(pl, 0, q["count"] * q["n"])), end
+    if k == "graph_iso.groups":
+        width = 8 * (q["count"] + 1)
+        offsets = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
+        return GraphGroups(q["count"], q["n"], offsets,
+                           unpack_entries(pl[width:], 0, offsets[-1] * q["n"])), end
     if k == "lk.naturals":
         n = q["count"] * q["rows"] * q["cols"]
         return Matrix(NATURALS, q["count"], q["rows"], q["cols"], unpack_entries(pl, NATURALS, n)), end
