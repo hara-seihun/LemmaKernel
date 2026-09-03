@@ -165,7 +165,7 @@ struct Ambient {
 #define LK_INLINE inline __attribute__((always_inline))
 /* Basic-block vectorisation repacks the register array through the stack and reintroduces the
  * store-forwarding stall, so the kernels that use Words are compiled without it. */
-#define LK_SCALAR __attribute__((optimize("no-tree-slp-vectorize", "no-tree-vectorize")))
+#define LK_SCALAR __attribute__((optimize("no-tree-slp-vectorize", "no-tree-vectorize", "no-tree-loop-distribute-patterns", "no-store-merging")))
 template <int WT> struct Words {
     static LK_INLINE void or_shift(uint64_t *a, const uint64_t *src, int64_t s) {
         if (s >= 0) {
@@ -383,10 +383,6 @@ struct Walker {
      * has enough candidates; most children do not. The remaining bitsets of level j+1 are
      * produced by finish() when the level is about to be expanded. */
     bool push(int64_t j, uint64_t x) {
-        uint64_t *P0 = level(j, P), *R0 = level(j, PREV), *S0 = level(j, S), *D0 = level(j, D), *F0 = level(j, F);
-        uint64_t *P1 = level(j + 1, P), *R1 = level(j + 1, PREV), *S1 = level(j + 1, S), *D1 = level(j + 1, D),
-                 *F1 = level(j + 1, F);
-        bool alive = true;
         if (mode == Mode::Forbid && prob.sorted) {
             switch (W) {
             case 1: sorted_forbid<1>(j, x); break;
@@ -403,11 +399,15 @@ struct Walker {
             else if (!prob.interval) {
                 uint64_t *A0 = level_allowed(j), *A1 = level_allowed(j + 1);
                 std::memcpy(A1, A0, WA * 8);
-                forbid_new(F1, F0, A1);
+                forbid_new(level(j + 1, F), level(j, F), A1);
             }
             vals.push_back((uint32_t)x);
             return true;
         }
+        uint64_t *P0 = level(j, P), *R0 = level(j, PREV), *S0 = level(j, S), *D0 = level(j, D), *F0 = level(j, F);
+        uint64_t *P1 = level(j + 1, P), *R1 = level(j + 1, PREV), *S1 = level(j + 1, S), *D1 = level(j + 1, D),
+                 *F1 = level(j + 1, F);
+        bool alive = true;
         if (mode != Mode::Forbid) {
             std::memcpy(P1, P0, W * 8);
             set(P1, x);
