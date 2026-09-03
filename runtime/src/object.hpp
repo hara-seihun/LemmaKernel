@@ -113,6 +113,13 @@ struct PermutationGenerators {
     std::vector<Entry> entries;
 };
 
+/* Ragged square matrices of signed 64-bit integers. Offsets count entries, not rows. */
+struct SignedMatrices {
+    uint64_t count = 0;
+    std::vector<uint64_t> offsets;
+    std::vector<int64_t> entries;
+};
+
 struct Characters {
     std::vector<int64_t> values;
 };
@@ -178,6 +185,7 @@ struct Object {
     std::shared_ptr<Partitions> partitions;
     std::shared_ptr<Bsgs> bsgs;
     std::shared_ptr<PermutationGenerators> permutation_generators;
+    std::shared_ptr<SignedMatrices> signed_matrices;
     std::shared_ptr<Characters> characters;
     std::shared_ptr<RskPairs> rsk_pairs;
     std::shared_ptr<CurveGroups> curve_groups;

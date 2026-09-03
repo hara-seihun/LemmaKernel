@@ -19,14 +19,14 @@ from pathlib import Path
 from . import interchange
 from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, Characters, Count, CurveGroups, CycleIndex, Degrees,
                           Elements, Extremum, Family, First, GraphGroups, Histogram, Hits, Integers, Inverses, Matrix,
-                          Partitions, Perms, PermutationGenerators, RskPairs, Solutions, U64Matrices, Witness, matrix,
+                          MobiusMatrices, Partitions, Perms, PermutationGenerators, RskPairs, Solutions, U64Matrices, Witness, matrix,
                           naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
            "Matrix", "Basis", "Solutions", "Inverses", "Witness", "BurnsideCounts", "CycleIndex", "U64Matrices",
-           "Partitions", "Bsgs", "PermutationGenerators", "Characters", "RskPairs", "CurveGroups", "Elements",
-           "Degrees", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family", "GraphGroups",
+           "Partitions", "Bsgs", "PermutationGenerators", "MobiusMatrices", "Characters", "RskPairs", "CurveGroups",
+           "Elements", "Degrees", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family", "GraphGroups",
            "NATURALS"]
 
 
@@ -166,7 +166,7 @@ _PARAM_NAMES = {
     "gfp.witness": ["p", "count", "rows", "cols"], "burnside.counts": ["count"],
     "burnside.cycle_index": ["degree", "count", "denominator"], "designs.matrix": ["count", "rows", "cols"],
     "perm_groups.partition": ["count", "n"], "perm_groups.bsgs": ["count", "n"],
-    "automorphisms.generators": ["count", "order"], "young.characters": ["count"],
+    "automorphisms.generators": ["count", "order"], "posets.mobius": ["count"], "young.characters": ["count"],
     "young.rsk_pairs": ["count", "length"], "elliptic_curves_fp.group": ["count"],
     "polynomials_fq.elements": ["p", "count"], "polynomials_fq.degrees": ["count"],
     "integers": ["count"],

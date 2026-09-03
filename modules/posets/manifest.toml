@@ -1,0 +1,101 @@
+# posets: finite posets presented by order relations, subsets, or divisors.
+
+[module]
+name = "posets"
+version = 1
+summary = "Finite posets from explicit order-relation matrices, rows ordered by support inclusion, or positive integers ordered through their divisors: Möbius matrices, linear extensions, lattice tests, width, height, and order-polynomial values. Möbius matrices use input labels in row-major order."
+lean = "lean"
+contract = "lean/Posets/Contract.lean"
+reference = "lean/Posets/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+# Inputs are selected by family kind, without another representation layer:
+#   explicit: each square 0/1 member is the full matrix [i <= j];
+#   subsets/subsets_of: each member's rows are sets, represented by their nonzero supports,
+#                       and are ordered by inclusion;
+#   range: the member x is the poset of positive divisors of x, in increasing order.
+# Explicit relations must be reflexive, antisymmetric, and transitive. Duplicate supports and x=0
+# are rejected. All element labels and materialised matrices retain these canonical orders.
+
+[[kinds]]
+name = "posets.mobius"
+params = ["count"]
+payload = "u64 offsets[count+1], then signed little-endian i64 entries; each segment is a square matrix"
+lean = "mobius"
+summary = "A ragged batch of signed Möbius-function matrices. Matrix i uses the input poset's element order and row-major entries mu(x,y), with zero for x not <= y."
+
+[[operations]]
+name = "mobius_function"
+value = "posets.mobius"
+families = ["explicit", "subsets", "subsets_of", "range"]
+summary = "The signed Möbius matrix mu(x,y), in canonical element order; zero unless x <= y."
+
+[[operations]]
+name = "linear_extension_count"
+value = "integer"
+families = ["explicit", "subsets", "subsets_of", "range"]
+summary = "Number of total orders on the labelled elements that extend the partial order. The generic backend accepts at most 24 elements and fails if the answer exceeds 2^64-1."
+
+[[operations]]
+name = "is_lattice"
+value = "boolean"
+families = ["explicit", "subsets", "subsets_of", "range"]
+summary = "Whether every pair has a unique meet and join. This pairwise condition is vacuously true for the empty poset."
+
+[[operations]]
+name = "is_distributive"
+value = "boolean"
+families = ["explicit", "subsets", "subsets_of", "range"]
+summary = "Whether the poset is a lattice and both distributive identities hold for every labelled triple."
+
+[[operations]]
+name = "width"
+value = "integer"
+families = ["explicit", "subsets", "subsets_of", "range"]
+summary = "Maximum cardinality of an antichain; zero for the empty poset."
+
+[[operations]]
+name = "height"
+value = "integer"
+families = ["explicit", "subsets", "subsets_of", "range"]
+summary = "Maximum cardinality of a chain; zero for the empty poset."
+
+[[operations]]
+name = "order_polynomial"
+value = "integer"
+args = { t = "int" }
+families = ["explicit", "subsets", "subsets_of", "range"]
+summary = "Value Omega_P(t): the number of weakly order-preserving maps P -> {0,...,t-1}. The generic backend accepts at most 24 elements and fails if the answer exceeds 2^64-1."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/posets_generic.cpp"]
+accepts = "explicit relation matrices, subsets/subsets_of under support inclusion, and range members through positive divisors; dynamic-programming operations accept at most 24 elements"
+summary = "Portable C++: exact subset dynamic programming for extension and order-polynomial counts, bipartite matching for width, and polynomial-time relation scans for the remaining operations; members run in parallel."
+
+[[rejections]]
+case = "non-poset relation"
+error = "partial order"
+
+[[rejections]]
+case = "duplicate subsets"
+error = "duplicate supports"
+
+[[rejections]]
+case = "divisors of zero"
+error = "positive"
+
+[[rejections]]
+case = "words are not posets"
+error = "is defined on"
+
+[[rejections]]
+case = "25-element antichain"
+op = "linear_extension_count"
+error = "at most 24"
+
+[[rejections]]
+case = "25-element antichain"
+op = "order_polynomial"
+error = "at most 24"

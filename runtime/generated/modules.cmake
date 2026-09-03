@@ -40,6 +40,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/permutation_stati
 # module permutation_statistics: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/polynomials_fq/backends/generic/polynomials_fq_generic.cpp)
 # module polynomials_fq: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/posets/backends/generic/posets_generic.cpp)
+# module posets: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/projective_sets/backends/generic/projective_sets_generic.cpp)
 # module projective_sets: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/quantum_codes/backends/generic/quantum_codes_generic.cpp)

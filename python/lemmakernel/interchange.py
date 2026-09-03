@@ -11,6 +11,7 @@ kernel output against naive output byte for byte).
 """
 from __future__ import annotations
 
+import math
 import struct
 from dataclasses import dataclass, field
 
@@ -429,6 +430,26 @@ class PermutationGenerators:
 
 
 @dataclass
+class MobiusMatrices:
+    """A ragged batch of signed square matrices, one Möbius matrix per poset."""
+    count: int
+    offsets: list[int]
+    entries: list[int]
+
+    def member(self, i: int):
+        a, b = self.offsets[i], self.offsets[i + 1]
+        n = math.isqrt(b - a)
+        if n * n != b - a:
+            raise ValueError("posets.mobius member is not square")
+        return [[int(self.entries[a + r * n + c]) for c in range(n)] for r in range(n)]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.offsets)}Q", *self.offsets)
+        payload += struct.pack(f"<{len(self.entries)}q", *self.entries)
+        return encode("posets.mobius", {"count": self.count}, payload)
+
+
+@dataclass
 class Characters:
     values: list[int]
 
@@ -587,7 +608,8 @@ KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphG
          "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
          "burnside.cycle_index": CycleIndex, "designs.matrix": U64Matrices,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
-         "automorphisms.generators": PermutationGenerators, "young.characters": Characters,
+         "automorphisms.generators": PermutationGenerators, "posets.mobius": MobiusMatrices,
+         "young.characters": Characters,
          "young.rsk_pairs": RskPairs, "elliptic_curves_fp.group": CurveGroups,
          "polynomials_fq.elements": Elements, "polynomials_fq.degrees": Degrees, "integers": Integers,
          "count": Count, "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
@@ -686,6 +708,17 @@ def decode_at(buf: bytes, offset: int):
         offsets = list(struct.unpack_from(f"<{noff}Q", pl, 0))
         entries = unpack_entries(pl[8 * noff:], 0, offsets[-1] * q["order"])
         return PermutationGenerators(q["count"], q["order"], offsets, entries), end
+    if k == "posets.mobius":
+        count = q["count"]
+        offset_bytes = 8 * (count + 1)
+        if len(pl) < offset_bytes:
+            raise ValueError("posets.mobius offsets truncated")
+        offsets = list(struct.unpack_from(f"<{count + 1}Q", pl, 0))
+        rest = pl[offset_bytes:]
+        if offsets[0] != 0 or any(a > b for a, b in zip(offsets, offsets[1:])) or len(rest) != offsets[-1] * 8:
+            raise ValueError("posets.mobius invalid offsets or payload length")
+        entries = list(struct.unpack_from(f"<{offsets[-1]}q", rest, 0))
+        return MobiusMatrices(count, offsets, entries), end
     if k == "young.characters":
         return Characters(list(struct.unpack_from(f"<{q['count']}q", pl, 0))), end
     if k == "young.rsk_pairs":

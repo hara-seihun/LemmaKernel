@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cmath>
 #include <cstring>
 
 namespace lk {
@@ -655,6 +656,28 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->permutation_generators = g;
         return R::success(o);
     }
+    if (h.kind == "posets.mobius") {
+        auto count = need(h, "count");
+        if (!count.ok) return R::failure(count.error.status, count.error.message);
+        if (count.value == UINT64_MAX || count.value + 1 > h.payload_len / 8)
+            return R::failure(INVALID, "posets.mobius offsets truncated");
+        auto z = std::make_shared<SignedMatrices>();
+        z->count = count.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i <= count.value; ++i) z->offsets.push_back(r.u64());
+        if (r.bad || z->offsets.front() != 0) return R::failure(INVALID, "posets.mobius invalid offsets");
+        for (uint64_t i = 0; i < count.value; ++i) {
+            if (z->offsets[i] > z->offsets[i + 1]) return R::failure(INVALID, "posets.mobius offsets are not monotone");
+            uint64_t len = z->offsets[i + 1] - z->offsets[i];
+            uint64_t n = static_cast<uint64_t>(std::sqrt(static_cast<long double>(len)));
+            if (n * n != len) return R::failure(INVALID, "posets.mobius member is not square");
+        }
+        if (z->offsets.back() > (uint64_t)(r.end - r.p) / 8 || z->offsets.back() * 8 != (uint64_t)(r.end - r.p))
+            return R::failure(INVALID, "posets.mobius payload length mismatch");
+        for (uint64_t i = 0; i < z->offsets.back(); ++i) z->entries.push_back(std::bit_cast<int64_t>(r.u64()));
+        o->signed_matrices = z;
+        return R::success(o);
+    }
     return R::failure(INVALID, "unknown object kind " + h.kind);
 }
 
@@ -713,6 +736,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (partitions) return {{"count", partitions->count}, {"n", partitions->n}};
     if (bsgs) return {{"count", bsgs->count}, {"n", bsgs->n}};
     if (permutation_generators) return {{"count", permutation_generators->count}, {"order", permutation_generators->order}};
+    if (signed_matrices) return {{"count", signed_matrices->count}};
     if (characters) return {{"count", characters->values.size()}};
     if (rsk_pairs) return {{"count", rsk_pairs->count}, {"length", rsk_pairs->length}};
     if (curve_groups) return {{"count", curve_groups->count}};
@@ -798,6 +822,10 @@ std::vector<uint8_t> encode(const Object &o) {
         w.u64s(o.permutation_generators->offsets);
         w.entries(o.permutation_generators->entries, 4);
         write_header(out, "automorphisms.generators", o.params(), w.out);
+    } else if (o.signed_matrices) {
+        w.u64s(o.signed_matrices->offsets);
+        w.i64s(o.signed_matrices->entries);
+        write_header(out, "posets.mobius", o.params(), w.out);
     } else if (o.characters) {
         w.i64s(o.characters->values);
         write_header(out, "young.characters", o.params(), w.out);

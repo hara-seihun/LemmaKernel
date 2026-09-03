@@ -1308,6 +1308,74 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'naturals family', 'error': 'no available backend accepts', 'op': 'root_count'},
                  {'case': 'degree 32 over F_2', 'error': 'residue ring', 'op': 'order'},
                  {'case': 'degree 32 over F_2', 'error': 'residue ring', 'op': 'is_primitive'}]},
+ {'backends': [{'accepts': 'explicit relation matrices, subsets/subsets_of under support inclusion, and '
+                           'range members through positive divisors; dynamic-programming operations accept '
+                           'at most 24 elements',
+                'name': 'generic',
+                'sources': ['backends/generic/posets_generic.cpp'],
+                'summary': 'Portable C++: exact subset dynamic programming for extension and '
+                           'order-polynomial counts, bipartite matching for width, and polynomial-time '
+                           'relation scans for the remaining operations; members run in parallel.'}],
+  'kinds': [{'lean': 'mobius',
+             'name': 'posets.mobius',
+             'params': ['count'],
+             'payload': 'u64 offsets[count+1], then signed little-endian i64 entries; each segment is a '
+                        'square matrix',
+             'summary': "A ragged batch of signed Möbius-function matrices. Matrix i uses the input poset's "
+                        'element order and row-major entries mu(x,y), with zero for x not <= y.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Posets/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'posets',
+             'reference': 'lean/Posets/Reference.lean',
+             'summary': 'Finite posets from explicit order-relation matrices, rows ordered by support '
+                        'inclusion, or positive integers ordered through their divisors: Möbius matrices, '
+                        'linear extensions, lattice tests, width, height, and order-polynomial values. '
+                        'Möbius matrices use input labels in row-major order.',
+             'version': 1},
+  'operations': [{'families': ['explicit', 'subsets', 'subsets_of', 'range'],
+                  'name': 'mobius_function',
+                  'summary': 'The signed Möbius matrix mu(x,y), in canonical element order; zero unless x <= '
+                             'y.',
+                  'value': 'posets.mobius'},
+                 {'families': ['explicit', 'subsets', 'subsets_of', 'range'],
+                  'name': 'linear_extension_count',
+                  'summary': 'Number of total orders on the labelled elements that extend the partial order. '
+                             'The generic backend accepts at most 24 elements and fails if the answer '
+                             'exceeds 2^64-1.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'subsets', 'subsets_of', 'range'],
+                  'name': 'is_lattice',
+                  'summary': 'Whether every pair has a unique meet and join. This pairwise condition is '
+                             'vacuously true for the empty poset.',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'subsets', 'subsets_of', 'range'],
+                  'name': 'is_distributive',
+                  'summary': 'Whether the poset is a lattice and both distributive identities hold for every '
+                             'labelled triple.',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'subsets', 'subsets_of', 'range'],
+                  'name': 'width',
+                  'summary': 'Maximum cardinality of an antichain; zero for the empty poset.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'subsets', 'subsets_of', 'range'],
+                  'name': 'height',
+                  'summary': 'Maximum cardinality of a chain; zero for the empty poset.',
+                  'value': 'integer'},
+                 {'args': {'t': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of', 'range'],
+                  'name': 'order_polynomial',
+                  'summary': 'Value Omega_P(t): the number of weakly order-preserving maps P -> {0,...,t-1}. '
+                             'The generic backend accepts at most 24 elements and fails if the answer '
+                             'exceeds 2^64-1.',
+                  'value': 'integer'}],
+  'rejections': [{'case': 'non-poset relation', 'error': 'partial order'},
+                 {'case': 'duplicate subsets', 'error': 'duplicate supports'},
+                 {'case': 'divisors of zero', 'error': 'positive'},
+                 {'case': 'words are not posets', 'error': 'is defined on'},
+                 {'case': '25-element antichain', 'error': 'at most 24', 'op': 'linear_extension_count'},
+                 {'case': '25-element antichain', 'error': 'at most 24', 'op': 'order_polynomial'}]},
  {'backends': [{'accepts': 'subsets of coordinate rows over any prime p < 2^32; line and hyperplane '
                            'incidence is precomputed once per request',
                 'name': 'generic',
