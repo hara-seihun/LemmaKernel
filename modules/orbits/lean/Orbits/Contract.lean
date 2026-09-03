@@ -54,7 +54,7 @@ theorem stabilizerOrder_spec (g : Group) (f : Family) (hg : actsOn g f = true) (
 /-- Cauchy-Frobenius: the fixed-point counts over the group sum to `|G|` times the number of orbits.
 Stated for permutation groups on subsets, which is where `fixed_points` is defined. -/
 theorem burnside (gens : List Perm) (p : ℕ) (d : List Vec) (k : ℕ) (h : gens.all (·.length = d.length) = true) :
-    ∀ xs c N, run (.fixedPoints (.subsets p d k)) (.groupElements gens) .all = .integers xs →
+    ∀ xs c N, run (.fixedPoints (.subsets p d k)) (.groupElements 0 (gens.map ([·]))) .all = .integers xs →
       run (.isCanonical (.perms gens)) (.subsets p d k) .count = .count c N →
       xs.sum = (permElements gens).length * c := by
   sorry

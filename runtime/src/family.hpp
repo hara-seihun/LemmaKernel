@@ -23,9 +23,9 @@ struct Family {
     std::shared_ptr<Family> child;
     uint64_t p = 0, k = 0, n = 0, h = 0, m = 0; /* Words: p is the alphabet size, n the length */
     uint64_t a = 0, b = 0;                     /* Range: [a, b). Partitions: flags distinct, odd. */
-    /* GroupElements: every element of the generated permutation group, sorted lexicographically,
-     * computed on first use (count x n entries). Read through the atomic pointer so that the
-     * per-member fast path takes no lock. */
+    /* GroupElements: every element of the generated permutation or matrix group, sorted
+     * lexicographically by flat entries and computed on first use. Read through the atomic
+     * pointer so that the per-member fast path takes no lock. */
     mutable std::shared_ptr<const std::vector<Entry>> elements;
     mutable std::atomic<const std::vector<Entry> *> elements_ready{nullptr};
     /* Grassmannian: pivot sets and offsets, computed on first use. */
@@ -42,7 +42,7 @@ struct Family {
     /* Inverse of member(): the canonical index of a member given as its rows. Only kinds with a
      * closed-form order support it (subsets, grassmannian, all_matrices, group_elements). */
     Result<uint64_t> index_of(const Matrix &member) const;
-    /* Group order (GroupElements only); computes the closure. */
+    /* Group elements (GroupElements only); computes the closure. */
     Result<const std::vector<Entry> *> group_elements() const;
     Result<const PivotTable *> pivot_table() const;
 
@@ -86,9 +86,9 @@ Result<std::shared_ptr<Family>> make_partitions(uint64_t total, uint64_t max_par
 Result<std::shared_ptr<Family>> make_compositions(uint64_t total, uint64_t parts, uint64_t max_part);
 Result<std::shared_ptr<Family>> make_standard_tableaux(std::shared_ptr<Matrix> shape);
 
-/* Closure of a set of permutations (count x n, p == 0) under composition: every element of the
- * generated group, sorted lexicographically. Fails above `limit` elements. */
+/* Closures under composition or multiplication, sorted lexicographically. */
 Result<std::vector<Entry>> permutation_closure(const Matrix &generators, uint64_t limit);
+Result<std::vector<Entry>> matrix_closure(const Matrix &generators, uint64_t limit);
 
 const char *family_kind_name(Family::Kind k);
 

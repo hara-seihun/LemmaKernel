@@ -1,0 +1,73 @@
+# char_poly: polynomial invariants and conjugacy data for square matrices over prime fields.
+
+[module]
+name = "char_poly"
+version = 1
+summary = "Characteristic and minimal polynomials, rational canonical forms, GL conjugacy labels, regularity, semisimplicity, and element orders over F_p. Polynomial coefficients are constant-first and padded with zeros to degree n."
+lean = "lean"
+contract = "lean/Char_poly/Contract.lean"
+reference = "lean/Char_poly/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+# Polynomial-valued operations use gfp.matrix rather than a second polynomial encoding. For an
+# n x n input, one polynomial is a 1 x (n+1) matrix [c_0, ..., c_n], constant coefficient first.
+# The minimal polynomial has zeros after its monic leading coefficient.
+
+[[operations]]
+name = "charpoly"
+value = "gfp.matrix"
+families = ["explicit", "all_matrices", "group_elements"]
+summary = "det(xI-A), as one constant-first monic coefficient row of length n+1 per member."
+
+[[operations]]
+name = "minpoly"
+value = "gfp.matrix"
+families = ["explicit", "all_matrices", "group_elements"]
+summary = "The monic minimal polynomial, constant-first and padded with trailing zeros to length n+1."
+
+[[operations]]
+name = "rational_canonical_form"
+value = "gfp.matrix"
+families = ["explicit", "all_matrices", "group_elements"]
+summary = "Block diagonal row-companion matrices for the nonconstant invariant factors q_1 | ... | q_r, in that order. A row companion has superdiagonal ones and last row [-c_0, ..., -c_{d-1}] for q=x^d+sum c_i*x^i."
+
+[[operations]]
+name = "conjugacy_label"
+value = "gfp.matrix"
+families = ["explicit", "all_matrices", "group_elements"]
+summary = "Complete GL(n,p)-conjugacy label: invariant factors q_1 | ... | q_r in the first r rows of an n x (n+1) matrix, constant-first and zero-padded; remaining rows are zero."
+
+[[operations]]
+name = "is_regular"
+value = "boolean"
+families = ["explicit", "all_matrices", "group_elements"]
+summary = "Whether the minimal polynomial has degree n, equivalently the centralizer algebra has dimension n."
+
+[[operations]]
+name = "is_semisimple"
+value = "boolean"
+families = ["explicit", "all_matrices", "group_elements"]
+summary = "Whether the minimal polynomial is squarefree, equivalently semisimple over an algebraic closure."
+
+[[operations]]
+name = "element_order"
+value = "integer"
+families = ["explicit", "all_matrices", "group_elements"]
+summary = "Multiplicative order in GL(n,p), or 0 for a singular matrix."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/char_poly_generic.cpp"]
+accepts = "square matrices over any p < 2^32 for charpoly, minpoly, is_regular and is_semisimple; rational forms, labels and element orders when p^n <= 2^20"
+summary = "Portable C++: Hessenberg characteristic polynomials, Krylov minimal polynomials, nullity-derived invariant factors, and exact repeated multiplication for bounded element orders; threaded over members."
+
+[[rejections]]
+case = "nonsquare explicit"
+op = "charpoly"
+error = "square"
+
+[[rejections]]
+case = "permutation group"
+op = "charpoly"
+error = "no available backend"

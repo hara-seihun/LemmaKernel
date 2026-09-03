@@ -46,6 +46,22 @@ def perm_closure(gens: list[list[int]]) -> list[list[int]]:
     return sorted(queue)
 
 
+def matrix_closure(gens: list[list[list[int]]], p: int) -> list[list[list[int]]]:
+    """Every element of the generated matrix group, sorted by flattened entries."""
+    n = len(gens[0])
+    identity = [[int(i == j) for j in range(n)] for i in range(n)]
+    seen = {tuple(map(tuple, identity))}
+    queue = [identity]
+    for a in queue:
+        for gen in gens:
+            b = matmul(a, gen, p)
+            key = tuple(map(tuple, b))
+            if key not in seen:
+                seen.add(key)
+                queue.append(b)
+    return sorted(queue)
+
+
 # ---- families -----------------------------------------------------------------------------------
 
 def batch_members(m: Matrix | Perms):
@@ -151,7 +167,7 @@ def prime(f: Family) -> int:
     if f.kind in ("group_tables", "range", "words", "partitions", "compositions", "standard_tableaux"):
         return NATURALS
     if f.kind == "group_elements":
-        return 0
+        return f.children[0].p if isinstance(f.children[0], Matrix) else 0
     if "p" in f.params:
         return f.params["p"]
     child = f.children[0]
@@ -199,8 +215,11 @@ def iter_members(f: Family):
             yield m + extra
     elif f.kind == "group_elements":
         (gens,) = f.children
-        for g in perm_closure(gens.tolist()):
-            yield [g]
+        if hasattr(gens, "p"):
+            yield from matrix_closure(gens.tolist(), gens.p)
+        else:
+            for g in perm_closure(gens.tolist()):
+                yield [g]
     elif f.kind == "range":
         for x in range(f.params["a"], f.params["b"]):
             yield [[x]]

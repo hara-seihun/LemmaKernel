@@ -116,44 +116,10 @@ struct MatOnFamily {
     }
 };
 
-/* Closure of n x n matrices over F_p under multiplication, up to `limit` elements. */
 Result<uint64_t> matrix_group_order(const Matrix &gens, uint64_t limit) {
-    uint64_t n = gens.cols, nn = n * n, p = gens.p;
-    gfp::Field field(p);
-    std::vector<Entry> store;
-    struct Hash {
-        const std::vector<Entry> *store; uint64_t nn;
-        size_t operator()(uint64_t i) const {
-            uint64_t h = 1469598103934665603ULL;
-            for (uint64_t j = 0; j < nn; ++j) { h ^= (*store)[i * nn + j]; h *= 1099511628211ULL; }
-            return (size_t)h;
-        }
-    };
-    struct Eq {
-        const std::vector<Entry> *store; uint64_t nn;
-        bool operator()(uint64_t a, uint64_t b) const { return std::equal(store->begin() + a * nn, store->begin() + (a + 1) * nn, store->begin() + b * nn); }
-    };
-    std::unordered_set<uint64_t, Hash, Eq> seen(64, Hash{&store, nn}, Eq{&store, nn});
-    for (uint64_t i = 0; i < n; ++i)
-        for (uint64_t j = 0; j < n; ++j) store.push_back(i == j);
-    seen.insert(0);
-    std::vector<Entry> tmp(nn);
-    for (uint64_t front = 0; front < store.size() / nn; ++front) {
-        for (uint64_t g = 0; g < gens.count; ++g) {
-            const Entry *a = store.data() + front * nn, *b = gens.at(g);
-            for (uint64_t i = 0; i < n; ++i)
-                for (uint64_t j = 0; j < n; ++j) {
-                    uint64_t acc = 0;
-                    for (uint64_t l = 0; l < n; ++l) acc = field.reduce(acc + (uint64_t)a[i * n + l] * b[l * n + j]);
-                    tmp[i * n + j] = (Entry)acc;
-                }
-            uint64_t idx = store.size() / nn;
-            store.insert(store.end(), tmp.begin(), tmp.end());
-            if (!seen.insert(idx).second) store.resize(idx * nn);
-            else if (idx + 1 > limit) return Result<uint64_t>::failure(INVALID, "group has more than " + std::to_string(limit) + " elements");
-        }
-    }
-    return Result<uint64_t>::success(store.size() / nn);
+    auto elements = matrix_closure(gens, limit);
+    if (!elements.ok) return Result<uint64_t>::failure(elements.error.status, elements.error.message);
+    return Result<uint64_t>::success(elements.value.size() / (gens.rows * gens.cols));
 }
 
 struct Setup {
@@ -299,6 +265,7 @@ uint64_t fixed_subsets(const Entry *perm, uint64_t n, uint64_t k, std::vector<ui
 
 R run_fixed_points(const Request &req) {
     const Family &group = *req.family;
+    if (group.prime() != 0) return R::failure(INVALID, "fixed_points needs a permutation group_elements family");
     auto it = req.handle_args.find("on");
     if (it == req.handle_args.end() || !it->second->family) return R::failure(INVALID, "`on` must be a family");
     const Family &on = *it->second->family;

@@ -94,8 +94,9 @@ inductive Value
 
 def run (op : Op) (f : Family) (red : Red) : Result Value :=
   match f with
-  | .subsetsOf (.groupElements gens) _ =>
-    let elems := permElements gens
+  | .subsetsOf (.groupElements p gens) _ =>
+    if p ≠ 0 then .invalid else
+    let elems := permElements (gens.map (·.headD []))
     let ms := f.members
     match op with
     | .isDifferenceSet => reduceBool red ms (ms.map fun d => isDifferenceSet elems d)

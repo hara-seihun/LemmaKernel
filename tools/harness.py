@@ -168,7 +168,9 @@ def lean_family(f: ic.Family) -> str:
         return f"(.{ctor} {lean_family(inner)} {L(rows.member(0))})"
     if f.kind == "group_elements":
         (gens,) = f.children
-        return f"(.{ctor} {L(gens.tolist())})"
+        if isinstance(gens, ic.Perms):
+            return f"(.{ctor} 0 {L([[g] for g in gens.tolist()])})"
+        return f"(.{ctor} {gens.p} {L(gens.tolist())})"
     if f.kind == "group_tables":
         (tables,) = f.children
         return f"(.{ctor} {L(tables.tolist())})"

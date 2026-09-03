@@ -29,10 +29,10 @@ Vocabulary, in the order a request is built:
 
 - **family**: a description of a set of objects with a canonical order (`explicit`, `subsets`
   of a dictionary, `subsets_of` another family, `grassmannian`, `all_matrices`,
-  `symmetric_matrices`, the `transform`/`stack` wrappers, `group_elements` of a permutation
-  group, `group_tables` from stored Cayley tables or permutation generators, `range`/`words` of
-  natural numbers, constrained `partitions`, `compositions`, and `standard_tableaux`). Family sizes in the hundreds of
-  millions are normal.
+  `symmetric_matrices`, the `transform`/`stack` wrappers, `group_elements` of a permutation or
+  matrix group, `group_tables` from stored Cayley tables or permutation generators, `range`/`words`
+  of natural numbers, constrained `partitions`, `compositions`, and `standard_tableaux`). Family
+  sizes in the hundreds of millions are normal.
 - **operation**: what to compute per member (`gfp.rank`, `gfp.in_span`, `gfp.rref`, ...).
 - **reduction**: what to bring back. For booleans: `count`, `hits`, `first` (the least hit,
   stopping early), `all`. For integers: `histogram`, `sum`, `max`, `min` (with the member
@@ -86,6 +86,7 @@ and committed; the build refuses to configure if they are stale.
 | [automorphisms](modules/automorphisms/manifest.toml) | automorphism groups of finite groups: order, canonical generators, holomorph order, and outer automorphism group order | `generic` (propagated partial table isomorphisms, portable C++) |
 | [burnside](modules/burnside/manifest.toml) | orbit counts, fixed counts, and canonical cycle indices for permutation groups on subsets and words, without enumerating the acted-on family | `generic` (cycle-type formulas, portable C++) |
 | [cayley](modules/cayley/manifest.toml) | simple undirected Cayley graphs of finite permutation groups: connectivity, regularity, girth, diameter, graph automorphism order, and the CI property of a connection set | `generic` (exact group closure, graph search, partition refinement and individualisation, portable C++) |
+| [char_poly](modules/char_poly/manifest.toml) | characteristic and minimal polynomials, rational canonical form, GL conjugacy labels, regularity, semisimplicity, and element order | `generic` (portable C++; bounded rational-form factor search and element orders) |
 | [designs](modules/designs/manifest.toml) | whole-family tests and data for finite block designs: t-design multiplicities, resolutions, dual 2-designs, intersections, and Kramer-Mesner matrices | `generic` (portable C++) |
 | [difference_sets](modules/difference_sets/manifest.toml) | difference sets, difference multisets, regular partial difference sets, and relative difference sets in finite permutation groups | `generic` (depth-first multiplicity pruning, portable C++) |
 | [elliptic_curves_fp](modules/elliptic_curves_fp/manifest.toml) | curves `y^2 = x^3 + ax + b` over `F_p` (`p > 3`) from families of `(a, b)` pairs: point counts, singularity, supersingularity, j-invariants, `F_p`-isomorphism classes and the invariant factors of `E(F_p)` | `generic` (per-request square-root tables, per-member third differences, portable C++) |

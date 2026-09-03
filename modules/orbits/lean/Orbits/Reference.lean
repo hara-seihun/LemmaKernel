@@ -106,12 +106,14 @@ def run (op : Op) (f : Family) (red : Red) : Result Value :=
   | .canonicalIndex g, _ => orbitOp g f red leastOf false
   | .orbitSize g, _ => orbitOp g f red (·.length) false
   | .stabilizerOrder g, _ => orbitOp g f red (fun o => g.order / o.length) false
-  | .fixedPoints on, .groupElements gens =>
+  | .fixedPoints on, .groupElements p gens =>
+    if p ≠ 0 then .invalid else
+    let perms := gens.map (·.headD [])
     match on.dictionary with
     | some d =>
-      if !gens.all (·.length = d.length) then .invalid else
+      if !perms.all (·.length = d.length) then .invalid else
       let ks := subsetKeys d on.subsetSize
-      reduceInt red f.members ((permElements gens).map fun g => (ks.filter fun m => actPerm g m = m).length)
+      reduceInt red f.members ((permElements perms).map fun g => (ks.filter fun m => actPerm g m = m).length)
     | none => .invalid
   | .projectiveAction pts, .explicit p batch =>
     let images := batch.map fun a => pts.map fun v => normalise p ((matmul p [v] a).headD [])

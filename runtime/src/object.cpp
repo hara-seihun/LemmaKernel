@@ -258,7 +258,7 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         return make_grassmannian(p.value, n.value, hh.value);
     }
     if (sub == "group_elements") {
-        auto g = child_object("orbits.perms");
+        auto g = child_object("matrix");
         if (!g.ok) return R::failure(g.error.status, g.error.message);
         return make_group_elements(g.value->matrix);
     }

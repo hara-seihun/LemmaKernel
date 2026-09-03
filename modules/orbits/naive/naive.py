@@ -27,24 +27,6 @@ _spec.loader.exec_module(gfp)
 perm_closure = rt.perm_closure
 
 
-# ---- groups -------------------------------------------------------------------------------------
-
-
-def matrix_closure(gens: list[list[list[int]]], p: int) -> list[list[list[int]]]:
-    n = len(gens[0])
-    identity = [[int(i == j) for j in range(n)] for i in range(n)]
-    seen = {tuple(map(tuple, identity))}
-    queue = [identity]
-    for a in queue:
-        for gen in gens:
-            b = gfp.matmul(a, gen, p)
-            key = tuple(map(tuple, b))
-            if key not in seen:
-                seen.add(key)
-                queue.append(b)
-    return queue
-
-
 # ---- actions on members -------------------------------------------------------------------------
 
 def keys(family: Family, members):
@@ -146,6 +128,6 @@ def run(op: str, family: Family, reduction: str = "all", prefix: int | None = No
     elif op == "orbit_size":
         values = [len(o) for o in orbits]
     else:
-        order = len(perm_closure(gens)) if isinstance(group, Perms) else len(matrix_closure(gens, p))
+        order = len(perm_closure(gens)) if isinstance(group, Perms) else len(rt.matrix_closure(gens, p))
         values = [order // len(o) for o in orbits]
     return rt.reduce_int(reduction, values, members, p)

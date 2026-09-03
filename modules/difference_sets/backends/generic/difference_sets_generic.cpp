@@ -69,6 +69,8 @@ Result<Setup> setup(const Request &req, bool predicate) {
     const Family &f = *req.family;
     if (f.kind != Family::Kind::SubsetsOf || !f.child || f.child->kind != Family::Kind::GroupElements)
         return S::failure(INVALID, "difference_sets needs subsets_of(group_elements(G), k)");
+    if (f.child->prime() != 0)
+        return S::failure(INVALID, "difference_sets needs a permutation group");
 
     Setup s;
     s.family = &f;

@@ -250,7 +250,7 @@ uint64_t Family::rows() const {
     case Kind::AllMatrices: return m;
     case Kind::Transform: return child->rows();
     case Kind::Stack: return child->rows() + data->rows;
-    case Kind::GroupElements: return 1;
+    case Kind::GroupElements: return data->rows;
     case Kind::SubsetsOf: return k;
     case Kind::SymmetricMatrices: return n;
     case Kind::Range: return 1;
@@ -330,7 +330,7 @@ Result<uint64_t> Family::size() const {
     case Kind::GroupElements: {
         auto g = group_elements();
         if (!g.ok) return Result<uint64_t>::failure(g.error.status, g.error.message);
-        return Result<uint64_t>::success(g.value->size() / data->cols);
+        return Result<uint64_t>::success(g.value->size() / (data->rows * data->cols));
     }
     }
     return Result<uint64_t>::failure(INTERNAL, "unknown family kind");
@@ -549,7 +549,8 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
     case Kind::GroupElements: {
         auto g = group_elements();
         if (!g.ok) return fail(g.error.status, g.error.message);
-        out.entries.assign(g.value->begin() + index * out.cols, g.value->begin() + (index + 1) * out.cols);
+        uint64_t stride = out.rows * out.cols;
+        out.entries.assign(g.value->begin() + index * stride, g.value->begin() + (index + 1) * stride);
         break;
     }
     }
@@ -578,7 +579,7 @@ Result<const std::vector<Entry> *> Family::group_elements() const {
     static std::mutex mu;
     std::lock_guard<std::mutex> lock(mu);
     if (!elements) {
-        auto c = permutation_closure(*data, 1ULL << 26);
+        auto c = data->p == 0 ? permutation_closure(*data, 1ULL << 26) : matrix_closure(*data, 1ULL << 26);
         if (!c.ok) return R::failure(c.error.status, c.error.message);
         elements = std::make_shared<const std::vector<Entry>>(std::move(c.value));
         elements_ready.store(elements.get(), std::memory_order_release);
@@ -674,17 +675,17 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
     case Kind::GroupElements: {
         auto g = group_elements();
         if (!g.ok) return R::failure(g.error.status, g.error.message);
-        uint64_t nn = data->cols, count = g.value->size() / nn;
+        uint64_t stride = data->rows * data->cols, count = g.value->size() / stride;
         uint64_t lo = 0, hi = count;
         while (lo < hi) {
             uint64_t mid = (lo + hi) / 2;
-            const Entry *e = g.value->data() + mid * nn;
-            if (std::lexicographical_compare(e, e + nn, mem.entries.begin(), mem.entries.end())) lo = mid + 1;
+            const Entry *e = g.value->data() + mid * stride;
+            if (std::lexicographical_compare(e, e + stride, mem.entries.begin(), mem.entries.end())) lo = mid + 1;
             else hi = mid;
         }
-        if (lo < count && std::equal(g.value->data() + lo * nn, g.value->data() + (lo + 1) * nn, mem.entries.begin()))
+        if (lo < count && std::equal(g.value->data() + lo * stride, g.value->data() + (lo + 1) * stride, mem.entries.begin()))
             return R::success(lo);
-        return R::failure(INVALID, "index_of: permutation is not in the group");
+        return R::failure(INVALID, "index_of: member is not in the group");
     }
     default:
         return R::failure(INVALID, std::string("index_of is not defined for ") + family_kind_name(kind) + " families");
@@ -957,13 +958,19 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
     case Kind::GroupElements: {
         auto g = group_elements();
         if (!g.ok) return fail(g.error.status, g.error.message);
-        uint64_t nn = data->cols;
+        uint64_t stride = data->rows * data->cols;
         for (uint64_t i = top_begin; i < top_end; ++i) {
-            Step step = v.push(g.value->data() + i * nn, i, 1);
+            Step step = Step::Descend;
+            uint64_t pushed = 0;
+            for (uint64_t r = 0; r < data->rows; ++r) {
+                step = v.push(g.value->data() + i * stride + r * data->cols, i, 1);
+                ++pushed;
+                if (step != Step::Descend) break;
+            }
             if (step == Step::Descend) v.leaf(i);
             else if (step == Step::TakeAll) v.take_all(i, 1);
             else v.skip_all(i, 1);
-            v.pop();
+            for (uint64_t r = 0; r < pushed; ++r) v.pop();
         }
         return ok();
     }
@@ -1308,16 +1315,110 @@ Result<std::vector<Entry>> permutation_closure(const Matrix &generators, uint64_
     return R::success(std::move(sorted));
 }
 
+Result<std::vector<Entry>> matrix_closure(const Matrix &generators, uint64_t limit) {
+    using R = Result<std::vector<Entry>>;
+    if (!is_prime(generators.p) || generators.rows != generators.cols)
+        return R::failure(INVALID, "generators must be square matrices over a prime field");
+    uint64_t n = generators.rows, stride = n * n, p = generators.p;
+    std::vector<Entry> store(stride, 0);
+    for (uint64_t i = 0; i < n; ++i) store[i * n + i] = 1;
+    struct Hash {
+        const std::vector<Entry> *store; uint64_t stride;
+        size_t operator()(uint64_t i) const {
+            uint64_t h = 1469598103934665603ULL;
+            for (uint64_t j = 0; j < stride; ++j) { h ^= (*store)[i * stride + j]; h *= 1099511628211ULL; }
+            return (size_t)h;
+        }
+    };
+    struct Eq {
+        const std::vector<Entry> *store; uint64_t stride;
+        bool operator()(uint64_t a, uint64_t b) const {
+            return std::equal(store->begin() + a * stride, store->begin() + (a + 1) * stride,
+                              store->begin() + b * stride);
+        }
+    };
+    std::unordered_set<uint64_t, Hash, Eq> seen(64, Hash{&store, stride}, Eq{&store, stride});
+    seen.insert(0);
+    std::vector<Entry> product(stride);
+    for (uint64_t front = 0; front < store.size() / stride; ++front) {
+        for (uint64_t g = 0; g < generators.count; ++g) {
+            const Entry *a = store.data() + front * stride, *b = generators.at(g);
+            for (uint64_t i = 0; i < n; ++i)
+                for (uint64_t j = 0; j < n; ++j) {
+                    uint64_t v = 0;
+                    for (uint64_t k = 0; k < n; ++k)
+                        v = (uint64_t)(((unsigned __int128)v + (unsigned __int128)a[i * n + k] * b[k * n + j]) % p);
+                    product[i * n + j] = (Entry)v;
+                }
+            uint64_t index = store.size() / stride;
+            store.insert(store.end(), product.begin(), product.end());
+            if (!seen.insert(index).second) store.resize(index * stride);
+            else if (index + 1 > limit) return R::failure(INVALID, "group has more than " + std::to_string(limit) + " elements");
+        }
+    }
+    uint64_t count = store.size() / stride;
+    std::vector<uint64_t> order(count);
+    for (uint64_t i = 0; i < count; ++i) order[i] = i;
+    std::sort(order.begin(), order.end(), [&](uint64_t a, uint64_t b) {
+        return std::lexicographical_compare(store.begin() + a * stride, store.begin() + (a + 1) * stride,
+                                            store.begin() + b * stride, store.begin() + (b + 1) * stride);
+    });
+    std::vector<Entry> sorted(store.size());
+    for (uint64_t i = 0; i < count; ++i)
+        std::copy(store.begin() + order[i] * stride, store.begin() + (order[i] + 1) * stride,
+                  sorted.begin() + i * stride);
+    return R::success(std::move(sorted));
+}
+
+namespace {
+
+bool invertible_generator(const Matrix &m, uint64_t index) {
+    uint64_t n = m.rows, p = m.p;
+    std::vector<Entry> a(m.at(index), m.at(index) + n * n);
+    uint64_t rank = 0;
+    for (uint64_t c = 0; c < n && rank < n; ++c) {
+        uint64_t pivot = rank;
+        while (pivot < n && a[pivot * n + c] == 0) ++pivot;
+        if (pivot == n) continue;
+        if (pivot != rank)
+            for (uint64_t j = 0; j < n; ++j) std::swap(a[pivot * n + j], a[rank * n + j]);
+        uint64_t inv = 1, base = a[rank * n + c], exponent = p - 2;
+        while (exponent) {
+            if (exponent & 1) inv = (uint64_t)((unsigned __int128)inv * base % p);
+            base = (uint64_t)((unsigned __int128)base * base % p);
+            exponent >>= 1;
+        }
+        for (uint64_t j = c; j < n; ++j) a[rank * n + j] = (Entry)((unsigned __int128)a[rank * n + j] * inv % p);
+        for (uint64_t i = rank + 1; i < n; ++i) {
+            uint64_t factor = a[i * n + c];
+            for (uint64_t j = c; j < n; ++j)
+                a[i * n + j] = (Entry)((a[i * n + j] + (unsigned __int128)(p - factor) * a[rank * n + j]) % p);
+        }
+        ++rank;
+    }
+    return rank == n;
+}
+
+} // namespace
+
 Result<std::shared_ptr<Family>> make_group_elements(std::shared_ptr<Matrix> generators) {
-    if (generators->p != 0 || generators->rows != 1)
-        return Result<std::shared_ptr<Family>>::failure(INVALID, "group_elements: generators must be an orbits.perms batch");
-    if (generators->count == 0) return Result<std::shared_ptr<Family>>::failure(INVALID, "group_elements: need at least one generator");
+    using R = Result<std::shared_ptr<Family>>;
+    if (generators->count == 0) return R::failure(INVALID, "group_elements: need at least one generator");
+    if (generators->p == 0) {
+        if (generators->rows != 1) return R::failure(INVALID, "group_elements: permutation generators must have one row");
+    } else {
+        if (!is_prime(generators->p) || generators->rows != generators->cols)
+            return R::failure(INVALID, "group_elements: matrix generators must be square over a prime field");
+        for (uint64_t i = 0; i < generators->count; ++i)
+            if (!invertible_generator(*generators, i))
+                return R::failure(INVALID, "group_elements: matrix generator " + std::to_string(i) + " is singular");
+    }
     auto f = std::make_shared<Family>();
     f->kind = Family::Kind::GroupElements;
     f->data = std::move(generators);
-    f->p = 0;
+    f->p = f->data->p;
     f->n = f->data->cols;
-    return Result<std::shared_ptr<Family>>::success(f);
+    return R::success(f);
 }
 
 Result<std::shared_ptr<Family>> make_generated_group(std::shared_ptr<Matrix> generators) {
