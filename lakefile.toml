@@ -2,7 +2,7 @@
 # Lk is the runtime's reference (families, reductions) and contract; then one library
 # per module: its executable reference and contract (against Mathlib).
 name = "LemmaKernel"
-defaultTargets = ["Lk", "Automorphisms", "Burnside", "Cayley", "Designs", "Difference_sets", "Gfp", "Gfq", "Hadamard", "Hypergraphs", "Integer_partitions", "Lattice_of_subspaces", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Projective_sets", "Set_systems", "Subspace_orbits", "Young"]
+defaultTargets = ["Lk", "Automorphisms", "Burnside", "Cayley", "Designs", "Difference_sets", "Gfp", "Gfq", "Hadamard", "Hypergraphs", "Integer_partitions", "Lattice_of_subspaces", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Projective_sets", "Residues", "Set_systems", "Subspace_orbits", "Young"]
 
 [[require]]
 name = "mathlib"
@@ -93,6 +93,11 @@ roots = ["Perm_groups"]
 name = "Projective_sets"
 srcDir = "modules/projective_sets/lean"
 roots = ["Projective_sets"]
+
+[[lean_lib]]
+name = "Residues"
+srcDir = "modules/residues/lean"
+roots = ["Residues"]
 
 [[lean_lib]]
 name = "Set_systems"

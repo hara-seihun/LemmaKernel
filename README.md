@@ -99,6 +99,7 @@ and committed; the build refuses to configure if they are stale.
 | [orbits](modules/orbits/manifest.toml) | finite groups acting on families: orbit representatives (`is_canonical`), canonical index, orbit size, stabiliser order, fixed points for Burnside, and the projective action that turns a matrix group into permutations of points | `generic` (per-member orbit search, portable C++) |
 | [perm_groups](modules/perm_groups/manifest.toml) | Schreier-Sims for permutation groups: order, membership, transitivity, primitivity, point-orbit partitions, and deterministic bases with strong generators | `generic` (portable C++, parallel across groups) |
 | [projective_sets](modules/projective_sets/manifest.toml) | arcs, caps, blocking sets, hyperovals, ovoids, span rank, maximum collinearity, and secant, tangent and passant counts for point sets in `PG(n,p)` | `generic` (precomputed line and hyperplane incidence, portable C++) |
+| [residues](modules/residues/manifest.toml) | arithmetic in Z/n over ranges of residues: multiplicative order, primitive roots, quadratic residues, discrete logarithms by baby-step giant-step, the Legendre and Jacobi symbols, and the least primitive root of each modulus in a range | `generic` (factorisation of the modulus shared by every member, portable C++) |
 | [set_systems](modules/set_systems/manifest.toml) | extremal predicates on finite set systems: intersecting families, antichains, sunflowers, maximum degree, lower shadows, and exact EKR/Sperner extremality | `generic` (prefix-pruned enumeration, portable C++) |
 | [subspace_orbits](modules/subspace_orbits/manifest.toml) | GL, PGL and PGammaL orbits of row spaces from Grassmannians and their transform/stack derivatives; canonical indices use the least rref in Grassmannian order | `generic` (per-member rref orbit search, portable C++) |
 | [young](modules/young/manifest.toml) | partitions and standard Young tableaux, hook-length counts, Kostka numbers, RSK, and irreducible S_n character values by Murnaghan-Nakayama | `generic` (portable C++) |
@@ -125,6 +126,12 @@ naive Python implementation on inputs small enough for naive to finish, so every
 byte-for-byte agreement; single-threaded ratios on this machine run from about 40× (Grassmannian
 orbits, where each step is an elimination) to about 1700× (independence of subsets), and higher
 where the backend changes the algorithm (Burnside counts from cycle types).
+
+`residues` reads a `range` family as residues and takes the modulus as an argument, except
+`least_primitive_root`, whose member is the modulus. Where mathematics leaves a choice it makes
+one: an order is 0 for a non-unit, a discrete logarithm is the least `x < n` and the modulus
+itself when there is none, a quadratic symbol is 0, 1 or 2 with 2 standing for -1, and the least
+primitive root is 0 when the unit group is not cyclic.
 
 `subspace_orbits` treats each matrix as a row space, so it also handles transforms and stacks that
 change the displayed basis or its rank. Set `projective=0` to retain the generated GL group order,

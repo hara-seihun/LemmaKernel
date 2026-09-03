@@ -1,0 +1,112 @@
+# residues: arithmetic in Z/n on families of residues.
+# The only declaration of the module; tools/manifest.py generates the rest.
+#
+# Two readings of a `range` family, one per operation and named in each summary:
+#   - a residue sweep: the member is a residue a, the modulus is the `modulus` argument
+#     (`multiplicative_order`, `is_primitive_root`, `is_quadratic_residue`, `discrete_log`,
+#     `legendre`, `jacobi`);
+#   - a modulus sweep: the member is the modulus n itself (`least_primitive_root`).
+# Members are reduced modulo the modulus, so `range(0, n)` is the whole of Z/n and any wider
+# range wraps.
+
+[module]
+name = "residues"
+version = 1
+summary = """Arithmetic in Z/n over ranges of residues: multiplicative order, primitive roots, \
+quadratic residues, discrete logarithms and the Legendre and Jacobi symbols. Members of a `range` \
+family are residues reduced modulo the `modulus` argument, except `least_primitive_root`, whose \
+member is the modulus. Canonical answers where mathematics leaves a choice: an order is 0 when \
+the residue is not a unit; a discrete logarithm is the least x < n, and the modulus itself when \
+there is none; a symbol is 0, 1, or 2 with 2 standing for -1; the least primitive root is 0 when \
+(Z/n)* is not cyclic."""
+lean = "lean"
+contract = "lean/Residues/Contract.lean"
+reference = "lean/Residues/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "multiplicative_order"
+value = "integer"
+args = { modulus = "int" }
+families = ["range"]
+summary = "The least k >= 1 with a^k = 1 in Z/n for the member a, and 0 when a is not a unit."
+
+[[operations]]
+name = "is_primitive_root"
+value = "boolean"
+args = { modulus = "int" }
+families = ["range"]
+summary = "Whether the member generates the unit group of Z/n: a unit whose multiplicative order is phi(n)."
+
+[[operations]]
+name = "is_quadratic_residue"
+value = "boolean"
+args = { modulus = "int" }
+families = ["range"]
+summary = "Whether the member is a unit of Z/n with a square root there. Non-units, including 0, are not quadratic residues."
+
+[[operations]]
+name = "discrete_log"
+value = "integer"
+args = { base = "int", modulus = "int" }
+families = ["range"]
+summary = "The least x with 0 <= x < n and base^x = a in Z/n for the member a; n itself when no such x exists. Any solution is smaller than n, so the modulus is unambiguous as the absent answer."
+
+[[operations]]
+name = "legendre"
+value = "integer"
+args = { modulus = "int" }
+families = ["range"]
+summary = "The Legendre symbol (a/p) of the member for an odd prime modulus p, encoded 0 for 0, 1 for 1, and 2 for -1."
+
+[[operations]]
+name = "jacobi"
+value = "integer"
+args = { modulus = "int" }
+families = ["range"]
+summary = "The Jacobi symbol (a/n) of the member for an odd modulus n, the product of the Legendre symbols over the prime factorisation of n, in the same 0, 1, 2 encoding. (a/1) is 1."
+
+[[operations]]
+name = "least_primitive_root"
+value = "integer"
+families = ["range"]
+summary = "Reads the member as a modulus n >= 1: the least g >= 1 that generates the unit group of Z/n, and 0 when (Z/n)* is not cyclic. It is 1 for n = 1 and n = 2."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/residues_generic.cpp"]
+accepts = "any modulus below 2^32; ranges of residues or of moduli"
+summary = """Portable C++: factors the modulus and phi(n) once per request, then answers each \
+member with modular exponentiation; discrete logarithms use baby-step giant-step over a baby \
+table shared by every member, after the standard reduction that removes the common factors of a \
+non-unit base; the Jacobi symbol uses quadratic reciprocity."""
+
+[[rejections]]
+case = "not a range"
+error = "range families only"
+
+[[rejections]]
+case = "modulus zero"
+error = "modulus of at least 1"
+
+# `error` is matched as a regular expression, so it avoids the `^` of 2^32.
+[[rejections]]
+case = "modulus too large"
+error = "modulus less than"
+
+[[rejections]]
+case = "even legendre modulus"
+error = "odd prime"
+
+[[rejections]]
+case = "composite legendre modulus"
+error = "odd prime"
+
+[[rejections]]
+case = "even jacobi modulus"
+error = "odd modulus"
+
+[[rejections]]
+case = "moduli from zero"
+error = "moduli of at least 1"
