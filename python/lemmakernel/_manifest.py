@@ -3224,7 +3224,9 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'name': 'extends_sum_free',
                   'summary': 'The member together with the fixed set `context` (an lk.naturals row) is '
                              'sum-free. The context must be a set of the ambient group disjoint from every '
-                             'member; the search then explores the completions of a given partial set.',
+                             'member; the search then explores the completions of a given partial set. '
+                             'tools/split_search.py drives a whole count this way, one prefix at a time, '
+                             'across sessions.',
                   'value': 'boolean'},
                  {'args': {'context': 'vector', 'modulus': 'int'},
                   'families': ['explicit', 'subsets', 'subsets_of'],

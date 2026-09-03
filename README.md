@@ -94,6 +94,7 @@ runtime/        the C ABI, object encoding, family enumeration, backend registry
 modules/NAME/   one module: manifest, Lean contract and reference, backends, naive, cases
 python/         the binding; python/lemmakernel/_manifest.py is generated
 tools/          manifest.py (generator and checker), harness.py (runs cases), bench.py, leancheck.py,
+                split_search.py (a long sum_free_and_additive search in resumable pieces),
                 group_catalogue.py (enumerates the groups of small order in
                 runtime/src/group_catalogue_data.cpp; run it only to change that catalogue)
 tests/          the pytest entry points: every module's cases, runtime checks, manifest and Lean build
