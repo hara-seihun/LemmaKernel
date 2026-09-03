@@ -272,31 +272,41 @@ struct ShortVectors {
     std::vector<Entry> entries;
 };
 
+/* Family sizes, member indices and everything counted over a family are 128-bit: a search that
+ * prunes can decide a family of C(150, 15) members without visiting them. Header parameters are
+ * 128-bit in the interchange encoding for the same reason. */
+using Index = unsigned __int128;
+constexpr Index INDEX_MAX = ~(Index)0;
+std::string index_string(Index v);
+
 struct Count {
-    uint64_t value = 0, visited = 0, family_size = 0;
+    Index value = 0, visited = 0, family_size = 0;
 };
 
 struct Histogram {
-    uint64_t visited = 0, family_size = 0;
+    Index visited = 0, family_size = 0;
     std::vector<uint64_t> bins;
 };
 
 struct Hits {
-    uint64_t p = 0, rows = 0, cols = 0, total = 0, visited = 0, family_size = 0;
-    std::vector<uint64_t> indices;
+    uint64_t p = 0, rows = 0, cols = 0;
+    Index total = 0, visited = 0, family_size = 0;
+    std::vector<Index> indices;
     std::vector<Entry> members;
 };
 
 /* `first`: the least index whose value is true, materialised; `found` 0 and no member when
  * there is none. `visited` is index + 1 when found (every member below was decided), else size. */
 struct First {
-    uint64_t p = 0, rows = 0, cols = 0, found = 0, index = 0, visited = 0, family_size = 0;
+    uint64_t p = 0, rows = 0, cols = 0, found = 0;
+    Index index = 0, visited = 0, family_size = 0;
     std::vector<Entry> member;
 };
 
 /* `max` / `min`: the extreme value and the least index attaining it, materialised. */
 struct Extremum {
-    uint64_t p = 0, rows = 0, cols = 0, value = 0, index = 0, visited = 0, family_size = 0;
+    uint64_t p = 0, rows = 0, cols = 0, value = 0;
+    Index index = 0, visited = 0, family_size = 0;
     std::vector<Entry> member;
 };
 
@@ -348,7 +358,7 @@ struct Object {
     std::shared_ptr<First> first;
     std::shared_ptr<Extremum> extremum;
     std::shared_ptr<Family> family;
-    std::map<std::string, uint64_t> params() const;
+    std::map<std::string, Index> params() const;
 };
 
 unsigned entry_width(uint64_t p); /* 4 for permutations, naturals, and signed Gram entries */

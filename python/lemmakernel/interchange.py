@@ -16,7 +16,7 @@ import struct
 from dataclasses import dataclass, field
 
 MAGIC = b"LKIF"
-VERSION = 1
+VERSION = 2
 NATURALS = (1 << 64) - 1  # Matrix.p for natural-number matrices (kind lk.naturals)
 GRAMS = (1 << 64) - 2     # Matrix.p for signed integral Gram matrices (kind lattices.gram)
 
@@ -79,11 +79,23 @@ def _str(s: str) -> bytes:
     return struct.pack("<I", len(b)) + b
 
 
+def _u128(v: int) -> bytes:
+    """Header parameters are 128-bit: family sizes and member indices can exceed 2^64."""
+    if not 0 <= v < 1 << 128:
+        raise ValueError(f"parameter {v} does not fit in 128 bits")
+    return struct.pack("<QQ", v & ((1 << 64) - 1), v >> 64)
+
+
+def _unpack_u128(buf: bytes, pos: int) -> int:
+    lo, hi = struct.unpack_from("<QQ", buf, pos)
+    return lo | (hi << 64)
+
+
 def encode(kind: str, params: dict[str, int], payload: bytes) -> bytes:
     out = [MAGIC, struct.pack("<I", VERSION), _str(kind), struct.pack("<I", len(params))]
     for k in sorted(params):
         out.append(_str(k))
-        out.append(struct.pack("<Q", int(params[k])))
+        out.append(_u128(int(params[k])))
     out.append(struct.pack("<Q", len(payload)))
     out.append(payload)
     return b"".join(out)
@@ -117,8 +129,8 @@ def split(buf: bytes, offset: int = 0) -> tuple[Blob, int]:
         pos += 4
         name = buf[pos:pos + n].decode()
         pos += n
-        (params[name],) = struct.unpack_from("<Q", buf, pos)
-        pos += 8
+        params[name] = _unpack_u128(buf, pos)
+        pos += 16
     (plen,) = struct.unpack_from("<Q", buf, pos)
     pos += 8
     return Blob(kind, params, buf[pos:pos + plen]), pos + plen
@@ -1017,7 +1029,7 @@ class Hits:
     members: Matrix
 
     def encode(self) -> bytes:
-        payload = struct.pack(f"<{len(self.indices)}Q", *self.indices) + pack_entries(self.members.entries, self.p)
+        payload = b"".join(_u128(i) for i in self.indices) + pack_entries(self.members.entries, self.p)
         return encode("hits", {"p": self.p, "rows": self.rows, "cols": self.cols, "total": self.total,
                                "visited": self.visited, "family_size": self.family_size,
                                "count": len(self.indices), "materialised": self.members.count}, payload)
@@ -1353,8 +1365,8 @@ def decode_at(buf: bytes, offset: int):
     if k == "histogram":
         return Histogram(q["visited"], q["family_size"], list(struct.unpack_from(f"<{q['bins']}Q", pl, 0))), end
     if k == "hits":
-        idx = list(struct.unpack_from(f"<{q['count']}Q", pl, 0))
-        rest = pl[8 * q["count"]:]
+        idx = [_unpack_u128(pl, 16 * i) for i in range(q["count"])]
+        rest = pl[16 * q["count"]:]
         mem = Matrix(q["p"], q["materialised"], q["rows"], q["cols"], unpack_entries(rest, q["p"], q["materialised"] * q["rows"] * q["cols"]))
         return Hits(q["p"], q["rows"], q["cols"], q["total"], q["visited"], q["family_size"], idx, mem), end
     if k.startswith("family."):

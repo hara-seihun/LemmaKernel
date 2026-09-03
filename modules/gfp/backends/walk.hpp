@@ -77,7 +77,7 @@ template <class Basis> struct Walker : Family::Visitor {
 
     uint64_t depth() const { return added.size(); }
 
-    Step push(const Entry *row, uint64_t first, uint64_t) override {
+    Step push(const Entry *row, Index first, Index) override {
         bool independent = basis.add(row);
         added.push_back(independent);
         if (query == Query::InSpan) {
@@ -117,7 +117,7 @@ template <class Basis> struct Walker : Family::Visitor {
         }
     }
 
-    void leaf(uint64_t index) override {
+    void leaf(Index index) override {
         switch (query) {
         case Query::Rank:
         case Query::Nullity:
@@ -157,8 +157,8 @@ template <class Basis> struct Walker : Family::Visitor {
         }
     }
 
-    void take_all(uint64_t first, uint64_t n) override { acc.booleans(first, n, true); }
-    void skip_all(uint64_t first, uint64_t n) override { acc.booleans(first, n, false); }
+    void take_all(Index first, Index n) override { acc.booleans(first, n, true); }
+    void skip_all(Index first, Index n) override { acc.booleans(first, n, false); }
 };
 
 /* Run a walk operation. `make_basis(p, cols)` builds a fresh Basis for one thread. */

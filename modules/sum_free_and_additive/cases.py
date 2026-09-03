@@ -165,3 +165,12 @@ def invariants(ctx):
                                    "count", modulus=0, **args).value
         assert sorted_count == shuffled_count, (op, n, k, sorted_count, shuffled_count)
         assert sorted_count > 0
+
+    # A 2-term progression is any pair, so only sets of at most one element are 2-AP-free; the
+    # span table must stay out of the way (it has no entries for that length).
+    two = ctx.value("sum_free_and_additive.is_ap_free", ctx.subsets_of(ctx.range(0, 20), 3), "count",
+                    modulus=0, length=2)
+    assert (two.value, two.visited) == (0, 1140)
+    one = ctx.value("sum_free_and_additive.is_ap_free", ctx.subsets_of(ctx.range(0, 20), 1), "count",
+                    modulus=0, length=2)
+    assert one.value == 20

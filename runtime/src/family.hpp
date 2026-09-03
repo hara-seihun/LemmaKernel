@@ -29,7 +29,7 @@ struct Family {
     uint64_t a = 0, b = 0;                     /* Range: [a, b). Partitions: flags distinct, odd. */
     /* Expensive cardinalities are fixed when their family is constructed. */
     bool size_cached = false;
-    uint64_t cached_size = 0;
+    Index cached_size = 0;
     /* GroupElements: every element of the generated permutation or matrix group, sorted
      * lexicographically by flat entries and computed on first use. Read through the atomic
      * pointer so that the per-member fast path takes no lock. */
@@ -45,15 +45,15 @@ struct Family {
     uint64_t prime() const; /* 0 for permutations, NATURALS for naturals, GRAMS for integral Grams */
     uint64_t rows() const; /* rows of one member */
     uint64_t cols() const;
-    Result<uint64_t> size() const;
+    Result<Index> size() const;
     bool is_explicit() const;
-    Result<Matrix> member(uint64_t index) const;
+    Result<Matrix> member(Index index) const;
     /* member() into caller-owned storage; `out.entries` is reused when already large enough. */
-    Status member_into(uint64_t index, Matrix &out) const;
+    Status member_into(Index index, Matrix &out) const;
     /* Inverse of member(): the canonical index of a member given as its rows. Only kinds with a
      * rank implementation support it (subsets, grassmannian, all_matrices, latin_squares,
      * group_elements). */
-    Result<uint64_t> index_of(const Matrix &member) const;
+    Result<Index> index_of(const Matrix &member) const;
     /* Group elements (GroupElements only); computes the closure. */
     Result<const std::vector<Entry> *> group_elements() const;
     Result<const PivotTable *> pivot_table() const;
@@ -62,11 +62,11 @@ struct Family {
         enum class Step { Descend, Skip, TakeAll };
         virtual ~Visitor() = default;
         /* Enter the subtree whose leaves have indices [first, first + below). */
-        virtual Step push(const Entry *row, uint64_t first, uint64_t below) = 0;
+        virtual Step push(const Entry *row, Index first, Index below) = 0;
         virtual void pop() = 0;
-        virtual void leaf(uint64_t index) = 0;
-        virtual void take_all(uint64_t first_index, uint64_t count) = 0;
-        virtual void skip_all(uint64_t first_index, uint64_t count) = 0;
+        virtual void leaf(Index index) = 0;
+        virtual void take_all(Index first_index, Index count) = 0;
+        virtual void skip_all(Index first_index, Index count) = 0;
     };
     /* Number of top-level branches; enumerate(v, a, b) visits branches [a, b). */
     Result<uint64_t> top_count() const;

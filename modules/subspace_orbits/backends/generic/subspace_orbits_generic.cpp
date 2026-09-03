@@ -164,7 +164,9 @@ struct Walker {
         m.rows = rank;
         m.cols = n;
         m.entries = rref;
-        return found->second->index_of(m);
+        auto index = found->second->index_of(m);
+        if (!index.ok) return Result<uint64_t>::failure(index.error.status, index.error.message);
+        return Result<uint64_t>::success((uint64_t)index.value); /* Grassmannian sizes are 64-bit */
     }
 
     Result<std::vector<Entry>> image(const std::vector<Entry> &rref, uint64_t g) {

@@ -1,15 +1,15 @@
 {
  "module": "orbits",
  "fingerprint": {
-  "module": "0c7b688ee2e461dfbe52f92abc3ba2ff77c84fa571b0e7763eca43c9c6868d89",
-  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "module": "0d089ebd8c306f7f29f004fb03fc8ccd51d18816f7aba4eaeb9b03be41b5d1c0",
+  "runtime": "34dcbc05e0dcc6e4964e62ed1b00d7ee32f4a81976c4b7e2ed6c18637b83f48f",
   "dependencies": [
    "gfp"
   ],
-  "combined": "f28b8e0e507ece9286ac3ee04bcb118d0b1f85b0b55c9492459aa94e0547e6c6"
+  "combined": "4aecf133f65ff7e2e84d23ddfe19d9d3705656d8169e1c778a9603f1898b5c60"
  },
- "measured_at": "2026-09-03T05:20:35+00:00",
- "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "measured_at": "2026-09-03T08:08:54+00:00",
+ "commit": "9483ecc501f24ef1ef8518208d104946acfb1b73",
  "machine": {
   "host": "gmktec",
   "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
@@ -23,13 +23,13 @@
    "op": "orbits.is_canonical",
    "reduction": "count",
    "members": 8008,
-   "naive_s": 0.3497455520555377,
+   "naive_s": 0.30753996316343546,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.005162301007658243,
-   "kernel_all_threads_s": 0.001127511030063033,
+   "kernel_1_thread_s": 0.004866455215960741,
+   "kernel_all_threads_s": 0.0008681300096213818,
    "threads": 32,
-   "speedup_1_thread": 67.74993390286468,
-   "speedup_all_threads": 310.1925770393442,
+   "speedup_1_thread": 63.19588889974416,
+   "speedup_all_threads": 354.25565267299436,
    "answer": "Count(value=280, visited=8008, family_size=8008)"
   },
   {
@@ -38,13 +38,13 @@
    "op": "orbits.stabilizer_order",
    "reduction": "histogram",
    "members": 8008,
-   "naive_s": 0.3389745061285794,
+   "naive_s": 0.3049961691722274,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.04717366397380829,
-   "kernel_all_threads_s": 0.0032236480619758368,
+   "kernel_1_thread_s": 0.04430567496456206,
+   "kernel_all_threads_s": 0.004032033029943705,
    "threads": 32,
-   "speedup_1_thread": 7.185672631169469,
-   "speedup_all_threads": 105.15245448996541,
+   "speedup_1_thread": 6.883907522369965,
+   "speedup_all_threads": 75.64327149782444,
    "answer": "Histogram(visited=8008, family_size=8008, bins=[0, 7104, 880, 0, 24])"
   },
   {
@@ -53,13 +53,13 @@
    "op": "orbits.fixed_points",
    "reduction": "all",
    "members": 32,
-   "naive_s": 0.12696928810328245,
+   "naive_s": 0.11547468812204897,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 7.780035957694054e-06,
-   "kernel_all_threads_s": 0.0006427478510886431,
+   "kernel_1_thread_s": 8.560018613934517e-06,
+   "kernel_all_threads_s": 0.0005512619391083717,
    "threads": 32,
-   "speedup_1_thread": 16319.884483016609,
-   "speedup_all_threads": 197.5413653864893,
+   "speedup_1_thread": 13490.004324765401,
+   "speedup_all_threads": 209.4733554593327,
    "answer": "Integers(values=[8008, 56, 56, 0, 56, 0, 56, 0, 56, 0, 56, 0, 56, 0, 56, 0, 56, 56, 56, 0, 56, 0, 56, 0, 56, 0, 56, 0, 5"
   },
   {
@@ -68,13 +68,13 @@
    "op": "orbits.is_canonical",
    "reduction": "hits",
    "members": 1820,
-   "naive_s": 0.4686888779979199,
+   "naive_s": 0.4386745688971132,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.0008556998800486326,
-   "kernel_all_threads_s": 0.0005704800132662058,
+   "kernel_1_thread_s": 0.0008189820218831301,
+   "kernel_all_threads_s": 0.0005475820507854223,
    "threads": 32,
-   "speedup_1_thread": 547.7257726988142,
-   "speedup_all_threads": 821.5693224982685,
+   "speedup_1_thread": 535.633942108332,
+   "speedup_all_threads": 801.112031097261,
    "answer": "Hits(p=2, rows=4, cols=16, total=19, visited=1820, family_size=1820, indices=[0, 1, 2, 4, 9, 10, 12, 46, 49, 50, 53, 54,"
   },
   {
@@ -83,13 +83,13 @@
    "op": "orbits.orbit_size",
    "reduction": "histogram",
    "members": 155,
-   "naive_s": 0.3970543029718101,
+   "naive_s": 0.3720880209002644,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.007199661107733846,
-   "kernel_all_threads_s": 0.001124081201851368,
+   "kernel_1_thread_s": 0.006873586913570762,
+   "kernel_all_threads_s": 0.0012269378639757633,
    "threads": 32,
-   "speedup_1_thread": 55.14902674311934,
-   "speedup_all_threads": 353.22564092154505,
+   "speedup_1_thread": 54.13302044171989,
+   "speedup_all_threads": 303.26557833544416,
    "answer": "Histogram(visited=155, family_size=155, bins=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,"
   },
   {
@@ -98,13 +98,13 @@
    "op": "orbits.canonical_index",
    "reduction": "histogram",
    "members": 4096,
-   "naive_s": 2.9243934149853885,
+   "naive_s": 2.7332922741770744,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.058550759917125106,
-   "kernel_all_threads_s": 0.0037459400482475758,
+   "kernel_1_thread_s": 0.05819002306088805,
+   "kernel_all_threads_s": 0.00433627306483686,
    "threads": 32,
-   "speedup_1_thread": 49.94629308184356,
-   "speedup_all_threads": 780.6834539045752,
+   "speedup_1_thread": 46.971836930139226,
+   "speedup_all_threads": 630.3321385227171,
    "answer": "Histogram(visited=4096, family_size=4096, bins=[1, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 60, 60, 0, 0, 6"
   }
  ]

@@ -12,13 +12,14 @@ namespace lk {
 namespace {
 
 constexpr int INVALID = 1;
-constexpr uint32_t FORMAT_VERSION = 1;
+constexpr uint32_t FORMAT_VERSION = 2;
 const char MAGIC[4] = {'L', 'K', 'I', 'F'};
 
 struct Writer {
     std::vector<uint8_t> out;
     void u32(uint32_t v) { for (int i = 0; i < 4; ++i) out.push_back((uint8_t)(v >> (8 * i))); }
     void u64(uint64_t v) { for (int i = 0; i < 8; ++i) out.push_back((uint8_t)(v >> (8 * i))); }
+    void u128(Index v) { u64((uint64_t)v); u64((uint64_t)(v >> 64)); }
     void str(const std::string &s) { u32((uint32_t)s.size()); out.insert(out.end(), s.begin(), s.end()); }
     void entries(const std::vector<Entry> &e, unsigned width) {
         size_t start = out.size();
@@ -31,6 +32,7 @@ struct Writer {
         }
     }
     void u64s(const std::vector<uint64_t> &v) { for (uint64_t x : v) u64(x); }
+    void u128s(const std::vector<Index> &v) { for (Index x : v) u128(x); }
     void i64s(const std::vector<int64_t> &v) { for (int64_t x : v) u64((uint64_t)x); }
     void bytes(const std::vector<uint8_t> &b) { out.insert(out.end(), b.begin(), b.end()); }
 };
@@ -53,6 +55,7 @@ struct Reader {
         return v;
     }
     int64_t i64() { return std::bit_cast<int64_t>(u64()); }
+    Index u128() { Index lo = u64(); Index hi = u64(); return lo | (hi << 64); }
     std::string str() {
         uint32_t n = u32();
         if (bad || (size_t)(end - p) < n) { bad = true; return {}; }
@@ -75,7 +78,7 @@ struct Reader {
 
 struct Header {
     std::string kind;
-    std::map<std::string, uint64_t> params;
+    std::map<std::string, Index> params;
     const uint8_t *payload;
     uint64_t payload_len;
     const uint8_t *next;
@@ -93,7 +96,7 @@ Result<Header> read_header(const uint8_t *bytes, size_t len) {
     uint32_t nparams = r.u32();
     for (uint32_t i = 0; i < nparams && !r.bad; ++i) {
         std::string name = r.str();
-        uint64_t v = r.u64();
+        Index v = r.u128();
         h.params[name] = v;
     }
     h.payload_len = r.u64();
@@ -104,20 +107,28 @@ Result<Header> read_header(const uint8_t *bytes, size_t len) {
     return Result<Header>::success(std::move(h));
 }
 
-void write_header(Writer &w, const std::string &kind, const std::map<std::string, uint64_t> &params, const std::vector<uint8_t> &payload) {
+void write_header(Writer &w, const std::string &kind, const std::map<std::string, Index> &params, const std::vector<uint8_t> &payload) {
     w.out.insert(w.out.end(), MAGIC, MAGIC + 4);
     w.u32(FORMAT_VERSION);
     w.str(kind);
     w.u32((uint32_t)params.size());
-    for (const auto &[k, v] : params) { w.str(k); w.u64(v); }
+    for (const auto &[k, v] : params) { w.str(k); w.u128(v); }
     w.u64(payload.size());
     w.bytes(payload);
 }
 
+/* Parameters other than family sizes and member indices are 64-bit quantities. */
 Result<uint64_t> need(const Header &h, const char *name) {
     auto it = h.params.find(name);
     if (it == h.params.end()) return Result<uint64_t>::failure(INVALID, std::string("missing parameter ") + name + " in " + h.kind);
-    return Result<uint64_t>::success(it->second);
+    if (it->second > UINT64_MAX) return Result<uint64_t>::failure(INVALID, std::string("parameter ") + name + " in " + h.kind + " does not fit in 64 bits");
+    return Result<uint64_t>::success((uint64_t)it->second);
+}
+
+Result<Index> need_index(const Header &h, const char *name) {
+    auto it = h.params.find(name);
+    if (it == h.params.end()) return Result<Index>::failure(INVALID, std::string("missing parameter ") + name + " in " + h.kind);
+    return Result<Index>::success(it->second);
 }
 
 Result<std::shared_ptr<Matrix>> decode_matrix(const Header &h) {
@@ -336,7 +347,7 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
 
 std::vector<uint8_t> encode_family(const Family &f) {
     Writer payload;
-    std::map<std::string, uint64_t> params;
+    std::map<std::string, Index> params;
     switch (f.kind) {
     case Family::Kind::Explicit:
     case Family::Kind::Subsets:
@@ -427,7 +438,7 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         return R::success(o);
     }
     if (h.kind == "count") {
-        auto v = need(h, "value"), vis = need(h, "visited"), fs = need(h, "family_size");
+        auto v = need_index(h, "value"), vis = need_index(h, "visited"), fs = need_index(h, "family_size");
         for (auto *r : {&v, &vis, &fs}) if (!r->ok) return R::failure(r->error.status, r->error.message);
         o->count = std::make_shared<Count>(Count{v.value, vis.value, fs.value});
         return R::success(o);
@@ -621,8 +632,10 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         return R::success(o);
     }
     if (h.kind == "histogram") {
-        auto vis = need(h, "visited"), fs = need(h, "family_size"), bins = need(h, "bins");
-        for (auto *r : {&vis, &fs, &bins}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        auto vis = need_index(h, "visited"), fs = need_index(h, "family_size");
+        auto bins = need(h, "bins");
+        for (auto *r : {&vis, &fs}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        if (!bins.ok) return R::failure(bins.error.status, bins.error.message);
         if (bins.value * 8 != h.payload_len) return R::failure(INVALID, "histogram payload length mismatch");
         Reader r{h.payload, h.payload + h.payload_len};
         o->histogram = std::make_shared<Histogram>();
@@ -631,23 +644,25 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         return R::success(o);
     }
     if (h.kind == "hits") {
-        auto p = need(h, "p"), rows = need(h, "rows"), cols = need(h, "cols"), total = need(h, "total"),
-             vis = need(h, "visited"), fs = need(h, "family_size"), count = need(h, "count"), mat = need(h, "materialised");
-        for (auto *r : {&p, &rows, &cols, &total, &vis, &fs, &count, &mat}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        auto p = need(h, "p"), rows = need(h, "rows"), cols = need(h, "cols"), count = need(h, "count"), mat = need(h, "materialised");
+        auto total = need_index(h, "total"), vis = need_index(h, "visited"), fs = need_index(h, "family_size");
+        for (auto *r : {&p, &rows, &cols, &count, &mat}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        for (auto *r : {&total, &vis, &fs}) if (!r->ok) return R::failure(r->error.status, r->error.message);
         auto hh = std::make_shared<Hits>();
         hh->p = p.value; hh->rows = rows.value; hh->cols = cols.value; hh->total = total.value;
         hh->visited = vis.value; hh->family_size = fs.value;
         Reader r{h.payload, h.payload + h.payload_len};
-        for (uint64_t i = 0; i < count.value; ++i) hh->indices.push_back(r.u64());
+        for (uint64_t i = 0; i < count.value; ++i) hh->indices.push_back(r.u128());
         r.entries(hh->members, mat.value * rows.value * cols.value, entry_width(p.value));
         if (r.bad || r.p != r.end) return R::failure(INVALID, "hits payload length mismatch");
         o->hits = hh;
         return R::success(o);
     }
     if (h.kind == "first") {
-        auto p = need(h, "p"), rows = need(h, "rows"), cols = need(h, "cols"), found = need(h, "found"),
-             index = need(h, "index"), vis = need(h, "visited"), fs = need(h, "family_size");
-        for (auto *r : {&p, &rows, &cols, &found, &index, &vis, &fs}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        auto p = need(h, "p"), rows = need(h, "rows"), cols = need(h, "cols"), found = need(h, "found");
+        auto index = need_index(h, "index"), vis = need_index(h, "visited"), fs = need_index(h, "family_size");
+        for (auto *r : {&p, &rows, &cols, &found}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        for (auto *r : {&index, &vis, &fs}) if (!r->ok) return R::failure(r->error.status, r->error.message);
         auto f = std::make_shared<First>();
         f->p = p.value; f->rows = rows.value; f->cols = cols.value; f->found = found.value; f->index = index.value;
         f->visited = vis.value; f->family_size = fs.value;
@@ -658,9 +673,10 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         return R::success(o);
     }
     if (h.kind == "extremum") {
-        auto p = need(h, "p"), rows = need(h, "rows"), cols = need(h, "cols"), value = need(h, "value"),
-             index = need(h, "index"), vis = need(h, "visited"), fs = need(h, "family_size");
-        for (auto *r : {&p, &rows, &cols, &value, &index, &vis, &fs}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        auto p = need(h, "p"), rows = need(h, "rows"), cols = need(h, "cols"), value = need(h, "value");
+        auto index = need_index(h, "index"), vis = need_index(h, "visited"), fs = need_index(h, "family_size");
+        for (auto *r : {&p, &rows, &cols, &value}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        for (auto *r : {&index, &vis, &fs}) if (!r->ok) return R::failure(r->error.status, r->error.message);
         auto e = std::make_shared<Extremum>();
         e->p = p.value; e->rows = rows.value; e->cols = cols.value; e->value = value.value; e->index = index.value;
         e->visited = vis.value; e->family_size = fs.value;
@@ -1201,7 +1217,14 @@ bool is_prime(uint64_t n) {
     return true;
 }
 
-std::map<std::string, uint64_t> Object::params() const {
+std::string index_string(Index v) {
+    if (v == 0) return "0";
+    std::string s;
+    while (v) { s.push_back((char)('0' + (int)(v % 10))); v /= 10; }
+    return std::string(s.rbegin(), s.rend());
+}
+
+std::map<std::string, Index> Object::params() const {
     if (matrix && matrix->p == 0) return {{"n", matrix->cols}, {"count", matrix->count * matrix->rows}};
     if (matrix && matrix->p == NATURALS) return {{"count", matrix->count}, {"rows", matrix->rows}, {"cols", matrix->cols}};
     if (matrix && matrix->p == GRAMS) return {{"count", matrix->count}, {"n", matrix->rows}};
@@ -1257,7 +1280,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (extremum) return {{"p", extremum->p}, {"rows", extremum->rows}, {"cols", extremum->cols}, {"value", extremum->value},
                           {"index", extremum->index}, {"visited", extremum->visited}, {"family_size", extremum->family_size}};
     if (family) {
-        std::map<std::string, uint64_t> m{{"p", family->prime()}, {"rows", family->rows()}, {"cols", family->cols()}};
+        std::map<std::string, Index> m{{"p", family->prime()}, {"rows", family->rows()}, {"cols", family->cols()}};
         auto sz = family->size();
         if (sz.ok) m["size"] = sz.value;
         return m;
@@ -1437,7 +1460,7 @@ std::vector<uint8_t> encode(const Object &o) {
         w.u64s(o.histogram->bins);
         write_header(out, "histogram", o.params(), w.out);
     } else if (o.hits) {
-        w.u64s(o.hits->indices);
+        w.u128s(o.hits->indices);
         w.entries(o.hits->members, entry_width(o.hits->p));
         write_header(out, "hits", o.params(), w.out);
     } else if (o.first) {

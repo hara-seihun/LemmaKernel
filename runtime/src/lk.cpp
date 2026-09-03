@@ -169,7 +169,20 @@ lk_status lk_handle_param(lk_context *ctx, lk_handle h, const char *name, uint64
     auto params = o.value->params();
     auto it = params.find(name);
     if (it == params.end()) return ctx->set_error(LK_INVALID_ARGUMENT, std::string("no parameter ") + name + " on " + o.value->kind);
-    *value = it->second;
+    if (it->second > UINT64_MAX) return ctx->set_error(LK_INVALID_ARGUMENT, std::string("parameter ") + name + " on " + o.value->kind + " does not fit in 64 bits; use lk_handle_param128");
+    *value = (uint64_t)it->second;
+    return LK_OK;
+}
+
+lk_status lk_handle_param128(lk_context *ctx, lk_handle h, const char *name, uint64_t *lo, uint64_t *hi) {
+    if (!ctx || !name || !lo || !hi) return LK_INVALID_ARGUMENT;
+    auto o = ctx->get(h);
+    if (!o.ok) return ctx->set_error(o.error);
+    auto params = o.value->params();
+    auto it = params.find(name);
+    if (it == params.end()) return ctx->set_error(LK_INVALID_ARGUMENT, std::string("no parameter ") + name + " on " + o.value->kind);
+    *lo = (uint64_t)it->second;
+    *hi = (uint64_t)(it->second >> 64);
     return LK_OK;
 }
 
@@ -229,14 +242,31 @@ lk_status lk_family_size(lk_context *ctx, lk_handle family, uint64_t *size) {
     if (!f.ok) return ctx->set_error(f.error);
     auto s = f.value->size();
     if (!s.ok) return ctx->set_error(s.error);
-    *size = s.value;
+    if (s.value > UINT64_MAX) return ctx->set_error(LK_INVALID_ARGUMENT, "family size does not fit in 64 bits; use lk_family_size128");
+    *size = (uint64_t)s.value;
+    return LK_OK;
+}
+
+lk_status lk_family_size128(lk_context *ctx, lk_handle family, uint64_t *lo, uint64_t *hi) {
+    if (!ctx || !lo || !hi) return LK_INVALID_ARGUMENT;
+    auto f = ctx->get_family(family);
+    if (!f.ok) return ctx->set_error(f.error);
+    auto s = f.value->size();
+    if (!s.ok) return ctx->set_error(s.error);
+    *lo = (uint64_t)s.value;
+    *hi = (uint64_t)(s.value >> 64);
     return LK_OK;
 }
 
 lk_status lk_family_member(lk_context *ctx, lk_handle family, uint64_t index, lk_handle *out) {
+    return lk_family_member128(ctx, family, index, 0, out);
+}
+
+lk_status lk_family_member128(lk_context *ctx, lk_handle family, uint64_t lo, uint64_t hi, lk_handle *out) {
     if (!ctx || !out) return LK_INVALID_ARGUMENT;
     auto f = ctx->get_family(family);
     if (!f.ok) return ctx->set_error(f.error);
+    Index index = ((Index)hi << 64) | lo;
     auto m = f.value->member(index);
     if (!m.ok) return ctx->set_error(m.error);
     auto o = std::make_shared<Object>();
@@ -427,6 +457,13 @@ lk_status lk_run(lk_context *ctx, const char *op, lk_handle family, const char *
         if (pinned)
             return ctx->set_error(LK_UNSUPPORTED, "backend " + ctx->backend_selector + " does not accept this request");
         return ctx->set_error(LK_UNSUPPORTED, "no available backend accepts " + full + " on this family");
+    }
+    if (!chosen->big_families) {
+        auto sz = f.value->size();
+        if (!sz.ok) return ctx->set_error(sz.error);
+        if (sz.value > UINT64_MAX)
+            return ctx->set_error(LK_UNSUPPORTED, "backend " + chosen->module + "." + chosen->name +
+                                                      " indexes families in 64 bits; this family has " + index_string(sz.value) + " members");
     }
     auto r = chosen->run(req);
     if (!r.ok) return ctx->set_error(r.error);

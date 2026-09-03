@@ -61,6 +61,13 @@ Where the time goes in the generic basis, so you know what to attack:
 - `Visitor::push(row, first, below)` names the index range of the subtree being entered. The
   walker uses it to answer `first` without visiting anything above a hit already found
   (`acc.exhausted(first)`); a backend with its own walk should do the same.
+- Family sizes, member indices and everything counted over a family are `lk::Index`
+  (`unsigned __int128`): `Family::size()`, `member()`, `index_of()`, the visitor callbacks and
+  the accumulator all take it. A backend that keeps indices in `uint64_t` (every one that walks
+  member by member; nothing walks 2^64 of anything) leaves `Backend::big_families` false, and the
+  runtime refuses families of 2^64 or more members on its behalf instead of letting the narrowing
+  corrupt indices. A backend whose pruning decides whole subtrees at once sets it true and uses
+  `Index` for its index arithmetic; `sum_free_and_additive` settles C(151, 15) members that way.
 
 A backend need not use the walk at all. A GPU backend will more likely unrank members in bulk
 from their canonical indices (`Family::member` is the scalar version of that) and reduce on

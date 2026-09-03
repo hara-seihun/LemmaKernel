@@ -106,3 +106,35 @@ def test_sum_max_min_reductions():
     lo = ctx.value("gfp.nullity", ctx.all_matrices(3, 2, 2), "min")
     assert (lo.value, lo.index) == (0, 12)  # [[0,1],[1,0]] is the first invertible 2x2 over F_3
     assert lo.member.member(0) == [[0, 1], [1, 0]]
+
+
+def test_families_past_two_to_the_64():
+    """Family sizes, member indices and everything counted over a family are 128-bit. C(152, 15)
+    is 2.0e20: the family constructs, unranks and ranks at the top end, its size survives a
+    round trip through the encoding, a backend that walks 128-bit indices settles a `first` and
+    a `count` over such a family, and a backend that keeps 64-bit indices is refused rather
+    than handed a truncated family."""
+    from math import comb
+
+    ctx = lk.Context(threads=8)
+    fam = ctx.subsets_of(ctx.range(0, 152), 15)
+    size = comb(152, 15)
+    assert size > 1 << 64
+    assert ctx.size(fam) == size
+    assert fam.params["size"] == size
+    assert ctx.load(fam.export()).params["size"] == size
+    last = ctx.member(fam, size - 1)
+    assert last.value().tolist() == [[[v] for v in range(137, 152)]]
+    with pytest.raises(lk.Error):
+        ctx.member(fam, size)
+
+    # A 2-term progression is any pair, so no 20-subset of [0, 150] is 2-AP-free: every subtree
+    # is refused at its second element and the count decides 4.2e24 members without a visit.
+    none = ctx.value("sum_free_and_additive.is_ap_free", ctx.subsets_of(ctx.range(0, 151), 20), "count",
+                     modulus=0, length=2)
+    assert (none.value, none.visited, none.family_size) == (0, comb(151, 20), comb(151, 20))
+    hit = ctx.value("sum_free_and_additive.is_sidon", ctx.subsets_of(ctx.range(0, 221), 13), "first", modulus=0)
+    assert hit.found == 1 and hit.family_size == comb(221, 13) and hit.visited == hit.index + 1
+    assert ctx.load(hit.encode()).value().index == hit.index
+    with pytest.raises(lk.Error, match="64 bits"):
+        ctx.run("gfp.full_col_rank", ctx.all_matrices(2, 9, 8), "count")

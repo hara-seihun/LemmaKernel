@@ -40,7 +40,7 @@ Result<BlockFamily> read_blocks(const Family &family, uint64_t limit = std::nume
     out.k = family.rows();
     if (out.v == 0 || out.k == 0 || out.k > out.v)
         return Result<BlockFamily>::failure(INVALID, "blocks must have shape k x v with 1 <= k <= v");
-    uint64_t count = std::min(size.value, limit);
+    uint64_t count = size.value < limit ? (uint64_t)size.value : limit;
     out.blocks.reserve(count);
     Matrix member;
     for (uint64_t index = 0; index < count; ++index) {

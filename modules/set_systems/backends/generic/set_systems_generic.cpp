@@ -111,7 +111,7 @@ struct Walker : Family::Visitor {
         }
     }
 
-    Step push(const Entry *row, uint64_t first, uint64_t) override {
+    Step push(const Entry *row, Index first, Index) override {
         uint64_t mask = 0;
         for (uint64_t i = 0; i < n; ++i)
             if (row[i] == 1) mask |= 1ULL << i;
@@ -157,7 +157,7 @@ struct Walker : Family::Visitor {
         sets.pop_back();
     }
 
-    void leaf(uint64_t index) override {
+    void leaf(Index index) override {
         switch (op) {
         case Op::MaxDegree:
             acc.integer(index, *std::max_element(degrees.begin(), degrees.end()));
@@ -171,8 +171,8 @@ struct Walker : Family::Visitor {
         }
     }
 
-    void take_all(uint64_t first, uint64_t count) override { acc.booleans(first, count, true); }
-    void skip_all(uint64_t first, uint64_t count) override { acc.booleans(first, count, false); }
+    void take_all(Index first, Index count) override { acc.booleans(first, count, true); }
+    void skip_all(Index first, Index count) override { acc.booleans(first, count, false); }
 };
 
 Result<Op> parse_op(const std::string &name) {

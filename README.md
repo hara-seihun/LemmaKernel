@@ -36,7 +36,8 @@ Vocabulary, in the order a request is built:
   wrappers, `group_elements` of a permutation or matrix group, `group_tables` from stored Cayley
   tables, permutation generators, or the catalogue of every group of an order up to 31, graph families (`all_graphs`, `edge_subgraphs`,
   `cayley_graphs`), `range`/`words` of natural numbers, `latin_squares`, constrained `partitions`,
-  `compositions`, and `standard_tableaux`). Family sizes in the hundreds of millions are normal.
+  `compositions`, and `standard_tableaux`). Family sizes in the hundreds of millions are normal;
+  sizes and member indices are 128-bit, so a pruned search can settle a family of 10^20 members.
 - **operation**: what to compute per member (`gfp.rank`, `gfp.in_span`, `gfp.rref`, ...).
 - **reduction**: what to bring back. For booleans: `count`, `hits`, `first` (the least hit,
   stopping early), `all`. For integers: `histogram` (one bin per value, so it is refused above
@@ -154,7 +155,6 @@ and committed; the build refuses to configure if they are stale.
 | [subgroups](modules/subgroups/manifest.toml) | subgroup counts, conjugacy-class representatives, maximal subgroups, and normality for finite permutation groups | `generic` (cyclic extension over indexed multiplication tables, portable C++) |
 | [subspace_orbits](modules/subspace_orbits/manifest.toml) | GL, PGL and PGammaL orbits of row spaces from Grassmannians and their transform/stack derivatives; canonical indices use the least rref in Grassmannian order | `generic` (per-member rref orbit search, portable C++) |
 <<<<<<< HEAD
-| [sum_free_and_additive](modules/sum_free_and_additive/manifest.toml) | sum-free, Sidon and k-AP-free sets of integers or of Z/n, with sumset and difference-set sizes, Schur triple counts, difference multiplicities and a doubling-constant test | `generic` (incremental prefix state, pruned subsets walk, portable C++) |
 | [vertex_transitive](modules/vertex_transitive/manifest.toml) | vertex and arc transitivity, Cayley recognition, and canonical lists of regular automorphism subgroups of simple graphs | `generic` (colour-refined automorphism search and direct semiregular subgroup generation, portable C++) |
 =======
 | [sum_free_and_additive](modules/sum_free_and_additive/manifest.toml) | sum-free, Sidon and k-AP-free sets of integers or of Z/n, with sumset and difference-set sizes, Schur triple counts, difference multiplicities and a doubling-constant test | `generic` (forbidden-set bitsets, span table, mirror rule and gap bounds for Golomb-ruler and r_k(n) searches, portable C++) |

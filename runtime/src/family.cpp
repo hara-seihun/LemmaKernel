@@ -25,22 +25,32 @@ bool add_overflows(uint64_t a, uint64_t b, uint64_t &out) {
     return out < a;
 }
 
-Result<uint64_t> binom(uint64_t n, uint64_t k) {
-    if (k > n) return Result<uint64_t>::success(0);
+Result<Index> binom(uint64_t n, uint64_t k) {
+    if (k > n) return Result<Index>::success(0);
     if (k > n - k) k = n - k;
-    unsigned __int128 r = 1;
+    Index r = 1;
     for (uint64_t i = 1; i <= k; ++i) {
-        r = r * (n - k + i) / i;
-        if (r > UINT64_MAX) return Result<uint64_t>::failure(INVALID, "family size does not fit in 64 bits");
+        Index f = n - k + i;
+        if (r > INDEX_MAX / f) return Result<Index>::failure(INVALID, "family size does not fit in 128 bits");
+        r = r * f / i;
     }
-    return Result<uint64_t>::success((uint64_t)r);
+    return Result<Index>::success(r);
 }
 
-Result<uint64_t> pow_checked(uint64_t p, uint64_t e) {
-    uint64_t r = 1;
-    for (uint64_t i = 0; i < e; ++i)
-        if (mul_overflows(r, p, r)) return Result<uint64_t>::failure(INVALID, "family size does not fit in 64 bits");
-    return Result<uint64_t>::success(r);
+Result<Index> pow_checked(uint64_t p, uint64_t e) {
+    Index r = 1;
+    for (uint64_t i = 0; i < e; ++i) {
+        if (p && r > INDEX_MAX / p) return Result<Index>::failure(INVALID, "family size does not fit in 128 bits");
+        r *= p;
+    }
+    return Result<Index>::success(r);
+}
+
+/* Top-level branch counts and other per-level radices are walked in 64-bit loops. */
+Result<uint64_t> narrow(Result<Index> r, const char *what) {
+    if (!r.ok) return Result<uint64_t>::failure(r.error.status, r.error.message);
+    if (r.value > UINT64_MAX) return Result<uint64_t>::failure(INVALID, std::string(what) + " does not fit in 64 bits");
+    return Result<uint64_t>::success((uint64_t)r.value);
 }
 
 std::vector<std::vector<Entry>> permutation_rows(uint64_t n) {
@@ -252,7 +262,7 @@ void diagonal_tuples(uint64_t remaining_dim, uint64_t index, std::vector<uint64_
 Result<uint64_t> hnf_block_size(const std::vector<uint64_t> &diagonal) {
     uint64_t block = 1;
     for (uint64_t j = 0; j < diagonal.size(); ++j) {
-        auto power = pow_checked(diagonal[j], j);
+        auto power = narrow(pow_checked(diagonal[j], j), "sublattices family size");
         if (!power.ok) return power;
         if (mul_overflows(block, power.value, block))
             return Result<uint64_t>::failure(INVALID, "sublattices family size does not fit in 64 bits");
@@ -354,7 +364,7 @@ struct TransformVisitor : Family::Visitor {
     std::vector<Entry> buf;
     TransformVisitor(Family::Visitor &v, const Matrix &cm, uint64_t prime, uint64_t incols)
         : inner(v), c(cm), p(prime), in_cols(incols), buf(cm.cols) {}
-    Step push(const Entry *row, uint64_t first, uint64_t below) override {
+    Step push(const Entry *row, Index first, Index below) override {
         std::vector<uint64_t> acc(c.cols, 0);
         const Entry *cd = c.entries.data();
         for (uint64_t i = 0; i < in_cols; ++i) {
@@ -367,9 +377,9 @@ struct TransformVisitor : Family::Visitor {
         return inner.push(buf.data(), first, below);
     }
     void pop() override { inner.pop(); }
-    void leaf(uint64_t i) override { inner.leaf(i); }
-    void take_all(uint64_t f, uint64_t n) override { inner.take_all(f, n); }
-    void skip_all(uint64_t f, uint64_t n) override { inner.skip_all(f, n); }
+    void leaf(Index i) override { inner.leaf(i); }
+    void take_all(Index f, Index n) override { inner.take_all(f, n); }
+    void skip_all(Index f, Index n) override { inner.skip_all(f, n); }
 };
 
 } // namespace
@@ -467,30 +477,30 @@ bool Family::is_explicit() const {
     return kind == Kind::Explicit || kind == Kind::GroupTables;
 }
 
-Result<uint64_t> Family::size() const {
-    if (size_cached) return Result<uint64_t>::success(cached_size);
+Result<Index> Family::size() const {
+    if (size_cached) return Result<Index>::success(cached_size);
     switch (kind) {
     case Kind::Explicit:
-    case Kind::GroupTables: return Result<uint64_t>::success(data->count);
+    case Kind::GroupTables: return Result<Index>::success(data->count);
     case Kind::Subsets:
     case Kind::SubsetsOf: return binom(data->count, k);
     case Kind::Grassmannian: {
         auto t = pivot_table();
-        if (!t.ok) return Result<uint64_t>::failure(t.error.status, t.error.message);
-        return Result<uint64_t>::success(t.value->offsets.back());
+        if (!t.ok) return Result<Index>::failure(t.error.status, t.error.message);
+        return Result<Index>::success(t.value->offsets.back());
     }
     case Kind::AllMatrices:
     case Kind::Words: return pow_checked(p, m * n);
     case Kind::SymmetricMatrices: return pow_checked(p, n * (n + 1) / 2);
     case Kind::AlternatingMatrices: return pow_checked(p, n * (n - 1) / 2);
-    case Kind::Range: return Result<uint64_t>::success(b - a);
-    case Kind::LatinSquares: return Result<uint64_t>::success(latin_square_count(n));
+    case Kind::Range: return Result<Index>::success(b - a);
+    case Kind::LatinSquares: return Result<Index>::success(latin_square_count(n));
     case Kind::Partitions: {
         uint64_t largest = effective_bound(m, n), slots = effective_bound(k, n);
         PartitionCounter counter(n, h, a != 0, b != 0);
         uint64_t total = counter.count(n, largest, slots);
-        if (counter.overflow) return Result<uint64_t>::failure(INVALID, "family size does not fit in 64 bits");
-        return Result<uint64_t>::success(total);
+        if (counter.overflow) return Result<Index>::failure(INVALID, "family size does not fit in 64 bits");
+        return Result<Index>::success(total);
     }
     case Kind::Compositions: {
         CompositionCounter counter(effective_bound(m, n));
@@ -501,30 +511,36 @@ Result<uint64_t> Family::size() const {
             if (next > UINT64_MAX) counter.overflow = true;
             total = next > UINT64_MAX ? UINT64_MAX : (uint64_t)next;
         }
-        if (counter.overflow) return Result<uint64_t>::failure(INVALID, "family size does not fit in 64 bits");
-        return Result<uint64_t>::success(total);
+        if (counter.overflow) return Result<Index>::failure(INVALID, "family size does not fit in 64 bits");
+        return Result<Index>::success(total);
     }
     case Kind::StandardTableaux: {
         std::vector<uint64_t> shape(data->entries.begin(), data->entries.end());
-        return standard_tableau_count(shape);
+        auto c = standard_tableau_count(shape);
+        if (!c.ok) return Result<Index>::failure(c.error.status, c.error.message);
+        return Result<Index>::success(c.value);
     }
     case Kind::Transform:
     case Kind::Stack: return child->size();
     case Kind::GroupElements: {
         auto g = group_elements();
-        if (!g.ok) return Result<uint64_t>::failure(g.error.status, g.error.message);
-        return Result<uint64_t>::success(g.value->size() / (data->rows * data->cols));
+        if (!g.ok) return Result<Index>::failure(g.error.status, g.error.message);
+        return Result<Index>::success(g.value->size() / (data->rows * data->cols));
     }
     case Kind::AllGraphs: {
         auto reps = all_graph_representatives(n);
-        if (!reps.ok) return Result<uint64_t>::failure(reps.error.status, reps.error.message);
-        return Result<uint64_t>::success(reps.value->size());
+        if (!reps.ok) return Result<Index>::failure(reps.error.status, reps.error.message);
+        return Result<Index>::success(reps.value->size());
     }
     case Kind::EdgeSubgraphs: return binom(h, k);
     case Kind::CayleyGraphs: return pow_checked(2, h);
-    case Kind::Sublattices: return sublattice_count(data->rows, k);
+    case Kind::Sublattices: {
+        auto c = sublattice_count(data->rows, k);
+        if (!c.ok) return Result<Index>::failure(c.error.status, c.error.message);
+        return Result<Index>::success(c.value);
     }
-    return Result<uint64_t>::failure(INTERNAL, "unknown family kind");
+    }
+    return Result<Index>::failure(INTERNAL, "unknown family kind");
 }
 
 Result<uint64_t> Family::top_count() const {
@@ -533,12 +549,12 @@ Result<uint64_t> Family::top_count() const {
     case Kind::GroupTables: return Result<uint64_t>::success(data->count);
     case Kind::Subsets:
     case Kind::SubsetsOf: return Result<uint64_t>::success(k == 0 ? 1 : data->count - k + 1);
-    case Kind::Grassmannian: return binom(n, h);
+    case Kind::Grassmannian: return narrow(binom(n, h), "pivot set count");
     case Kind::AllMatrices:
     case Kind::Words:
-    case Kind::SymmetricMatrices: return pow_checked(p, n);
-    case Kind::AlternatingMatrices: return pow_checked(p, n - 1);
-    case Kind::Range: return size();
+    case Kind::SymmetricMatrices: return narrow(pow_checked(p, n), "first-row count");
+    case Kind::AlternatingMatrices: return narrow(pow_checked(p, n - 1), "first-row count");
+    case Kind::Range: return narrow(size(), "family size");
     case Kind::LatinSquares: {
         uint64_t factorial = 1;
         for (uint64_t i = 2; i <= n; ++i) factorial *= i;
@@ -546,29 +562,31 @@ Result<uint64_t> Family::top_count() const {
     }
     case Kind::Partitions: return Result<uint64_t>::success(effective_bound(m, n));
     case Kind::Compositions: return Result<uint64_t>::success(k ? 1 : n);
-    case Kind::StandardTableaux: return size();
+    case Kind::StandardTableaux: return narrow(size(), "family size");
     case Kind::Transform:
     case Kind::Stack: return child->top_count();
     case Kind::GroupElements:
     case Kind::AllGraphs:
     case Kind::EdgeSubgraphs:
     case Kind::CayleyGraphs:
-    case Kind::Sublattices: return size();
+    case Kind::Sublattices: return narrow(size(), "family size");
     }
     return Result<uint64_t>::failure(INTERNAL, "unknown family kind");
 }
 
-Result<Matrix> Family::member(uint64_t index) const {
+Result<Matrix> Family::member(Index index) const {
     Matrix out;
     auto st = member_into(index, out);
     if (!st.ok) return Result<Matrix>::failure(st.error.status, st.error.message);
     return Result<Matrix>::success(std::move(out));
 }
 
-Status Family::member_into(uint64_t index, Matrix &out) const {
+Status Family::member_into(Index index, Matrix &out) const {
     auto sz = size();
     if (!sz.ok) return fail(sz.error.status, sz.error.message);
     if (index >= sz.value) return fail(INVALID, "member index out of range");
+    /* Kinds whose sizes are counted in 64 bits (everything but the closed-form ones) index in 64. */
+    uint64_t index64 = (uint64_t)index;
     out.p = prime();
     out.count = 1;
     out.rows = rows();
@@ -576,11 +594,12 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
     switch (kind) {
     case Kind::Explicit:
     case Kind::GroupTables:
-        out.entries.assign(data->at(index), data->at(index) + out.rows * out.cols);
+        out.entries.assign(data->at(index64), data->at(index64) + out.rows * out.cols);
         break;
     case Kind::Subsets:
     case Kind::SubsetsOf: {
-        uint64_t D = data->count, remaining = index, prev = 0;
+        uint64_t D = data->count, prev = 0;
+        Index remaining = index;
         out.entries.resize(k * out.cols);
         for (uint64_t j = 0; j < k; ++j) {
             uint64_t c = prev;
@@ -599,9 +618,9 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         auto tr = pivot_table();
         if (!tr.ok) return fail(tr.error.status, tr.error.message);
         const PivotTable &t = *tr.value;
-        auto it = std::upper_bound(t.offsets.begin(), t.offsets.end(), index);
+        auto it = std::upper_bound(t.offsets.begin(), t.offsets.end(), index64);
         uint64_t s = (uint64_t)(it - t.offsets.begin()) - 1;
-        uint64_t rem = index - t.offsets[s];
+        uint64_t rem = index64 - t.offsets[s];
         const auto &piv = t.sets[s];
         out.entries.assign(h * n, 0);
         /* The free entries, row-major, are the base-p digits of `rem`, most significant first;
@@ -622,7 +641,7 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
     case Kind::AllMatrices:
     case Kind::Words: {
         out.entries.assign(m * n, 0);
-        uint64_t rem = index;
+        Index rem = index;
         for (int64_t q = (int64_t)(m * n) - 1; q >= 0; --q) {
             out.entries[q] = (Entry)(rem % p);
             rem /= p;
@@ -635,7 +654,7 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         std::unordered_map<uint64_t, uint64_t> memo;
         out.entries.clear();
         out.entries.reserve(n * n);
-        uint64_t remaining = index;
+        uint64_t remaining = index64;
         for (uint64_t depth = 0; depth < n; ++depth) {
             bool found = false;
             for (const auto &row : candidates) {
@@ -660,7 +679,7 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
     case Kind::SymmetricMatrices: {
         /* The upper triangle, row-major, holds the base-p digits of the index. */
         out.entries.assign(n * n, 0);
-        uint64_t rem = index;
+        Index rem = index;
         for (int64_t i = (int64_t)n - 1; i >= 0; --i)
             for (int64_t j = (int64_t)n - 1; j >= i; --j) {
                 Entry e = (Entry)(rem % p);
@@ -673,7 +692,7 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
     case Kind::AlternatingMatrices: {
         /* The strict upper triangle, row-major, holds the base-p digits of the index. */
         out.entries.assign(n * n, 0);
-        uint64_t rem = index;
+        Index rem = index;
         for (int64_t i = (int64_t)n - 1; i >= 0; --i)
             for (int64_t j = (int64_t)n - 1; j > i; --j) {
                 Entry e = (Entry)(rem % p);
@@ -684,7 +703,7 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         break;
     }
     case Kind::Range:
-        out.entries.assign(1, (Entry)(a + index));
+        out.entries.assign(1, (Entry)(a + index64));
         break;
     case Kind::Partitions: {
         if (!partition_counts) return fail(INTERNAL, "partitions counting table is missing");
@@ -700,18 +719,18 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
                 uint64_t below;
                 if (!counter.cached_count(rem - c * part, part - 1, slots - c, below))
                     return fail(INTERNAL, "partitions counting table is incomplete");
-                if (index < below) {
+                if (index64 < below) {
                     for (uint64_t j = 0; j < c; ++j) out.entries[pos++] = (Entry)part;
                     rem -= c * part;
                     slots -= c;
                     selected = true;
                     break;
                 }
-                index -= below;
+                index64 -= below;
             }
             if (!selected) return fail(INTERNAL, "partition unranking failed");
         }
-        if (rem != 0 || index != 0) return fail(INTERNAL, "partition unranking failed");
+        if (rem != 0 || index64 != 0) return fail(INTERNAL, "partition unranking failed");
         break;
     }
     case Kind::Compositions: {
@@ -720,8 +739,8 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         if (parts == 0) {
             for (parts = 1; parts <= n; ++parts) {
                 uint64_t below = counter.count(n, parts);
-                if (index < below) break;
-                index -= below;
+                if (index64 < below) break;
+                index64 -= below;
             }
         }
         out.entries.assign(n, 0);
@@ -731,17 +750,17 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
             bool selected = false;
             for (uint64_t x = hi + 1; x-- > 1;) {
                 uint64_t below = counter.count(rem - x, parts - pos - 1);
-                if (index < below) {
+                if (index64 < below) {
                     out.entries[pos] = (Entry)x;
                     rem -= x;
                     selected = true;
                     break;
                 }
-                index -= below;
+                index64 -= below;
             }
             if (!selected) return fail(INTERNAL, "composition unranking failed");
         }
-        if (rem != 0 || index != 0) return fail(INTERNAL, "composition unranking failed");
+        if (rem != 0 || index64 != 0) return fail(INTERNAL, "composition unranking failed");
         break;
     }
     case Kind::StandardTableaux: {
@@ -758,12 +777,12 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
                 --shape[row];
                 auto below = standard_tableau_count(shape);
                 if (!below.ok) return fail(below.error.status, below.error.message);
-                if (index < below.value) {
+                if (index64 < below.value) {
                     out.entries[row * out.cols + col] = (Entry)label;
                     found = true;
                     break;
                 }
-                index -= below.value;
+                index64 -= below.value;
                 ++shape[row];
             }
             if (!found) return fail(INTERNAL, "standard tableau unranking failed");
@@ -795,13 +814,13 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         auto g = group_elements();
         if (!g.ok) return fail(g.error.status, g.error.message);
         uint64_t stride = out.rows * out.cols;
-        out.entries.assign(g.value->begin() + index * stride, g.value->begin() + (index + 1) * stride);
+        out.entries.assign(g.value->begin() + index64 * stride, g.value->begin() + (index64 + 1) * stride);
         break;
     }
     case Kind::AllGraphs: {
         auto reps = all_graph_representatives(n);
         if (!reps.ok) return fail(reps.error.status, reps.error.message);
-        out.entries = graph::from_upper_mask((*reps.value)[index], n);
+        out.entries = graph::from_upper_mask((*reps.value)[index64], n);
         break;
     }
     case Kind::EdgeSubgraphs: {
@@ -809,7 +828,8 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         for (uint64_t i = 0; i < n; ++i)
             for (uint64_t j = i + 1; j < n; ++j)
                 if (data->entries[i * n + j]) edges.emplace_back(i, j);
-        uint64_t remaining = index, prev = 0;
+        uint64_t prev = 0;
+        Index remaining = index;
         out.entries.assign(n * n, 0);
         for (uint64_t q = 0; q < k; ++q) {
             uint64_t c = prev;
@@ -831,7 +851,7 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         out.entries.assign(order * order, 0);
         std::vector<Entry> product(degree);
         for (uint64_t c = 0; c < cayley_classes->size(); ++c) {
-            if (((index >> (cayley_classes->size() - 1 - c)) & 1) == 0) continue;
+            if (((index64 >> (cayley_classes->size() - 1 - c)) & 1) == 0) continue;
             for (uint64_t s : (*cayley_classes)[c]) {
                 const Entry *right = elements_.data() + s * degree;
                 for (uint64_t g = 0; g < order; ++g) {
@@ -849,7 +869,7 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         uint64_t n_ = data->rows;
         auto ds = all_diagonals(n_, k);
         const std::vector<uint64_t> *diagonal = nullptr;
-        uint64_t local = index;
+        uint64_t local = index64;
         for (const auto &d : ds.value) {
             auto block = hnf_block_size(d);
             if (!block.ok) return fail(block.error.status, block.error.message);
@@ -922,8 +942,8 @@ Result<const std::vector<Entry> *> Family::group_elements() const {
     return R::success(elements.get());
 }
 
-Result<uint64_t> Family::index_of(const Matrix &mem) const {
-    using R = Result<uint64_t>;
+Result<Index> Family::index_of(const Matrix &mem) const {
+    using R = Result<Index>;
     if (mem.count != 1 || mem.rows != rows() || mem.cols != cols() || mem.p != prime())
         return R::failure(INVALID, "index_of: member has the wrong shape for this family");
     switch (kind) {
@@ -941,7 +961,8 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
         }
         for (uint64_t j = 1; j < k; ++j)
             if (idx[j] <= idx[j - 1]) return R::failure(INVALID, "index_of: rows are not in increasing dictionary order");
-        uint64_t index = 0, prev = 0;
+        uint64_t prev = 0;
+        Index index = 0;
         for (uint64_t j = 0; j < k; ++j) {
             for (uint64_t c = prev; c < idx[j]; ++c) {
                 auto b = binom(D - 1 - c, k - 1 - j);
@@ -986,7 +1007,7 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
     }
     case Kind::AllMatrices:
     case Kind::Words: {
-        uint64_t index = 0;
+        Index index = 0;
         for (Entry e : mem.entries) {
             if (e >= p) return R::failure(INVALID, "index_of: entry out of range");
             index = index * p + e;
@@ -1017,7 +1038,7 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
         return R::success(index);
     }
     case Kind::SymmetricMatrices: {
-        uint64_t index = 0;
+        Index index = 0;
         for (uint64_t i = 0; i < n; ++i)
             for (uint64_t j = i; j < n; ++j) {
                 if (mem.entries[i * n + j] != mem.entries[j * n + i]) return R::failure(INVALID, "index_of: matrix is not symmetric");
@@ -1026,7 +1047,7 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
         return R::success(index);
     }
     case Kind::AlternatingMatrices: {
-        uint64_t index = 0;
+        Index index = 0;
         for (uint64_t i = 0; i < n; ++i) {
             if (mem.entries[i * n + i] != 0)
                 return R::failure(INVALID, "index_of: matrix is not alternating");
@@ -1092,7 +1113,7 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
             return ok();
         }
         uint64_t D = data->count, cols = data->cols;
-        std::vector<std::vector<uint64_t>> tail(k + 1); /* tail[j][c] = C(D-1-c, k-1-j) */
+        std::vector<std::vector<Index>> tail(k + 1); /* tail[j][c] = C(D-1-c, k-1-j) */
         for (uint64_t j = 0; j < k; ++j) {
             tail[j].resize(D);
             for (uint64_t c = 0; c < D; ++c) {
@@ -1101,13 +1122,11 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
                 tail[j][c] = b.value;
             }
         }
-        uint64_t base_index = 0;
+        Index base_index = 0;
         for (uint64_t c = 0; c < top_begin; ++c) base_index += tail[0][c];
-        struct Frame { uint64_t c, index; };
-        std::vector<Frame> stack;
-        auto descend = [&](auto &self, uint64_t depth, uint64_t prev, uint64_t index, uint64_t c_end) -> void {
+        auto descend = [&](auto &self, uint64_t depth, uint64_t prev, Index index, uint64_t c_end) -> void {
             for (uint64_t c = prev; c < c_end; ++c) {
-                uint64_t below = tail[depth][c];
+                Index below = tail[depth][c];
                 Step step = v.push(data->at(0) + c * cols, index, below);
                 if (step == Step::Descend) {
                     if (depth + 1 == k) v.leaf(index);
@@ -1133,7 +1152,7 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
             const auto &piv = t.sets[s];
             const auto &fr = t.free_counts[s];
             std::vector<uint64_t> radix(h), below(h);
-            for (uint64_t j = 0; j < h; ++j) radix[j] = pow_checked(p, fr[j]).value;
+            for (uint64_t j = 0; j < h; ++j) radix[j] = (uint64_t)pow_checked(p, fr[j]).value;
             for (int64_t j = (int64_t)h - 1; j >= 0; --j) below[j] = (j + 1 < (int64_t)h) ? below[j + 1] * radix[j + 1] : 1;
             std::vector<std::vector<uint64_t>> free_cols(h);
             for (uint64_t j = 0; j < h; ++j)
@@ -1168,11 +1187,11 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
     case Kind::SymmetricMatrices: {
         /* Row j has n - j free entries (columns j..n-1); its first j entries are copies of column
          * j of the rows above. The partial matrix is kept in `mat`. */
-        std::vector<uint64_t> below(n);
+        std::vector<Index> below(n);
         for (int64_t j = (int64_t)n - 1; j >= 0; --j)
             below[j] = (j + 1 < (int64_t)n) ? below[j + 1] * pow_checked(p, n - j - 1).value : 1;
         std::vector<Entry> mat(n * n, 0);
-        auto descend = [&](auto &self, uint64_t j, uint64_t index, uint64_t d_begin, uint64_t d_end) -> void {
+        auto descend = [&](auto &self, uint64_t j, Index index, uint64_t d_begin, uint64_t d_end) -> void {
             Entry *row = mat.data() + j * n;
             for (uint64_t c = 0; c < j; ++c) row[c] = mat[c * n + j];
             uint64_t rem = d_begin;
@@ -1181,7 +1200,7 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
                 Step step = v.push(row, index, below[j]);
                 if (step == Step::Descend) {
                     if (j + 1 == n) v.leaf(index);
-                    else self(self, j + 1, index, 0, pow_checked(p, n - j - 1).value);
+                    else self(self, j + 1, index, 0, (uint64_t)pow_checked(p, n - j - 1).value);
                 } else if (step == Step::TakeAll) {
                     v.take_all(index, below[j]);
                 } else {
@@ -1201,11 +1220,11 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
     case Kind::AlternatingMatrices: {
         /* Row j has n-j-1 free strict-upper entries. Earlier entries are the negatives of the
          * corresponding upper-triangle entries, and the diagonal is zero. */
-        std::vector<uint64_t> below(n, 1);
+        std::vector<Index> below(n, 1);
         for (int64_t j = (int64_t)n - 2; j >= 0; --j)
             below[j] = below[j + 1] * pow_checked(p, n - j - 2).value;
         std::vector<Entry> mat(n * n, 0);
-        auto descend = [&](auto &self, uint64_t j, uint64_t index, uint64_t d_begin, uint64_t d_end) -> void {
+        auto descend = [&](auto &self, uint64_t j, Index index, uint64_t d_begin, uint64_t d_end) -> void {
             Entry *row = mat.data() + j * n;
             for (uint64_t c = 0; c < j; ++c) {
                 Entry e = mat[c * n + j];
@@ -1218,7 +1237,7 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
                 Step step = v.push(row, index, below[j]);
                 if (step == Step::Descend) {
                     if (j + 1 == n) v.leaf(index);
-                    else self(self, j + 1, index, 0, pow_checked(p, n - j - 2).value);
+                    else self(self, j + 1, index, 0, (uint64_t)pow_checked(p, n - j - 2).value);
                 } else if (step == Step::TakeAll) {
                     v.take_all(index, below[j]);
                 } else {
@@ -1335,11 +1354,11 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
     }
     case Kind::AllMatrices:
     case Kind::Words: {
-        auto per_row = pow_checked(p, n);
+        auto per_row = narrow(pow_checked(p, n), "row count");
         if (!per_row.ok) return fail(per_row.error.status, per_row.error.message);
-        std::vector<uint64_t> below(m);
+        std::vector<Index> below(m);
         for (int64_t j = (int64_t)m - 1; j >= 0; --j) below[j] = (j + 1 < (int64_t)m) ? below[j + 1] * per_row.value : 1;
-        auto descend = [&](auto &self, uint64_t j, uint64_t index, uint64_t d_begin, uint64_t d_end) -> void {
+        auto descend = [&](auto &self, uint64_t j, Index index, uint64_t d_begin, uint64_t d_end) -> void {
             std::vector<Entry> r(n, 0);
             uint64_t rem = d_begin;
             for (int64_t q = (int64_t)n - 1; q >= 0; --q) { r[q] = (Entry)(rem % p); rem /= p; }
@@ -1458,12 +1477,12 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
         if (step == Step::Descend) st = child->enumerate(v, top_begin, top_end);
         else {
             struct Counter : Visitor {
-                uint64_t first = UINT64_MAX, count = 0;
-                Step push(const Entry *, uint64_t, uint64_t) override { return Step::TakeAll; }
+                Index first = INDEX_MAX, count = 0;
+                Step push(const Entry *, Index, Index) override { return Step::TakeAll; }
                 void pop() override {}
-                void leaf(uint64_t) override {}
-                void take_all(uint64_t f, uint64_t n) override { first = std::min(first, f); count += n; }
-                void skip_all(uint64_t, uint64_t) override {}
+                void leaf(Index) override {}
+                void take_all(Index f, Index n) override { first = std::min(first, f); count += n; }
+                void skip_all(Index, Index) override {}
             } counter;
             st = child->enumerate(counter, top_begin, top_end);
             if (st.ok && counter.count) {

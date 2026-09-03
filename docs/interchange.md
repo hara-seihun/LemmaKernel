@@ -6,15 +6,18 @@ so that a reader in any language can parse it in an afternoon.
 
 ```
 magic     "LKIF"
-u32       format version (1)
+u32       format version (2)
 string    kind                      u32 byte length, then UTF-8
 u32       parameter count
-repeated  string name, u64 value    parameters, sorted by name
+repeated  string name, u128 value   parameters, sorted by name
 u64       payload length
 bytes     payload
 ```
 
-All integers little-endian. Kinds, their parameters, and their payload layouts are declared in
+All integers little-endian; a u128 is its low u64 then its high u64. Parameters are 128-bit
+because family sizes, member indices and counts over a family exceed 2^64 once a search prunes
+(the runtime settles families of 10^20 members); every other parameter is a 64-bit quantity
+stored in the low half. Kinds, their parameters, and their payload layouts are declared in
 each module's manifest (`[[kinds]]`) and in the runtime's own kinds below. Field entries are labels
 in `0..q-1`; the existing `p` header parameter carries this field-size tag. The `gfp` module requires
 it to be prime, while `gfq` supplies an explicit extension-field presentation. Entries use the
@@ -30,7 +33,7 @@ Runtime kinds (not module-specific):
 | `integers` | count | u64[count] |
 | `count` | value, visited, family_size | empty |
 | `histogram` | visited, family_size, bins | u64[bins] |
-| `hits` | p, rows, cols, total, visited, family_size, count, materialised | u64 indices[count], then materialised·rows·cols entries |
+| `hits` | p, rows, cols, total, visited, family_size, count, materialised | u128 indices[count], then materialised·rows·cols entries |
 | `first` | p, rows, cols, found, index, visited, family_size | found·rows·cols entries (the hit, if any) |
 | `extremum` | p, rows, cols, value, index, visited, family_size | rows·cols entries (the member attaining the value) |
 | `lk.naturals` | count, rows, cols | count·rows·cols 4-byte entries |

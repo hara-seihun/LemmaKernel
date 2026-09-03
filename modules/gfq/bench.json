@@ -1,15 +1,15 @@
 {
  "module": "gfq",
  "fingerprint": {
-  "module": "c66f7cbd05648e0f1ce3c1ee87d412e76a423a8349de38552d57847b2b2b25c0",
-  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "module": "bf4cd8403aa4828baaa9739257812fda916a328bd8d2c88945a8c01343af49b6",
+  "runtime": "34dcbc05e0dcc6e4964e62ed1b00d7ee32f4a81976c4b7e2ed6c18637b83f48f",
   "dependencies": [
    "gfp"
   ],
-  "combined": "e18f1e06599ebd5d7ff13f8269727701b0b33947578dd289b26496ffcd30dfaa"
+  "combined": "8229b160cac0e3c1c5a200553877e5da096f4b734b3b0b6fbd9ddf8c02b68c29"
  },
- "measured_at": "2026-09-03T05:21:03+00:00",
- "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "measured_at": "2026-09-03T08:08:29+00:00",
+ "commit": "9483ecc501f24ef1ef8518208d104946acfb1b73",
  "machine": {
   "host": "gmktec",
   "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
@@ -23,13 +23,13 @@
    "op": "gfq.rank",
    "reduction": "histogram",
    "members": 8568,
-   "naive_s": 1.575876760063693,
+   "naive_s": 1.392022673971951,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.009647636208683252,
-   "kernel_all_threads_s": 0.0026567880995571613,
+   "kernel_1_thread_s": 0.005419705994427204,
+   "kernel_all_threads_s": 0.0025919920299202204,
    "threads": 32,
-   "speedup_1_thread": 163.3433025434087,
-   "speedup_all_threads": 593.1510910961861,
+   "speedup_1_thread": 256.8446840849474,
+   "speedup_all_threads": 537.047436065919,
    "answer": "Histogram(visited=8568, family_size=8568, bins=[0, 14, 364, 2184, 4011, 1995])"
   },
   {
@@ -38,13 +38,13 @@
    "op": "gfq.rref",
    "reduction": "all",
    "members": 2000,
-   "naive_s": 1.6428790029603988,
+   "naive_s": 1.5144308051094413,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.045078798895701766,
-   "kernel_all_threads_s": 0.003641264047473669,
+   "kernel_1_thread_s": 0.03483955701813102,
+   "kernel_all_threads_s": 0.0028382439631968737,
    "threads": 32,
-   "speedup_1_thread": 36.44460463024995,
-   "speedup_all_threads": 451.1837047632506,
+   "speedup_1_thread": 43.46871587148221,
+   "speedup_all_threads": 533.5802083072707,
    "answer": "Matrix(p=16, count=2000, rows=6, cols=8, entries=array([1, 0, 0, ..., 1, 0, 0], shape=(96000,)))"
   }
  ]

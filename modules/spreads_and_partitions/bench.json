@@ -1,15 +1,15 @@
 {
  "module": "spreads_and_partitions",
  "fingerprint": {
-  "module": "ce277f98e92b3bb661969f5d3b3ad98392687a84b3e46ed58efdf9357ffa83b6",
-  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "module": "c7c65794eec63a92aef30c0f2a57e573f9499e8e0d1d60bbbc859192de500042",
+  "runtime": "34dcbc05e0dcc6e4964e62ed1b00d7ee32f4a81976c4b7e2ed6c18637b83f48f",
   "dependencies": [
    "gfp"
   ],
-  "combined": "3b633a23151c4133c7038a7750180426a0b3c16d73e14bed8b745efadca3cc07"
+  "combined": "eef95fce5ec7ec6bacdd42a72d19b1a93f7dccce1127563b6399f7cd29d08883"
  },
- "measured_at": "2026-09-03T05:22:37+00:00",
- "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "measured_at": "2026-09-03T08:09:50+00:00",
+ "commit": "9483ecc501f24ef1ef8518208d104946acfb1b73",
  "machine": {
   "host": "gmktec",
   "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
@@ -23,13 +23,13 @@
    "op": "spreads_and_partitions.is_spread",
    "reduction": "count",
    "members": 324632,
-   "naive_s": 42.255774688376114,
+   "naive_s": 20.657416599076242,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 0.0009017689153552055,
-   "kernel_all_threads_s": 0.0029678570572286844,
+   "kernel_1_thread_s": 0.0005062830168753862,
+   "kernel_all_threads_s": 0.0005740008782595396,
    "threads": 32,
-   "speedup_1_thread": 46858.76167258618,
-   "speedup_all_threads": 14237.806563309881,
+   "speedup_1_thread": 40802.112475680275,
+   "speedup_all_threads": 35988.47559556487,
    "answer": "Count(value=56, visited=324632, family_size=324632)"
   },
   {
@@ -38,13 +38,13 @@
    "op": "spreads_and_partitions.is_spread",
    "reduction": "first",
    "members": 324632,
-   "naive_s": 38.91651383902878,
+   "naive_s": 20.614956375341865,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 7.923785597085953e-05,
-   "kernel_all_threads_s": 0.0018366260919719934,
+   "kernel_1_thread_s": 5.06080687046051e-05,
+   "kernel_all_threads_s": 0.0005029928870499134,
    "threads": 32,
-   "speedup_1_thread": 491135.37162515725,
-   "speedup_all_threads": 21189.132621569122,
+   "speedup_1_thread": 407345.2495425102,
+   "speedup_all_threads": 40984.58826376244,
    "answer": "First(p=2, rows=5, cols=8, found=1, index=23919, visited=23920, family_size=324632, member=Matrix(p=2, count=1, rows=5, "
   },
   {
@@ -53,13 +53,13 @@
    "op": "spreads_and_partitions.is_partial_spread",
    "reduction": "count",
    "members": 52360,
-   "naive_s": 4.034384288825095,
+   "naive_s": 2.3020851090550423,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.0008128108456730843,
-   "kernel_all_threads_s": 0.003125302027910948,
+   "kernel_1_thread_s": 0.00046212412416934967,
+   "kernel_all_threads_s": 0.0005439110100269318,
    "threads": 32,
-   "speedup_1_thread": 4963.497116582202,
-   "speedup_all_threads": 1290.8782104242919,
+   "speedup_1_thread": 4981.529828577877,
+   "speedup_all_threads": 4232.466463477278,
    "answer": "Count(value=280, visited=52360, family_size=52360)"
   },
   {
@@ -68,13 +68,13 @@
    "op": "spreads_and_partitions.intersecting_pairs",
    "reduction": "histogram",
    "members": 6545,
-   "naive_s": 0.27328453911468387,
+   "naive_s": 0.15983674791641533,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.0009422982111573219,
-   "kernel_all_threads_s": 0.0018173670396208763,
+   "kernel_1_thread_s": 0.0005516509991139174,
+   "kernel_all_threads_s": 0.0005343521479517221,
    "threads": 32,
-   "speedup_1_thread": 290.01916365631035,
-   "speedup_all_threads": 150.37388329200368,
+   "speedup_1_thread": 289.7425150559886,
+   "speedup_all_threads": 299.1224953976536,
    "answer": "Histogram(visited=6545, family_size=6545, bins=[560, 2520, 2520, 945])"
   },
   {
@@ -83,13 +83,13 @@
    "op": "spreads_and_partitions.is_partial_spread",
    "reduction": "count",
    "members": 23130030,
-   "naive_s": 1750.7521206759616,
+   "naive_s": 988.2084370360826,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 1.1817887069191784,
-   "kernel_all_threads_s": 0.20123897888697684,
+   "kernel_1_thread_s": 0.693682576995343,
+   "kernel_all_threads_s": 0.09235976100899279,
    "threads": 32,
-   "speedup_1_thread": 1481.4425881933007,
-   "speedup_all_threads": 8699.86585282391,
+   "speedup_1_thread": 1424.583043899511,
+   "speedup_all_threads": 10699.556021370212,
    "answer": "Count(value=2925160, visited=23130030, family_size=23130030)"
   }
  ]

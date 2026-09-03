@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <mutex>
 #include <thread>
 
 namespace lk {
@@ -35,31 +36,57 @@ inline Reduction parse_reduction(const std::string &r) {
     return table.at(r);
 }
 
+/* The best `first` index so far, shared by every thread. Only ever lowered. Readers take the
+ * two halves without a lock: the high half is refreshed after the low half is read, and the
+ * pair is re-read when the high half moved, so a torn read is never returned. */
+struct AtomicIndex {
+    std::atomic<uint64_t> hi{UINT64_MAX}, lo{UINT64_MAX};
+    std::mutex mu;
+    Index load() const {
+        for (;;) {
+            uint64_t h1 = hi.load(std::memory_order_acquire);
+            uint64_t l = lo.load(std::memory_order_acquire);
+            uint64_t h2 = hi.load(std::memory_order_acquire);
+            if (h1 == h2) return ((Index)h1 << 64) | l;
+        }
+    }
+    /* Lower to `v` if it is below the current value. */
+    void lower(Index v) {
+        if (v >= load()) return;
+        std::lock_guard<std::mutex> g(mu);
+        if (v >= load()) return;
+        hi.store(UINT64_MAX, std::memory_order_release); /* readers see a value that is never below the truth */
+        lo.store((uint64_t)v, std::memory_order_release);
+        hi.store((uint64_t)(v >> 64), std::memory_order_release);
+    }
+};
+
 /* State every thread's accumulator shares: the `all` output and the best `first` index. */
 struct Shared {
     std::vector<uint64_t> all; /* `all`: one slot per member index */
-    std::atomic<uint64_t> best{UINT64_MAX};
+    AtomicIndex best;
 };
 
 struct Accumulator {
     Reduction reduction;
     Shared *shared;
-    uint64_t visited = 0, count = 0;
+    Index visited = 0, count = 0;
     unsigned __int128 sum = 0;
     std::vector<uint64_t> hist;
     uint64_t too_many_bins = 0; /* the largest value that did not fit, or 0 */
-    std::vector<uint64_t> hit_indices;
+    std::vector<Index> hit_indices;
     bool has_extreme = false;
-    uint64_t extreme_value = 0, extreme_index = 0;
+    uint64_t extreme_value = 0;
+    Index extreme_index = 0;
 
     Accumulator(Reduction r, Shared *s) : reduction(r), shared(s) {}
 
     /* `first` only: the subtree starting at `first` cannot improve on a hit already found. */
-    bool exhausted(uint64_t first) const {
-        return reduction == Reduction::First && first >= shared->best.load(std::memory_order_relaxed);
+    bool exhausted(Index first) const {
+        return reduction == Reduction::First && first >= shared->best.load();
     }
 
-    void integer(uint64_t index, uint64_t v) {
+    void integer(Index index, uint64_t v) {
         ++visited;
         switch (reduction) {
         case Reduction::Histogram:
@@ -78,36 +105,34 @@ struct Accumulator {
             if (better) { has_extreme = true; extreme_value = v; extreme_index = index; }
             break;
         }
-        default: shared->all[index] = v; break;
+        default: shared->all[(size_t)index] = v; break;
         }
     }
     /* `n` consecutive members starting at `first` all have boolean value `value`. */
-    void booleans(uint64_t first, uint64_t n, bool value) {
+    void booleans(Index first, Index n, bool value) {
         if (reduction == Reduction::First) {
             if (exhausted(first)) return; /* abandoned, not decided */
             visited += n;
-            if (!value) return;
-            uint64_t cur = shared->best.load(std::memory_order_relaxed);
-            while (first < cur && !shared->best.compare_exchange_weak(cur, first, std::memory_order_relaxed)) {}
+            if (value) shared->best.lower(first);
             return;
         }
         visited += n;
         if (!value) return;
         switch (reduction) {
         case Reduction::Count: count += n; break;
-        case Reduction::Hits: for (uint64_t i = 0; i < n; ++i) hit_indices.push_back(first + i); break;
-        case Reduction::All: for (uint64_t i = 0; i < n; ++i) shared->all[first + i] = 1; break;
+        case Reduction::Hits: for (Index i = 0; i < n; ++i) hit_indices.push_back(first + i); break;
+        case Reduction::All: for (Index i = 0; i < n; ++i) shared->all[(size_t)(first + i)] = 1; break;
         default: break;
         }
     }
-    void boolean(uint64_t index, bool value) { booleans(index, 1, value); }
+    void boolean(Index index, bool value) { booleans(index, 1, value); }
 };
 
 /* Size the shared `all` output for a family, or refuse if it cannot be materialised. */
-inline Status prepare_all(Reduction r, uint64_t size, Shared &shared) {
+inline Status prepare_all(Reduction r, Index size, Shared &shared) {
     if (r != Reduction::All) return ok();
     if (size > (1ULL << 40)) return fail(1, "family too large to materialise");
-    shared.all.assign(size, 0);
+    shared.all.assign((size_t)size, 0);
     return ok();
 }
 
@@ -117,12 +142,14 @@ inline Result<std::shared_ptr<Object>> assemble(const Request &req, Reduction re
     const Family &fam = *req.family;
     auto size_r = fam.size();
     if (!size_r.ok) return R::failure(size_r.error.status, size_r.error.message);
-    uint64_t size = size_r.value;
-    uint64_t visited = 0, count = 0;
+    Index size = size_r.value;
+    Index visited = 0, count = 0;
     unsigned __int128 sum = 0;
-    std::vector<uint64_t> hist, hits;
+    std::vector<uint64_t> hist;
+    std::vector<Index> hits;
     bool has_extreme = false;
-    uint64_t extreme_value = 0, extreme_index = 0, too_many_bins = 0;
+    uint64_t extreme_value = 0, too_many_bins = 0;
+    Index extreme_index = 0;
     for (auto &a : accs) {
         too_many_bins = std::max(too_many_bins, a.too_many_bins);
         visited += a.visited;
@@ -140,11 +167,11 @@ inline Result<std::shared_ptr<Object>> assemble(const Request &req, Reduction re
     if (too_many_bins)
         return R::failure(1, "histogram of a value " + std::to_string(too_many_bins) + " needs more than " +
                                  std::to_string(MAX_HISTOGRAM_BINS) + " bins; use max, sum or all instead");
-    uint64_t best = shared.best.load();
-    bool complete = reduction == Reduction::First ? (best == UINT64_MAX ? visited == size : visited >= best + 1) : visited == size;
+    Index best = shared.best.load();
+    bool complete = reduction == Reduction::First ? (best == INDEX_MAX ? visited == size : visited >= best + 1) : visited == size;
     if (!complete)
-        return R::failure(4, "enumeration visited " + std::to_string(visited) + " members of " + std::to_string(size));
-    auto materialise = [&](uint64_t index, std::vector<Entry> &into) -> Status {
+        return R::failure(4, "enumeration visited " + index_string(visited) + " members of " + index_string(size));
+    auto materialise = [&](Index index, std::vector<Entry> &into) -> Status {
         auto m = fam.member(index);
         if (!m.ok) return fail(m.error.status, m.error.message);
         into = std::move(m.value.entries);
@@ -185,8 +212,8 @@ inline Result<std::shared_ptr<Object>> assemble(const Request &req, Reduction re
     case Reduction::First: {
         auto f = std::make_shared<First>();
         f->p = fam.prime(); f->rows = fam.rows(); f->cols = fam.cols();
-        f->visited = best != UINT64_MAX ? best + 1 : size; f->family_size = size;
-        if (best != UINT64_MAX) {
+        f->visited = best != INDEX_MAX ? best + 1 : size; f->family_size = size;
+        if (best != INDEX_MAX) {
             f->found = 1; f->index = best;
             auto st = materialise(best, f->member);
             if (!st.ok) return R::failure(st.error.status, st.error.message);

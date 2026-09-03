@@ -112,7 +112,9 @@ struct MatOnFamily {
         } else {
             scratch.entries.swap(product);
         }
-        return fam.index_of(scratch);
+        auto found = fam.index_of(scratch);
+        if (!found.ok) return Result<uint64_t>::failure(found.error.status, found.error.message);
+        return Result<uint64_t>::success((uint64_t)found.value); /* orbit families are materialised, so below 2^64 */
     }
 };
 

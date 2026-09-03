@@ -76,7 +76,7 @@ _lib.lk_export.argtypes = [_P, _H, ctypes.POINTER(ctypes.c_void_p), ctypes.POINT
 _lib.lk_free.argtypes = [ctypes.c_void_p]
 _lib.lk_release.argtypes = [_P, _H]
 _lib.lk_handle_kind.argtypes = [_P, _H, ctypes.POINTER(ctypes.c_char_p)]
-_lib.lk_handle_param.argtypes = [_P, _H, ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint64)]
+_lib.lk_handle_param128.argtypes = [_P, _H, ctypes.c_char_p, ctypes.POINTER(ctypes.c_uint64), ctypes.POINTER(ctypes.c_uint64)]
 _lib.lk_family_explicit.argtypes = [_P, _H, ctypes.POINTER(_H)]
 _lib.lk_family_subsets.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_grassmannian.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
@@ -101,8 +101,8 @@ _lib.lk_family_all_graphs.argtypes = [_P, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_edge_subgraphs.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_cayley_graphs.argtypes = [_P, _H, ctypes.POINTER(_H)]
 _lib.lk_family_sublattices.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
-_lib.lk_family_size.argtypes = [_P, _H, ctypes.POINTER(ctypes.c_uint64)]
-_lib.lk_family_member.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
+_lib.lk_family_size128.argtypes = [_P, _H, ctypes.POINTER(ctypes.c_uint64), ctypes.POINTER(ctypes.c_uint64)]
+_lib.lk_family_member128.argtypes = [_P, _H, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_run.argtypes = [_P, ctypes.c_char_p, _H, ctypes.c_char_p, ctypes.POINTER(_Arg), ctypes.c_size_t, ctypes.POINTER(_H)]
 
 
@@ -128,9 +128,9 @@ class Handle:
         return out.value.decode()
 
     def param(self, name: str) -> int:
-        out = ctypes.c_uint64()
-        self._ctx._check(_lib.lk_handle_param(self._ctx._ptr, self._h, name.encode(), ctypes.byref(out)))
-        return out.value
+        lo, hi = ctypes.c_uint64(), ctypes.c_uint64()
+        self._ctx._check(_lib.lk_handle_param128(self._ctx._ptr, self._h, name.encode(), ctypes.byref(lo), ctypes.byref(hi)))
+        return lo.value | (hi.value << 64)
 
     @property
     def params(self) -> dict[str, int]:
@@ -414,15 +414,18 @@ class Context:
         return self._wrap(out)
 
     def size(self, family) -> int:
-        out = ctypes.c_uint64()
+        """Number of members; a Python int, since families can have more than 2^64 members."""
+        lo, hi = ctypes.c_uint64(), ctypes.c_uint64()
         f = self._keep(family)
-        self._check(_lib.lk_family_size(self._ptr, f._h, ctypes.byref(out)))
-        return out.value
+        self._check(_lib.lk_family_size128(self._ptr, f._h, ctypes.byref(lo), ctypes.byref(hi)))
+        return lo.value | (hi.value << 64)
 
     def member(self, family, index: int) -> Handle:
         out = _H()
         f = self._keep(family)
-        self._check(_lib.lk_family_member(self._ptr, f._h, index, ctypes.byref(out)))
+        if not 0 <= index < 1 << 128:
+            raise ValueError("member index must be a natural number below 2^128")
+        self._check(_lib.lk_family_member128(self._ptr, f._h, index & ((1 << 64) - 1), index >> 64, ctypes.byref(out)))
         return self._wrap(out)
 
     def _keep(self, x) -> Handle:

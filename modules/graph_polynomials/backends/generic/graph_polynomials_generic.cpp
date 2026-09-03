@@ -112,14 +112,14 @@ struct PolynomialVisitor final : Family::Visitor {
                       std::shared_ptr<Coefficients> output_)
         : request(request_), vertices(vertices_), edge_count(edge_count_), output(std::move(output_)) {}
 
-    Step push(const Entry *row, uint64_t, uint64_t) override {
+    Step push(const Entry *row, Index, Index) override {
         prefix.emplace_back(row[0], row[1]);
         return Step::Descend;
     }
 
     void pop() override { prefix.pop_back(); }
-    void take_all(uint64_t, uint64_t) override {}
-    void skip_all(uint64_t, uint64_t) override {}
+    void take_all(Index, Index) override {}
+    void skip_all(Index, Index) override {}
 
     Poly chromatic(const Graph &graph) {
         if (auto it = chromatic_cache.find(graph); it != chromatic_cache.end()) return it->second;
@@ -228,7 +228,7 @@ struct PolynomialVisitor final : Family::Visitor {
         }
     }
 
-    void leaf(uint64_t index) override {
+    void leaf(Index index) override {
         if (!error.empty()) return;
         Graph graph = canonical(vertices, prefix);
         if (request.op == "chromatic") store(index, chromatic(graph));

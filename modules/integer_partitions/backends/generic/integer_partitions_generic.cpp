@@ -15,7 +15,7 @@ struct Walker : Family::Visitor {
     Walker(const Family &f, std::string operation, Reduction reduction, Shared *shared)
         : family(f), op(std::move(operation)), acc(reduction, shared) {}
 
-    Step push(const Entry *values, uint64_t first, uint64_t) override {
+    Step push(const Entry *values, Index first, Index) override {
         if (acc.exhausted(first)) return Step::Skip;
         row.assign(values, values + family.cols());
         return Step::Descend;
@@ -23,7 +23,7 @@ struct Walker : Family::Visitor {
 
     void pop() override {}
 
-    void leaf(uint64_t index) override {
+    void leaf(Index index) override {
         uint64_t count = 0;
         while (count < row.size() && row[count] != 0) ++count;
         uint64_t largest = count ? row[0] : 0;
@@ -47,8 +47,8 @@ struct Walker : Family::Visitor {
         acc.integer(index, value);
     }
 
-    void take_all(uint64_t, uint64_t) override {}
-    void skip_all(uint64_t, uint64_t) override {}
+    void take_all(Index, Index) override {}
+    void skip_all(Index, Index) override {}
 };
 
 R run(const Request &req) {

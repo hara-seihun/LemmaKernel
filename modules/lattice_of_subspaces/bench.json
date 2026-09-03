@@ -1,15 +1,15 @@
 {
  "module": "lattice_of_subspaces",
  "fingerprint": {
-  "module": "5e6e7685f50e6f49ee5912ab54870ca63c5c51ec7b7cf5d6f06b497ef7778d70",
-  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "module": "cd8775808f4fcfeba2f3d0eb665fdfdd9d5b2272c907b08ad295558d1e0fcf1f",
+  "runtime": "34dcbc05e0dcc6e4964e62ed1b00d7ee32f4a81976c4b7e2ed6c18637b83f48f",
   "dependencies": [
    "gfp"
   ],
-  "combined": "c4d3c31cd4dc41f50c6e34eaf322a1de744c899678726a7fbc04df9824902433"
+  "combined": "35b9ceb6ff6efc161d7abad921c91cbfe213165e523e419459c382a3082d07c5"
  },
- "measured_at": "2026-09-03T05:21:09+00:00",
- "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "measured_at": "2026-09-03T08:08:43+00:00",
+ "commit": "9483ecc501f24ef1ef8518208d104946acfb1b73",
  "machine": {
   "host": "gmktec",
   "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
@@ -23,13 +23,13 @@
    "op": "lattice_of_subspaces.contains",
    "reduction": "count",
    "members": 200787,
-   "naive_s": 2.2529675541445613,
+   "naive_s": 1.8821071609854698,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.01630662498064339,
-   "kernel_all_threads_s": 0.0035292080137878656,
+   "kernel_1_thread_s": 0.015750974882394075,
+   "kernel_all_threads_s": 0.002573502017185092,
    "threads": 32,
-   "speedup_1_thread": 138.16271342591878,
-   "speedup_all_threads": 638.3776601840118,
+   "speedup_1_thread": 119.49147116533261,
+   "speedup_all_threads": 731.3408532098712,
    "answer": "Count(value=11811, visited=200787, family_size=200787)"
   }
  ]

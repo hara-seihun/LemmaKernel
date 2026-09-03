@@ -9,50 +9,50 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | module | case | members | naive | kernel ×1 | speedup ×1 | speedup all threads |
 |---|---|---:|---:|---:|---:|---:|
 | burnside | binary_necklaces_60 | 1,152,921,504,606,846,976 | 6.23e+13 s~ | 2.65e-05 s | 2.3e+18× | 1.7e+17× |
-| sum_free_and_additive | sum_free_24_subsets_of_64 | 250,649,105,469,666,120 | 2.13e+12 s~ | 1.41 s | 1.5e+12× | 6.2e+12× |
-| spreads_and_partitions | pg32_first_spread | 324,632 | 38.9 s~ | 7.92e-05 s | 491,135× | 21,189× |
+| sum_free_and_additive | sum_free_24_subsets_of_64 | 250,649,105,469,666,120 | 3.01e+12 s~ | 1.54 s | 2e+12× | 8.4e+12× |
+| spreads_and_partitions | pg32_first_spread | 324,632 | 20.6 s~ | 5.06e-05 s | 407,345× | 40,985× |
 | words_and_growth | free group F2 geodesic prefix | 10 | 2.06 s | 1.88e-05 s | 109,456× | 179,308× |
 | perm_groups | S9 Schreier-Sims order | 1 | 1.36 s | 2.68e-05 s | 50,921× | 61,176× |
 | residues | primitive_roots_mod_10007 | 10,006 | 23.5 s~ | 0.000824 s | 28,580× | 48,774× |
-| polynomials_fq | first_primitive_degree_14_F2 | 16,384 | 17.2 s | 0.000718 s | 23,927× | 18,976× |
 | sieve_ranges | omega_distribution | 2,000,000 | 865 s~ | 0.0407 s | 21,228× | 221,551× |
-| code_equivalence | binary [6,3] classes | 1,395 | 10 s | 0.000539 s | 18,612× | 6,841× |
-| orbits | bracelets_burnside | 32 | 0.127 s | 7.78e-06 s | 16,320× | 198× |
-| difference_sets | C31 (31,6,1) search | 736,281 | 1,076 s~ | 0.0779 s | 13,816× | 72,721× |
+| polynomials_fq | first_primitive_degree_14_F2 | 16,384 | 14 s | 0.000721 s | 19,465× | 13,886× |
+| code_equivalence | binary [6,3] classes | 1,395 | 8.78 s | 0.000491 s | 17,880× | 16,532× |
+| orbits | bracelets_burnside | 32 | 0.115 s | 8.56e-06 s | 13,490× | 209× |
+| difference_sets | C31 (31,6,1) search | 736,281 | 800 s~ | 0.0696 s | 11,486× | 53,486× |
 | permutation_statistics | S8 Mahonian | 40,320 | 10.9 s~ | 0.00108 s | 10,050× | 5,490× |
 | cayley_iso | C4xC2 fixed-size census | 1 | 0.305 s | 3.13e-05 s | 9,742× | 10,754× |
-| elliptic_curves_fp | iso_classes_F_997 | 994,009 | 175 s~ | 0.0286 s | 6,111× | 46,339× |
-| char_poly | explicit_6x6_charpoly | 10,000 | 26.1 s~ | 0.00697 s | 3,745× | 21,203× |
-| gfp | subsets_independent | 38,760 | 0.507 s | 0.000246 s | 2,060× | 1,762× |
-| matrix_groups | orders of GL4 generator pairs | 10 | 2.81 s | 0.00144 s | 1,954× | 5,450× |
+| elliptic_curves_fp | iso_classes_F_997 | 994,009 | 163 s~ | 0.03 s | 5,430× | 46,579× |
+| char_poly | explicit_6x6_charpoly | 10,000 | 20.7 s~ | 0.00624 s | 3,319× | 20,176× |
+| gfp | subsets_independent | 38,760 | 0.465 s | 0.000252 s | 1,845× | 1,452× |
 | automorphisms | order8_catalogue | 4 | 0.134 s | 7.3e-05 s | 1,839× | 78× |
-| projective_sets | pg32_six_sets | 5,005 | 2.95 s | 0.00176 s | 1,673× | 5,674× |
+| projective_sets | pg32_six_sets | 5,005 | 2.7 s | 0.00153 s | 1,764× | 4,842× |
+| matrix_groups | orders of GL4 generator pairs | 10 | 2.26 s | 0.00134 s | 1,691× | 3,377× |
+| set_systems | antichains_64_choose_5 | 7,624,512 | 19.6 s | 0.0122 s | 1,603× | 8,552× |
 | graph_iso | random_graph_8_form | 1 | 0.0739 s | 4.7e-05 s | 1,572× | 1,744× |
-| set_systems | antichains_64_choose_5 | 7,624,512 | 16.6 s~ | 0.0204 s | 815× | 4,420× |
 | posets | divisor_heights_100000 | 100,000 | 123 s~ | 0.17 s | 725× | 11,326× |
 | vertex_transitive | cycle_8_regular_subgroups | 1 | 0.0752 s | 0.000136 s | 552× | 572× |
 | graphs | random_graph_chromatic | 120 | 0.0713 s | 0.000214 s | 334× | 199× |
 | quantum_codes | distance census of three-spaces | 97,155 | 8.16 s | 0.0274 s | 297× | 2,732× |
 | small_groups | order64_subgroup_lattices | 18 | 3.8 s | 0.0128 s | 297× | 563× |
-| gfq | gf4_subset_ranks | 8,568 | 1.58 s | 0.00965 s | 163× | 593× |
-| linear_codes | grassmannian_3_7_binary | 11,811 | 0.418 s | 0.00267 s | 157× | 723× |
-| lattice_of_subspaces | g84_contains_line | 200,787 | 2.25 s | 0.0163 s | 138× | 638× |
-| simplicial_complexes | clique_complex_homology | 20,349 | 3.82 s | 0.0356 s | 107× | 650× |
-| integer_partitions | partition_rank_50 | 204,226 | 1.11 s | 0.0107 s | 104× | 529× |
+| gfq | gf4_subset_ranks | 8,568 | 1.39 s | 0.00542 s | 257× | 537× |
+| linear_codes | grassmannian_3_7_binary | 11,811 | 0.358 s | 0.00187 s | 192× | 654× |
+| lattice_of_subspaces | g84_contains_line | 200,787 | 1.88 s | 0.0158 s | 119× | 731× |
+| simplicial_complexes | independence_faces | 1,184,040 | 196 s~ | 1.75 s | 112× | 1,757× |
 | lattices_small | A4 vectors through norm 12 | 1 | 0.00405 s | 4.05e-05 s | 100× | 117× |
 | boolean_functions | quadratic_n6_bent | 2,097,152 | 221 s~ | 2.48 s | 89× | 1,179× |
+| integer_partitions | partition_rank_50 | 204,226 | 0.834 s | 0.00961 s | 87× | 390× |
 | cayley | C8 automorphisms | 7 | 0.15 s | 0.00173 s | 87× | 124× |
-| designs | complete 6-subsets of 12 | 924 | 0.0451 s | 0.000587 s | 77× | 79× |
+| designs | complete 6-subsets of 12 | 924 | 0.0392 s | 0.000529 s | 74× | 75× |
 | strongly_regular | six-vertex graph census | 2,097,152 | 16.8 s~ | 0.229 s | 73× | 302× |
-| quadratic_forms | symmetric_4x4_F3 | 59,049 | 0.401 s | 0.00602 s | 67× | 557× |
-| subspace_orbits | PG(4,2) line orbits | 155 | 0.958 s | 0.0148 s | 65× | 312× |
-| latin_squares | order5_transversals | 161,280 | 12.6 s~ | 0.197 s | 64× | 320× |
+| subspace_orbits | PG(4,2) line orbits | 155 | 0.497 s | 0.00732 s | 68× | 476× |
 | young | ternary_rsk_length7 | 2,187 | 0.0427 s | 0.000693 s | 62× | 29× |
 | hadamard | all_4x4_hadamard | 65,536 | 0.17 s | 0.00292 s | 58× | 267× |
+| quadratic_forms | symmetric_4x4_F3 | 59,049 | 0.363 s | 0.00642 s | 56× | 400× |
 | matchings_and_flows | all_unit_networks_4 | 65,536 | 0.338 s | 0.00618 s | 55× | 359× |
-| bilinear_invariants | rank census of symmetric 5x5 forms | 32,768 | 0.28 s | 0.00576 s | 49× | 212× |
+| latin_squares | order5_transversals | 161,280 | 9.79 s | 0.182 s | 54× | 320× |
 | coset_enumeration | two involutions with a varying relator | 4,096 | 0.331 s | 0.0075 s | 44× | 321× |
 | circulants | spectra of pairs on Z101 | 4,950 | 0.214 s | 0.00518 s | 41× | 79× |
+| bilinear_invariants | rank census of symmetric 5x5 forms | 32,768 | 0.219 s | 0.00555 s | 39× | 308× |
 | hypergraphs | ramsey_R33_on_six_vertices | 6,435 | 0.0577 s | 0.00154 s | 37× | 121× |
 | continued_fractions_and_pell | class_numbers_to_50000 | 50,000 | 5.01 s | 0.176 s | 28× | 365× |
 | subgroups | S5 subgroup census | 1 | 0.363 s | 0.044 s | 8.3× | 8.3× |
@@ -63,7 +63,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | module | case | what | members | naive | kernel ×1 | kernel ×all | speedup ×1 | speedup ×all |
 |---|---|---|---:|---:|---:|---:|---:|---:|
 | automorphisms | order8_catalogue | automorphism orders for four stored groups of order 8: C8, C4xC2, C2^3, and D8 | 4 | 0.134 s | 7.3e-05 s | 0.00171 s | 1,839× | 78× |
-| bilinear_invariants | rank census of symmetric 5x5 forms | rank distribution of all 32,768 symmetric 5x5 matrices over F_2 | 32,768 | 0.28 s | 0.00576 s | 0.00132 s | 49× | 212× |
+| bilinear_invariants | rank census of symmetric 5x5 forms | rank distribution of all 32,768 symmetric 5x5 matrices over F_2 | 32,768 | 0.219 s | 0.00555 s | 0.000711 s | 39× | 308× |
 | boolean_functions | degree2_n5_nonlinearity | largest nonlinearity among all 65,536 Boolean functions of degree at most two in five variables | 65,536 | 2.71 s | 0.035 s | 0.00615 s | 78× | 441× |
 | boolean_functions | quadratic_n6_bent | bent functions among all 2,097,152 zero-constant quadratic forms in six variables | 2,097,152 | 221 s~ | 2.48 s | 0.187 s | 89× | 1,179× |
 | burnside | binary_necklaces_60 | binary necklaces of length 60, counted from 60 cycle types instead of 2^60 words | 1,152,921,504,606,846,976 | 6.23e+13 s~ | 2.65e-05 s | 0.000363 s | 2.3e+18× | 1.7e+17× |
@@ -72,29 +72,29 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | cayley | C8 automorphisms | full graph automorphism orders for singleton connection sets of C_8 | 7 | 0.15 s | 0.00173 s | 0.00121 s | 87× | 124× |
 | cayley | C4xC2 singleton CI | which singleton connection sets of C_4 x C_2 satisfy the undirected CI condition | 7 | 0.0219 s | 0.00543 s | 0.00391 s | 4.0× | 5.6× |
 | cayley_iso | C4xC2 fixed-size census | the three inverse-closed singleton connections of C4xC2 | 1 | 0.305 s | 3.13e-05 s | 2.84e-05 s | 9,742× | 10,754× |
-| char_poly | explicit_6x6_charpoly | characteristic polynomials of 10,000 dense and structured 6x6 matrices over F_251 | 10,000 | 26.1 s~ | 0.00697 s | 0.00123 s | 3,745× | 21,203× |
+| char_poly | explicit_6x6_charpoly | characteristic polynomials of 10,000 dense and structured 6x6 matrices over F_251 | 10,000 | 20.7 s~ | 0.00624 s | 0.00103 s | 3,319× | 20,176× |
 | circulants | canonical 5-subsets on Z31 | multiplier-isomorphism classes of valency-five circulant digraphs on 31 vertices | 142,506 | 0.888 s | 0.0776 s | 0.0317 s | 11× | 28× |
 | circulants | spectra of pairs on Z101 | exact character spectra of every valency-two circulant digraph on 101 vertices | 4,950 | 0.214 s | 0.00518 s | 0.0027 s | 41× | 79× |
-| code_equivalence | binary [6,3] classes | how many inequivalent binary [6,3] codes there are, out of 1395 subspaces | 1,395 | 10 s | 0.000539 s | 0.00147 s | 18,612× | 6,841× |
+| code_equivalence | binary [6,3] classes | how many inequivalent binary [6,3] codes there are, out of 1395 subspaces | 1,395 | 8.78 s | 0.000491 s | 0.000531 s | 17,880× | 16,532× |
 | continued_fractions_and_pell | periods_to_200000 | the period length of sqrt(d) for every d below 200000 | 200,000 | 2.83 s | 0.135 s | 0.054 s | 21× | 52× |
 | continued_fractions_and_pell | negative_pell_to_200000 | for how many d below 200000 the equation x^2 - d y^2 = -1 is solvable | 200,000 | 3 s | 0.126 s | 0.00662 s | 24× | 454× |
 | continued_fractions_and_pell | largest_partial_quotient | the largest partial quotient in any period of sqrt(d) for d below 200000 | 200,000 | 2.37 s | 0.124 s | 0.00911 s | 19× | 260× |
 | continued_fractions_and_pell | class_numbers_to_50000 | the class number of every imaginary quadratic order of discriminant above -50000 | 50,000 | 5.01 s | 0.176 s | 0.0137 s | 28× | 365× |
 | coset_enumeration | two involutions with a varying relator | which length-6 relators make <x,y | x^2,y^2,w> close within 64 Todd-Coxeter rows | 4,096 | 0.331 s | 0.0075 s | 0.00103 s | 44× | 321× |
-| designs | complete 6-subsets of 12 | multiplicities of all triples in the complete family of 6-subsets of 12 points | 924 | 0.0451 s | 0.000587 s | 0.000573 s | 77× | 79× |
-| difference_sets | C31 (31,6,1) search | search all 6-subsets of C31 for cyclic projective-plane difference sets | 736,281 | 1,076 s~ | 0.0779 s | 0.0148 s | 13,816× | 72,721× |
-| elliptic_curves_fp | point_counts_F_1009 | the number of points on every curve over F_1009; one histogram bin per isogeny class | 1,018,081 | 506 s~ | 0.815 s | 0.0712 s | 621× | 7,107× |
-| elliptic_curves_fp | iso_classes_F_997 | how many curves over F_997 there are up to F_997-isomorphism | 994,009 | 175 s~ | 0.0286 s | 0.00377 s | 6,111× | 46,339× |
-| elliptic_curves_fp | supersingular_F_499 | how many of the 249001 pairs over F_499 give a supersingular curve | 249,001 | 62.8 s~ | 0.102 s | 0.00865 s | 615× | 7,263× |
-| elliptic_curves_fp | group_structure_F_101 | the invariant factors of E(F_101) for all 10201 pairs (a, b) | 10,201 | 32.2 s~ | 0.0543 s | 0.00399 s | 592× | 8,058× |
-| gfp | subsets_independent | how many 6-subsets of 20 vectors in F_2^10 are independent | 38,760 | 0.507 s | 0.000246 s | 0.000288 s | 2,060× | 1,762× |
-| gfp | grassmannian_image_rank | rank distribution of the image of every 3-subspace of F_2^7 under a fixed 7x5 map | 11,811 | 0.169 s | 0.000763 s | 0.00054 s | 221× | 312× |
-| gfp | explicit_rref | rref of 2000 random 6x8 matrices over F_7 | 2,000 | 0.0578 s | 0.000676 s | 0.000635 s | 86× | 91× |
-| gfp | explicit_inverse | inverse of 2000 random 8x8 matrices over F_251 | 2,000 | 0.169 s | 0.00138 s | 0.000553 s | 123× | 305× |
-| gfp | all_matrices_invertible | |GL(4, F_2)| by counting every 4x4 matrix over F_2 | 65,536 | 0.503 s | 0.000955 s | 0.000334 s | 526× | 1,505× |
-| gfp | grassmannian_span_hits | which 3-subspaces of F_2^7, extended by two fixed rows, span a target vector | 11,811 | 0.328 s | 0.000751 s | 0.000527 s | 437× | 623× |
-| gfq | gf4_subset_ranks | rank distribution of every 5-subset of 18 vectors in GF(4)^8 | 8,568 | 1.58 s | 0.00965 s | 0.00266 s | 163× | 593× |
-| gfq | gf16_explicit_rref | rref of 2000 random 6x8 matrices over GF(16) | 2,000 | 1.64 s | 0.0451 s | 0.00364 s | 36× | 451× |
+| designs | complete 6-subsets of 12 | multiplicities of all triples in the complete family of 6-subsets of 12 points | 924 | 0.0392 s | 0.000529 s | 0.000523 s | 74× | 75× |
+| difference_sets | C31 (31,6,1) search | search all 6-subsets of C31 for cyclic projective-plane difference sets | 736,281 | 800 s~ | 0.0696 s | 0.015 s | 11,486× | 53,486× |
+| elliptic_curves_fp | point_counts_F_1009 | the number of points on every curve over F_1009; one histogram bin per isogeny class | 1,018,081 | 451 s~ | 0.76 s | 0.0586 s | 593× | 7,691× |
+| elliptic_curves_fp | iso_classes_F_997 | how many curves over F_997 there are up to F_997-isomorphism | 994,009 | 163 s~ | 0.03 s | 0.0035 s | 5,430× | 46,579× |
+| elliptic_curves_fp | supersingular_F_499 | how many of the 249001 pairs over F_499 give a supersingular curve | 249,001 | 55.3 s~ | 0.0954 s | 0.00711 s | 579× | 7,776× |
+| elliptic_curves_fp | group_structure_F_101 | the invariant factors of E(F_101) for all 10201 pairs (a, b) | 10,201 | 28.3 s~ | 0.0502 s | 0.00353 s | 564× | 8,020× |
+| gfp | subsets_independent | how many 6-subsets of 20 vectors in F_2^10 are independent | 38,760 | 0.465 s | 0.000252 s | 0.00032 s | 1,845× | 1,452× |
+| gfp | grassmannian_image_rank | rank distribution of the image of every 3-subspace of F_2^7 under a fixed 7x5 map | 11,811 | 0.157 s | 0.000761 s | 0.000544 s | 206× | 288× |
+| gfp | explicit_rref | rref of 2000 random 6x8 matrices over F_7 | 2,000 | 0.052 s | 0.000654 s | 0.000534 s | 79× | 97× |
+| gfp | explicit_inverse | inverse of 2000 random 8x8 matrices over F_251 | 2,000 | 0.151 s | 0.00129 s | 0.000504 s | 117× | 300× |
+| gfp | all_matrices_invertible | |GL(4, F_2)| by counting every 4x4 matrix over F_2 | 65,536 | 0.462 s | 0.00105 s | 0.000342 s | 438× | 1,349× |
+| gfp | grassmannian_span_hits | which 3-subspaces of F_2^7, extended by two fixed rows, span a target vector | 11,811 | 0.324 s | 0.000517 s | 0.000546 s | 627× | 593× |
+| gfq | gf4_subset_ranks | rank distribution of every 5-subset of 18 vectors in GF(4)^8 | 8,568 | 1.39 s | 0.00542 s | 0.00259 s | 257× | 537× |
+| gfq | gf16_explicit_rref | rref of 2000 random 6x8 matrices over GF(16) | 2,000 | 1.51 s | 0.0348 s | 0.00284 s | 43× | 534× |
 | graph_iso | random_graph_8_form | lexicographically canonicalise one random graph on 8 vertices | 1 | 0.0739 s | 4.7e-05 s | 4.24e-05 s | 1,572× | 1,744× |
 | graph_iso | random_graph_8_label | find the canonical vertex order of one random graph on 8 vertices | 1 | 0.0729 s | 4.74e-05 s | 4.31e-05 s | 1,539× | 1,692× |
 | graph_iso | cycle_8_automorphisms | enumerate all 16 automorphisms of the 8-cycle | 1 | 0.0558 s | 0.000112 s | 0.000103 s | 496× | 541× |
@@ -104,72 +104,72 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | graphs | random_graph_canonical | canonical forms of 120 random eight-vertex graphs | 120 | 0.0666 s | 0.00467 s | 0.000936 s | 14× | 71× |
 | hadamard | all_4x4_hadamard | count all 4x4 Hadamard sign matrices among the 65,536 binary matrices | 65,536 | 0.17 s | 0.00292 s | 0.000636 s | 58× | 267× |
 | hypergraphs | ramsey_R33_on_six_vertices | balanced red-blue colourings of K_6 avoiding a monochromatic triangle; R(3,3)=6 makes the hit set empty | 6,435 | 0.0577 s | 0.00154 s | 0.000478 s | 37× | 121× |
-| integer_partitions | partition_rank_50 | Dyson rank distribution of all 204,226 partitions of 50 | 204,226 | 1.11 s | 0.0107 s | 0.00211 s | 104× | 529× |
-| latin_squares | order5_transversals | transversal-count distribution over all 161,280 Latin squares of order 5 | 161,280 | 12.6 s~ | 0.197 s | 0.0395 s | 64× | 320× |
-| lattice_of_subspaces | g84_contains_line | 4-subspaces of F_2^8 containing a fixed line, among all 200787 members of G_2(8,4) | 200,787 | 2.25 s | 0.0163 s | 0.00353 s | 138× | 638× |
+| integer_partitions | partition_rank_50 | Dyson rank distribution of all 204,226 partitions of 50 | 204,226 | 0.834 s | 0.00961 s | 0.00214 s | 87× | 390× |
+| latin_squares | order5_transversals | transversal-count distribution over all 161,280 Latin squares of order 5 | 161,280 | 9.79 s | 0.182 s | 0.0306 s | 54× | 320× |
+| lattice_of_subspaces | g84_contains_line | 4-subspaces of F_2^8 containing a fixed line, among all 200787 members of G_2(8,4) | 200,787 | 1.88 s | 0.0158 s | 0.00257 s | 119× | 731× |
 | lattices_small | Z4 theta through 12 | theta coefficients through q^12 for the standard rank-four lattice | 1 | 0.00552 s | 0.000192 s | 0.000171 s | 29× | 32× |
 | lattices_small | A4 vectors through norm 12 | all nonzero A4 coordinate vectors of squared norm at most 12 | 1 | 0.00405 s | 4.05e-05 s | 3.48e-05 s | 100× | 117× |
-| linear_codes | grassmannian_3_7_binary | minimum-distance distribution of every binary [7,3] code in canonical Grassmannian order | 11,811 | 0.418 s | 0.00267 s | 0.000579 s | 157× | 723× |
+| linear_codes | grassmannian_3_7_binary | minimum-distance distribution of every binary [7,3] code in canonical Grassmannian order | 11,811 | 0.358 s | 0.00187 s | 0.000548 s | 192× | 654× |
 | matchings_and_flows | all_bipartite_graphs_4_4 | perfect-matching count distribution over all 65,536 bipartite graphs on two labelled sets of four vertices | 65,536 | 0.81 s | 0.0308 s | 0.00346 s | 26× | 234× |
 | matchings_and_flows | all_graphs_5 | spanning-tree count distribution over all symmetric binary 5x5 adjacency matrices, with loops ignored | 32,768 | 0.494 s | 0.0156 s | 0.00197 s | 32× | 251× |
 | matchings_and_flows | all_unit_networks_4 | maximum-flow distribution over all directed unit-capacity networks on four labelled vertices | 65,536 | 0.338 s | 0.00618 s | 0.000942 s | 55× | 359× |
-| matrix_groups | orders of GL4 generator pairs | orders of the ten groups generated by pairs from a small GL(4,2) dictionary | 10 | 2.81 s | 0.00144 s | 0.000516 s | 1,954× | 5,450× |
-| orbits | bracelets_16_6 | bracelets with 6 black and 10 white beads: orbits of D_16 on 6-subsets of 16 positions | 8,008 | 0.35 s | 0.00516 s | 0.00113 s | 68× | 310× |
-| orbits | bracelets_stabilizers | how symmetric each such bracelet is: stabiliser orders in D_16 | 8,008 | 0.339 s | 0.0472 s | 0.00322 s | 7.2× | 105× |
-| orbits | bracelets_burnside | fixed 6-subsets of every element of D_16 (Burnside count of the bracelets) | 32 | 0.127 s | 7.78e-06 s | 0.000643 s | 16,320× | 198× |
-| orbits | cube4_quadruples | 4-vertex configurations of the 4-cube up to symmetry (group of order 384) | 1,820 | 0.469 s | 0.000856 s | 0.00057 s | 548× | 822× |
-| orbits | pg42_lines_singer | orbits of the Singer normaliser of GL(5,2) (order 155) on the 155 lines of PG(4,2) | 155 | 0.397 s | 0.0072 s | 0.00112 s | 55× | 353× |
-| orbits | all_3x4_f2_singer_normaliser | every 3x4 matrix over F_2 under right multiplication by a group of order 60 | 4,096 | 2.92 s | 0.0586 s | 0.00375 s | 50× | 781× |
+| matrix_groups | orders of GL4 generator pairs | orders of the ten groups generated by pairs from a small GL(4,2) dictionary | 10 | 2.26 s | 0.00134 s | 0.000669 s | 1,691× | 3,377× |
+| orbits | bracelets_16_6 | bracelets with 6 black and 10 white beads: orbits of D_16 on 6-subsets of 16 positions | 8,008 | 0.308 s | 0.00487 s | 0.000868 s | 63× | 354× |
+| orbits | bracelets_stabilizers | how symmetric each such bracelet is: stabiliser orders in D_16 | 8,008 | 0.305 s | 0.0443 s | 0.00403 s | 6.9× | 76× |
+| orbits | bracelets_burnside | fixed 6-subsets of every element of D_16 (Burnside count of the bracelets) | 32 | 0.115 s | 8.56e-06 s | 0.000551 s | 13,490× | 209× |
+| orbits | cube4_quadruples | 4-vertex configurations of the 4-cube up to symmetry (group of order 384) | 1,820 | 0.439 s | 0.000819 s | 0.000548 s | 536× | 801× |
+| orbits | pg42_lines_singer | orbits of the Singer normaliser of GL(5,2) (order 155) on the 155 lines of PG(4,2) | 155 | 0.372 s | 0.00687 s | 0.00123 s | 54× | 303× |
+| orbits | all_3x4_f2_singer_normaliser | every 3x4 matrix over F_2 under right multiplication by a group of order 60 | 4,096 | 2.73 s | 0.0582 s | 0.00434 s | 47× | 630× |
 | perm_groups | S9 Schreier-Sims order | order of S_9 from a 9-cycle and one transposition, without enumerating 362880 elements | 1 | 1.36 s | 2.68e-05 s | 2.23e-05 s | 50,921× | 61,176× |
 | permutation_statistics | S8 Mahonian | Mahonian inversion distribution over all 8! permutations | 40,320 | 10.9 s~ | 0.00108 s | 0.00198 s | 10,050× | 5,490× |
 | permutation_statistics | S8 Eulerian | Eulerian descent distribution over all 8! permutations | 40,320 | 0.0796 s | 0.000718 s | 0.000491 s | 111× | 162× |
 | permutation_statistics | S8 major index | major-index distribution over all 8! permutations | 40,320 | 0.0962 s | 0.000808 s | 0.000511 s | 119× | 189× |
 | permutation_statistics | Av_8(123) count | the 1430 permutations of length 8 avoiding the classical pattern 123 | 40,320 | 0.383 s | 0.00255 s | 0.00247 s | 150× | 155× |
 | permutation_statistics | S8 cycle types | conjugacy-class distribution of S_8 by dense complete-cycle-partition code | 40,320 | 16.6 s~ | 0.00239 s | 0.00148 s | 6,945× | 11,232× |
-| polynomials_fq | irreducible_degree_14_F2 | how many of the 16384 monic degree-14 polynomials over F_2 are irreducible | 16,384 | 1.61 s | 0.00991 s | 0.00109 s | 162× | 1,472× |
-| polynomials_fq | primitive_degree_12_F2 | the primitive polynomials of degree 12 over F_2, of which there are phi(4095)/12 | 4,096 | 0.881 s | 0.0113 s | 0.00106 s | 78× | 831× |
-| polynomials_fq | order_degree_11_F2 | the order of x modulo every monic polynomial of degree 11 over F_2 | 2,048 | 1.07 s | 0.0169 s | 0.00164 s | 64× | 655× |
-| polynomials_fq | factor_degrees_degree_7_F3 | the factorisation pattern of every monic degree-7 polynomial over F_3 | 2,187 | 0.211 s | 0.00258 s | 0.000607 s | 82× | 347× |
-| polynomials_fq | root_count_degree_5_F7 | how many roots in F_7 each of the 16807 monic degree-5 polynomials has | 16,807 | 0.0386 s | 0.00149 s | 0.000509 s | 26× | 76× |
-| polynomials_fq | gcd_degree_4_F65537 | gcd of 20000 random monic quartics over F_65537 with x^4 - 1 | 20,000 | 0.198 s | 0.00892 s | 0.00102 s | 22× | 194× |
-| polynomials_fq | first_primitive_degree_14_F2 | the least monic primitive polynomial of degree 14 over F_2, in family order | 16,384 | 17.2 s | 0.000718 s | 0.000906 s | 23,927× | 18,976× |
+| polynomials_fq | irreducible_degree_14_F2 | how many of the 16384 monic degree-14 polynomials over F_2 are irreducible | 16,384 | 1.41 s | 0.00931 s | 0.000988 s | 152× | 1,431× |
+| polynomials_fq | primitive_degree_12_F2 | the primitive polynomials of degree 12 over F_2, of which there are phi(4095)/12 | 4,096 | 0.786 s | 0.0108 s | 0.00108 s | 73× | 725× |
+| polynomials_fq | order_degree_11_F2 | the order of x modulo every monic polynomial of degree 11 over F_2 | 2,048 | 0.991 s | 0.0156 s | 0.00131 s | 64× | 758× |
+| polynomials_fq | factor_degrees_degree_7_F3 | the factorisation pattern of every monic degree-7 polynomial over F_3 | 2,187 | 0.184 s | 0.0025 s | 0.000648 s | 74× | 283× |
+| polynomials_fq | root_count_degree_5_F7 | how many roots in F_7 each of the 16807 monic degree-5 polynomials has | 16,807 | 0.0327 s | 0.00147 s | 0.000521 s | 22× | 63× |
+| polynomials_fq | gcd_degree_4_F65537 | gcd of 20000 random monic quartics over F_65537 with x^4 - 1 | 20,000 | 0.17 s | 0.00793 s | 0.000942 s | 21× | 180× |
+| polynomials_fq | first_primitive_degree_14_F2 | the least monic primitive polynomial of degree 14 over F_2, in family order | 16,384 | 14 s | 0.000721 s | 0.00101 s | 19,465× | 13,886× |
 | polytopes_small | five-subsets of the 5-cube | vertex counts for all 201376 five-point selections from the vertices of the 5-cube | 201,376 | 0.447 s | 0.0569 s | 0.0055 s | 7.9× | 81× |
 | posets | eight_of_sixteen_subsets | linear-extension distribution for all 8-element induced subposets of the Boolean lattice B_4 | 12,870 | 1.74 s | 0.0108 s | 0.00242 s | 161× | 718× |
 | posets | divisor_heights_100000 | height distribution of the divisor posets of the first 100000 positive integers | 100,000 | 123 s~ | 0.17 s | 0.0108 s | 725× | 11,326× |
-| projective_sets | pg32_six_sets | maximum line intersection for every 6-point subset of the 15 points of PG(3,2) | 5,005 | 2.95 s | 0.00176 s | 0.00052 s | 1,673× | 5,674× |
-| quadratic_forms | symmetric_4x4_F3 | type distribution of all 59,049 symmetric 4x4 matrices over F_3 | 59,049 | 0.401 s | 0.00602 s | 0.000721 s | 67× | 557× |
+| projective_sets | pg32_six_sets | maximum line intersection for every 6-point subset of the 15 points of PG(3,2) | 5,005 | 2.7 s | 0.00153 s | 0.000557 s | 1,764× | 4,842× |
+| quadratic_forms | symmetric_4x4_F3 | type distribution of all 59,049 symmetric 4x4 matrices over F_3 | 59,049 | 0.363 s | 0.00642 s | 0.000906 s | 56× | 400× |
 | quantum_codes | distance census of three-spaces | distance distribution of all binary symplectic 3-spaces in F_2^8 | 97,155 | 8.16 s | 0.0274 s | 0.00299 s | 297× | 2,732× |
 | residues | orders_mod_10007 | the multiplicative order of every unit modulo 10007 | 10,006 | 3.13 s | 0.000907 s | 0.000549 s | 3,446× | 5,692× |
 | residues | primitive_roots_mod_10007 | how many units modulo 10007 generate the whole unit group | 10,006 | 23.5 s~ | 0.000824 s | 0.000483 s | 28,580× | 48,774× |
 | residues | discrete_logs_mod_10007 | the largest discrete logarithm to base 5 modulo 10007, over every unit | 10,006 | 2.22 s | 0.00321 s | 0.000518 s | 691× | 4,282× |
 | residues | jacobi_255255 | the Jacobi symbol (a/255255) for the first hundred thousand residues | 100,000 | 0.172 s | 0.00541 s | 0.000729 s | 32× | 236× |
 | residues | least_primitive_roots | the least primitive root of every modulus from 100 to 999, and the largest of them | 900 | 1.04 s | 0.000222 s | 0.00171 s | 4,678× | 608× |
-| set_systems | intersecting_32_choose_5 | count the pairwise-intersecting 5-set systems on a 5-point ground set | 201,376 | 0.609 s | 0.000886 s | 0.00196 s | 688× | 312× |
-| set_systems | antichains_64_choose_5 | count 5-element antichains in the Boolean lattice on 6 points | 7,624,512 | 16.6 s~ | 0.0204 s | 0.00377 s | 815× | 4,420× |
-| set_systems | shadows_32_choose_4 | distribution of lower-shadow sizes for every 4-set system on 5 points | 35,960 | 0.308 s | 0.00336 s | 0.00207 s | 92× | 148× |
+| set_systems | intersecting_32_choose_5 | count the pairwise-intersecting 5-set systems on a 5-point ground set | 201,376 | 0.32 s | 0.000527 s | 0.000541 s | 608× | 592× |
+| set_systems | antichains_64_choose_5 | count 5-element antichains in the Boolean lattice on 6 points | 7,624,512 | 19.6 s | 0.0122 s | 0.00229 s | 1,603× | 8,552× |
+| set_systems | shadows_32_choose_4 | distribution of lower-shadow sizes for every 4-set system on 5 points | 35,960 | 0.177 s | 0.00275 s | 0.000698 s | 64× | 253× |
 | sieve_ranges | primes_in_a_window | how many primes in the ten million numbers above 10^9 | 10,000,000 | 2,959 s~ | 0.198 s | 0.014 s | 14,962× | 210,663× |
 | sieve_ranges | totient_sum | sum of Euler's phi below 2*10^6, which counts the coprime pairs under it | 2,000,000 | 22.5 s | 0.0333 s | 0.00276 s | 676× | 8,153× |
 | sieve_ranges | omega_distribution | how many distinct prime factors the two million numbers above 10^9 have | 2,000,000 | 865 s~ | 0.0407 s | 0.0039 s | 21,228× | 221,551× |
 | sieve_ranges | factorise_an_interval | the full prime factorisation of every number in an interval of 200000 at 10^6 | 200,000 | 2.73 s | 0.00787 s | 0.00262 s | 347× | 1,041× |
 | sieve_ranges | smoothest_number | the least largest-prime-factor in a million numbers above 10^9 (the smoothest one) | 1,000,000 | 408 s~ | 0.021 s | 0.00241 s | 19,454× | 169,536× |
-| simplicial_complexes | independence_betti | first Betti number over F_2 of the independence complex of every 7-edge graph on 7 vertices | 116,280 | 26.3 s~ | 0.266 s | 0.0432 s | 99× | 608× |
-| simplicial_complexes | independence_faces | how many independent sets the 8-vertex graphs with 7 edges have | 1,184,040 | 279 s~ | 4.45 s | 0.38 s | 63× | 735× |
-| simplicial_complexes | triangle_complexes_shellable | how many of the complexes generated by five triangles of six vertices are shellable | 15,504 | 2.57 s | 0.0318 s | 0.00472 s | 81× | 545× |
-| simplicial_complexes | clique_complex_homology | first Betti number over F_3 of every complex generated by five of 21 triangles on seven vertices | 20,349 | 3.82 s | 0.0356 s | 0.00588 s | 107× | 650× |
+| simplicial_complexes | independence_betti | first Betti number over F_2 of the independence complex of every 7-edge graph on 7 vertices | 116,280 | 14.1 s~ | 0.131 s | 0.011 s | 108× | 1,283× |
+| simplicial_complexes | independence_faces | how many independent sets the 8-vertex graphs with 7 edges have | 1,184,040 | 196 s~ | 1.75 s | 0.112 s | 112× | 1,757× |
+| simplicial_complexes | triangle_complexes_shellable | how many of the complexes generated by five triangles of six vertices are shellable | 15,504 | 1.25 s | 0.0133 s | 0.00133 s | 94× | 945× |
+| simplicial_complexes | clique_complex_homology | first Betti number over F_3 of every complex generated by five of 21 triangles on seven vertices | 20,349 | 1.98 s | 0.0178 s | 0.00174 s | 111× | 1,136× |
 | small_groups | order64_subgroup_lattices | how many subgroups each of eighteen groups of order 64 has, from the 7 of the cyclic group to the 2,825 of the elementary abelian one | 18 | 3.8 s | 0.0128 s | 0.00675 s | 297× | 563× |
-| spreads_and_partitions | pg32_spreads | the 56 spreads of PG(3,2): which of the 324,632 five-sets of lines partition F_2^4 | 324,632 | 42.3 s~ | 0.000902 s | 0.00297 s | 46,859× | 14,238× |
-| spreads_and_partitions | pg32_first_spread | the least five-set of lines of PG(3,2) that is a spread | 324,632 | 38.9 s~ | 7.92e-05 s | 0.00184 s | 491,135× | 21,189× |
-| spreads_and_partitions | pg32_partial_spreads | how many of the 52,360 four-sets of lines of PG(3,2) are partial spreads | 52,360 | 4.03 s | 0.000813 s | 0.00313 s | 4,963× | 1,291× |
-| spreads_and_partitions | pg32_meetings | how many of the three pairs meet, over every three-set of lines of PG(3,2) | 6,545 | 0.273 s | 0.000942 s | 0.00182 s | 290× | 150× |
-| spreads_and_partitions | pg42_partial_spreads | partial spreads among the 23,130,030 four-sets of the 155 lines of PG(4,2) | 23,130,030 | 1,751 s~ | 1.18 s | 0.201 s | 1,481× | 8,700× |
+| spreads_and_partitions | pg32_spreads | the 56 spreads of PG(3,2): which of the 324,632 five-sets of lines partition F_2^4 | 324,632 | 20.7 s~ | 0.000506 s | 0.000574 s | 40,802× | 35,988× |
+| spreads_and_partitions | pg32_first_spread | the least five-set of lines of PG(3,2) that is a spread | 324,632 | 20.6 s~ | 5.06e-05 s | 0.000503 s | 407,345× | 40,985× |
+| spreads_and_partitions | pg32_partial_spreads | how many of the 52,360 four-sets of lines of PG(3,2) are partial spreads | 52,360 | 2.3 s | 0.000462 s | 0.000544 s | 4,982× | 4,232× |
+| spreads_and_partitions | pg32_meetings | how many of the three pairs meet, over every three-set of lines of PG(3,2) | 6,545 | 0.16 s | 0.000552 s | 0.000534 s | 290× | 299× |
+| spreads_and_partitions | pg42_partial_spreads | partial spreads among the 23,130,030 four-sets of the 155 lines of PG(4,2) | 23,130,030 | 988 s~ | 0.694 s | 0.0924 s | 1,425× | 10,700× |
 | strongly_regular | six-vertex graph census | count labelled strongly regular graphs among all 2^21 symmetric 6x6 binary matrices | 2,097,152 | 16.8 s~ | 0.229 s | 0.0556 s | 73× | 302× |
 | subgroups | S5 subgroup census | all 156 subgroups of S5, a parent group of order 120 | 1 | 0.363 s | 0.044 s | 0.044 s | 8.3× | 8.3× |
-| subspace_orbits | PG(4,2) line orbits | canonical indices for the 155 lines of PG(4,2) under the Singer normaliser | 155 | 0.958 s | 0.0148 s | 0.00307 s | 65× | 312× |
-| sum_free_and_additive | sum_free_10_subsets_of_30 | how many of the 30 million 10-subsets of [1,30] are sum-free | 30,045,015 | 72.9 s~ | 0.00233 s | 0.00266 s | 31,284× | 27,363× |
-| sum_free_and_additive | sum_free_24_subsets_of_64 | sum-free 24-subsets of [0,63], among 2.5e17 subsets | 250,649,105,469,666,120 | 2.13e+12 s~ | 1.41 s | 0.342 s | 1.5e+12× | 6.2e+12× |
-| sum_free_and_additive | golomb_12_marks_length_84 | no 12-mark Golomb ruler of length 84 exists (OGR-12 is 85): 1.3e14 subsets | 131,567,066,917,650 | 4.96e+09 s~ | 0.738 s | 0.0547 s | 6.7e+09× | 9.1e+10× |
-| sum_free_and_additive | three_ap_free_16_subsets_of_60 | 3-AP-free 16-subsets of [0,59], among 1.5e14 subsets (r_3(60) = 20) | 149,608,375,854,525 | 3.81e+08 s~ | 3.93 s | 0.34 s | 9.7e+07× | 1.1e+09× |
-| sum_free_and_additive | sumset_sizes_6_subsets_of_40 | the distribution of |S+S| over every 6-subset of [1,40] | 3,838,380 | 7.97 s | 0.0464 s | 0.00529 s | 172× | 1,507× |
+| subspace_orbits | PG(4,2) line orbits | canonical indices for the 155 lines of PG(4,2) under the Singer normaliser | 155 | 0.497 s | 0.00732 s | 0.00104 s | 68× | 476× |
+| sum_free_and_additive | sum_free_10_subsets_of_30 | how many of the 30 million 10-subsets of [1,30] are sum-free | 30,045,015 | 74.6 s~ | 0.00224 s | 0.00289 s | 33,312× | 25,829× |
+| sum_free_and_additive | sum_free_24_subsets_of_64 | sum-free 24-subsets of [0,63], among 2.5e17 subsets | 250,649,105,469,666,120 | 3.01e+12 s~ | 1.54 s | 0.357 s | 2e+12× | 8.4e+12× |
+| sum_free_and_additive | golomb_12_marks_length_84 | no 12-mark Golomb ruler of length 84 exists (OGR-12 is 85): 1.3e14 subsets | 131,567,066,917,650 | 4.83e+09 s~ | 0.782 s | 0.0571 s | 6.2e+09× | 8.5e+10× |
+| sum_free_and_additive | three_ap_free_16_subsets_of_60 | 3-AP-free 16-subsets of [0,59], among 1.5e14 subsets (r_3(60) = 20) | 149,608,375,854,525 | 3.94e+08 s~ | 4.04 s | 0.344 s | 9.8e+07× | 1.1e+09× |
+| sum_free_and_additive | sumset_sizes_6_subsets_of_40 | the distribution of |S+S| over every 6-subset of [1,40] | 3,838,380 | 7.77 s | 0.0479 s | 0.00598 s | 162× | 1,299× |
 | vertex_transitive | all_graphs_6_vertex_transitive | count vertex-transitive isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.145 s | 0.0029 s | 0.00155 s | 50× | 94× |
 | vertex_transitive | all_graphs_6_arc_transitive | count arc-transitive isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.149 s | 0.003 s | 0.00102 s | 50× | 146× |
 | vertex_transitive | all_graphs_6_cayley | count Cayley isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.322 s | 0.00316 s | 0.000945 s | 102× | 341× |

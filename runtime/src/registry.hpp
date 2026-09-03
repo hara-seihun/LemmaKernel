@@ -23,6 +23,10 @@ struct Backend {
     std::function<bool(const Request &)> accepts;
     std::function<Result<std::shared_ptr<Object>>(const Request &)> run;
     int specificity; /* the runtime picks the accepting backend with the highest value */
+    /* Family sizes and member indices are 128-bit. A backend that keeps them in 64-bit
+     * variables must leave this false: the runtime then refuses families of 2^64 members or
+     * more on its behalf, rather than let the narrowing silently corrupt indices. */
+    bool big_families = false;
 };
 
 void register_backend(Backend b);

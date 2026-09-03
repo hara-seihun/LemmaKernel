@@ -45,7 +45,10 @@ lk_status lk_export(lk_context *ctx, lk_handle h, uint8_t **bytes, size_t *len);
 void lk_free(void *p);
 lk_status lk_release(lk_context *ctx, lk_handle h);
 lk_status lk_handle_kind(lk_context *ctx, lk_handle h, const char **kind);
+/* Parameters are 128-bit (family sizes, member indices and counts over a family can exceed
+ * 2^64); the 64-bit accessors fail when the value does not fit. */
 lk_status lk_handle_param(lk_context *ctx, lk_handle h, const char *name, uint64_t *value);
+lk_status lk_handle_param128(lk_context *ctx, lk_handle h, const char *name, uint64_t *lo, uint64_t *hi);
 
 /* Families (see manifest "families"). Constructed here rather than imported because their
  * descriptions are tiny; they can still be exported and re-imported as interchange blobs. */
@@ -76,7 +79,9 @@ lk_status lk_family_edge_subgraphs(lk_context *ctx, lk_handle host, uint64_t k, 
 lk_status lk_family_cayley_graphs(lk_context *ctx, lk_handle group, lk_handle *out);
 lk_status lk_family_sublattices(lk_context *ctx, lk_handle gram, uint64_t index, lk_handle *out);
 lk_status lk_family_size(lk_context *ctx, lk_handle family, uint64_t *size);
+lk_status lk_family_size128(lk_context *ctx, lk_handle family, uint64_t *lo, uint64_t *hi);
 lk_status lk_family_member(lk_context *ctx, lk_handle family, uint64_t index, lk_handle *out);
+lk_status lk_family_member128(lk_context *ctx, lk_handle family, uint64_t lo, uint64_t hi, lk_handle *out);
 
 /* Operations. `op` and `reduction` are names from the manifest ("gfp.rank", "histogram").
  * Arguments are named; each is a handle or an integer as the manifest says. */

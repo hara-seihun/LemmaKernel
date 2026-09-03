@@ -1,15 +1,15 @@
 {
  "module": "polynomials_fq",
  "fingerprint": {
-  "module": "012597fa9fc7215b93332325c648dc0a66722c0280a859d2dbe2454418624127",
-  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "module": "8caa6d41e3af68225bb380163c3e97c6720945a159b88d914a11fa8cf6a91347",
+  "runtime": "34dcbc05e0dcc6e4964e62ed1b00d7ee32f4a81976c4b7e2ed6c18637b83f48f",
   "dependencies": [
    "gfp"
   ],
-  "combined": "c32ed63ffdf502fe1491dfb2715312a9fb4463794f5ad8ccea69e87aac4bc43f"
+  "combined": "fa1a6a1ca025ac9c5b31fe6e5b3c48c44698f9e799f7a1b36e1bf19b64e461eb"
  },
- "measured_at": "2026-09-03T05:21:42+00:00",
- "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "measured_at": "2026-09-03T08:09:12+00:00",
+ "commit": "9483ecc501f24ef1ef8518208d104946acfb1b73",
  "machine": {
   "host": "gmktec",
   "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
@@ -23,13 +23,13 @@
    "op": "polynomials_fq.is_irreducible",
    "reduction": "count",
    "members": 16384,
-   "naive_s": 1.6092675810214132,
+   "naive_s": 1.4130009298678488,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.009910657070577145,
-   "kernel_all_threads_s": 0.0010928818956017494,
+   "kernel_1_thread_s": 0.009310754016041756,
+   "kernel_all_threads_s": 0.0009875171817839146,
    "threads": 32,
-   "speedup_1_thread": 162.37748613046278,
-   "speedup_all_threads": 1472.4990756071934,
+   "speedup_1_thread": 151.76009670466541,
+   "speedup_all_threads": 1430.862121624368,
    "answer": "Count(value=1161, visited=16384, family_size=16384)"
   },
   {
@@ -38,13 +38,13 @@
    "op": "polynomials_fq.is_primitive",
    "reduction": "count",
    "members": 4096,
-   "naive_s": 0.8806729950010777,
+   "naive_s": 0.785592403030023,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.011311657959595323,
-   "kernel_all_threads_s": 0.0010593640618026257,
+   "kernel_1_thread_s": 0.010808993130922318,
+   "kernel_all_threads_s": 0.0010828329250216484,
    "threads": 32,
-   "speedup_1_thread": 77.85534164370931,
-   "speedup_all_threads": 831.3223251150456,
+   "speedup_1_thread": 72.67951727923703,
+   "speedup_all_threads": 725.4973365483111,
    "answer": "Count(value=144, visited=4096, family_size=4096)"
   },
   {
@@ -53,13 +53,13 @@
    "op": "polynomials_fq.order",
    "reduction": "histogram",
    "members": 2048,
-   "naive_s": 1.073597117094323,
+   "naive_s": 0.9913485441356897,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.016898405039682984,
-   "kernel_all_threads_s": 0.0016382529865950346,
+   "kernel_1_thread_s": 0.01555098220705986,
+   "kernel_all_threads_s": 0.0013074760790914297,
    "threads": 32,
-   "speedup_1_thread": 63.532452593790104,
-   "speedup_all_threads": 655.3304806272324,
+   "speedup_1_thread": 63.74829132565245,
+   "speedup_all_threads": 758.2154350575819,
    "answer": "Histogram(visited=2048, family_size=2048, bins=[0, 2, 1, 2, 2, 2, 4, 6, 4, 4, 4, 2, 13, 0, 15, 22, 3, 4, 4, 0, 3, 26, 0,"
   },
   {
@@ -68,13 +68,13 @@
    "op": "polynomials_fq.factorisation_degrees",
    "reduction": "all",
    "members": 2187,
-   "naive_s": 0.21079425304196775,
+   "naive_s": 0.1835019860882312,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.0025758198462426662,
-   "kernel_all_threads_s": 0.000606859102845192,
+   "kernel_1_thread_s": 0.002496096072718501,
+   "kernel_all_threads_s": 0.0006481478922069073,
    "threads": 32,
-   "speedup_1_thread": 81.83579039871601,
-   "speedup_all_threads": 347.35287326775216,
+   "speedup_1_thread": 73.51559424889403,
+   "speedup_all_threads": 283.11746176234135,
    "answer": "Degrees(count=2187, offsets=[0, 7, 14, 21, 27, 34, 41, 48, 54, 60, 67, 73, 78, 84, 90, 95, 100, 105, 112, 119, 124, 130,"
   },
   {
@@ -83,13 +83,13 @@
    "op": "polynomials_fq.root_count",
    "reduction": "histogram",
    "members": 16807,
-   "naive_s": 0.03863117308355868,
+   "naive_s": 0.03274240787141025,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.0014904581476002932,
-   "kernel_all_threads_s": 0.0005092420615255833,
+   "kernel_1_thread_s": 0.0014748401008546352,
+   "kernel_all_threads_s": 0.0005211920943111181,
    "threads": 32,
-   "speedup_1_thread": 25.918992187574446,
-   "speedup_all_threads": 75.86013804089104,
+   "speedup_1_thread": 22.200649312719932,
+   "speedup_all_threads": 62.82214989213774,
    "answer": "Histogram(visited=16807, family_size=16807, bins=[5712, 6671, 3318, 945, 140, 21])"
   },
   {
@@ -98,13 +98,13 @@
    "op": "polynomials_fq.gcd",
    "reduction": "all",
    "members": 20000,
-   "naive_s": 0.19778549391776323,
+   "naive_s": 0.16954005020670593,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.00891955103725195,
-   "kernel_all_threads_s": 0.0010198750533163548,
+   "kernel_1_thread_s": 0.00793225015513599,
+   "kernel_all_threads_s": 0.0009420281276106834,
    "threads": 32,
-   "speedup_1_thread": 22.17437773400527,
-   "speedup_all_threads": 193.9311029077718,
+   "speedup_1_thread": 21.37351279787007,
+   "speedup_all_threads": 179.97344796563502,
    "answer": "Elements(p=65537, count=20000, offsets=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,"
   },
   {
@@ -113,13 +113,13 @@
    "op": "polynomials_fq.is_primitive",
    "reduction": "first",
    "members": 16384,
-   "naive_s": 17.189399224007502,
+   "naive_s": 14.036799612920731,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.0007183959241956472,
-   "kernel_all_threads_s": 0.0009058478754013777,
+   "kernel_1_thread_s": 0.0007211149204522371,
+   "kernel_all_threads_s": 0.0010108859278261662,
    "threads": 32,
-   "speedup_1_thread": 23927.473201151068,
-   "speedup_all_threads": 18976.033052338888,
+   "speedup_1_thread": 19465.412813976654,
+   "speedup_all_threads": 13885.641521497691,
    "answer": "First(p=2, rows=1, cols=14, found=1, index=8213, visited=8214, family_size=16384, member=Matrix(p=2, count=1, rows=1, co"
   }
  ]

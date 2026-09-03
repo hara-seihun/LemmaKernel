@@ -149,7 +149,7 @@ struct Walker : Family::Visitor {
         square.reserve(n * n);
     }
 
-    Step push(const Entry *row, uint64_t first, uint64_t) override {
+    Step push(const Entry *row, Index first, Index) override {
         if (op != Op::TransversalCount && op != Op::IsotopyCanonicalForm && acc.exhausted(first)) {
             appended.push_back(0);
             return Step::Skip;
@@ -164,7 +164,7 @@ struct Walker : Family::Visitor {
         appended.pop_back();
     }
 
-    void leaf(uint64_t index) override {
+    void leaf(Index index) override {
         switch (op) {
         case Op::IsLatin: acc.boolean(index, is_latin(square, n)); break;
         case Op::HasOrthogonalMate: acc.boolean(index, has_orthogonal_mate(square, n)); break;
@@ -179,11 +179,11 @@ struct Walker : Family::Visitor {
         }
     }
 
-    void take_all(uint64_t first, uint64_t count) override {
+    void take_all(Index first, Index count) override {
         acc.booleans(first, count, true);
     }
 
-    void skip_all(uint64_t first, uint64_t count) override {
+    void skip_all(Index first, Index count) override {
         acc.booleans(first, count, false);
     }
 };

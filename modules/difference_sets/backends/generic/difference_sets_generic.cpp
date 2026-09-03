@@ -195,7 +195,7 @@ struct PredicateVisitor : Family::Visitor {
         return true;
     }
 
-    Step push(const Entry *row, uint64_t first, uint64_t) override {
+    Step push(const Entry *row, Index first, Index) override {
         if (acc.exhausted(first)) {
             frames.push_back(Frame{false, 0, {}});
             return Step::Skip;
@@ -231,9 +231,9 @@ struct PredicateVisitor : Family::Visitor {
         selected.pop_back();
     }
 
-    void leaf(uint64_t index) override { acc.boolean(index, final_value()); }
-    void take_all(uint64_t first, uint64_t count) override { acc.booleans(first, count, true); }
-    void skip_all(uint64_t first, uint64_t count) override { acc.booleans(first, count, false); }
+    void leaf(Index index) override { acc.boolean(index, final_value()); }
+    void take_all(Index first, Index count) override { acc.booleans(first, count, true); }
+    void skip_all(Index first, Index count) override { acc.booleans(first, count, false); }
 };
 
 R run_predicate(const Request &req) {

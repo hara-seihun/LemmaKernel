@@ -189,7 +189,7 @@ struct Walker : Family::Visitor {
         return row_cover == target && (unsigned __int128)canonical <= total;
     }
 
-    Step push(const Entry *row, uint64_t first, uint64_t) override {
+    Step push(const Entry *row, Index first, Index) override {
         uint64_t d = depth++;
         uint64_t held = d * blocks; /* components of the prefix before this row */
         bool ok = okay[d] != 0;
@@ -232,7 +232,7 @@ struct Walker : Family::Visitor {
         if (op == Op::Packing) canon.resize(canon_len[depth] * h * n);
     }
 
-    void leaf(uint64_t index) override {
+    void leaf(Index index) override {
         switch (op) {
         case Op::IntersectingPairs: acc.integer(index, pairs[depth]); break;
         case Op::PartialSpread: acc.boolean(index, okay[depth] != 0); break;
@@ -242,8 +242,8 @@ struct Walker : Family::Visitor {
         }
     }
 
-    void take_all(uint64_t first, uint64_t count) override { acc.booleans(first, count, true); }
-    void skip_all(uint64_t first, uint64_t count) override { acc.booleans(first, count, false); }
+    void take_all(Index first, Index count) override { acc.booleans(first, count, true); }
+    void skip_all(Index first, Index count) override { acc.booleans(first, count, false); }
 };
 
 R run(const Request &req) {

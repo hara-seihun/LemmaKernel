@@ -221,7 +221,9 @@ constexpr int MAX_TEMPLATE_WORDS = 8;
  * so the least span of a t-element set, G(t), bounds every search over an increasing
  * dictionary: an element chosen with r more to come must sit at least G(r+1) below the largest
  * value. G is computed by this same search, one t at a time, and kept for the process. */
-bool spannable(Op op) { return op == Op::IsSidon || op == Op::IsApFree; }
+/* Operations with a least span per set size. A 2-term progression is any pair, so no set of two
+ * or more elements is 2-AP-free and the span table would search forever. */
+bool spannable(Op op, uint64_t length) { return op == Op::IsSidon || (op == Op::IsApFree && length >= 3); }
 
 struct Problem {
     Op op;
@@ -230,7 +232,7 @@ struct Problem {
     uint64_t k = 0, m = 0, length = 0, bound_num = 0, bound_den = 1;
     const Entry *dict = nullptr;
     std::vector<int32_t> index_of_value;
-    std::vector<std::vector<uint64_t>> cum; /* cum[j][c] = sum_{c' in [j, c)} C(m-1-c', k-1-j) */
+    std::vector<std::vector<Index>> cum; /* cum[j][c] = sum_{c' in [j, c)} C(m-1-c', k-1-j) */
     /* Increasing integer dictionaries only: */
     bool sorted = false;
     bool interval = false; /* consecutive values: index = value - dict[0], so F stands in for the allowed set */
@@ -285,7 +287,7 @@ struct Walker {
     uint64_t k, m, length, bound_num, bound_den;
     const Entry *dict;
     const std::vector<int32_t> *index_of_value;
-    const std::vector<std::vector<uint64_t>> *cum;
+    const std::vector<std::vector<Index>> *cum;
     uint64_t W, WA;
     uint32_t slots;
     Accumulator acc;
@@ -768,10 +770,10 @@ struct Walker {
 
     /* ---- the walk over dictionary indices ---- */
 
-    uint64_t child_first(uint64_t j, uint64_t prev_plus_1, uint64_t base, uint64_t c) const {
+    Index child_first(uint64_t j, uint64_t prev_plus_1, Index base, uint64_t c) const {
         return base + (*cum)[j][c] - (*cum)[j][prev_plus_1];
     }
-    uint64_t child_size(uint64_t j, uint64_t c) const { return (*cum)[j][c + 1] - (*cum)[j][c]; }
+    Index child_size(uint64_t j, uint64_t c) const { return (*cum)[j][c + 1] - (*cum)[j][c]; }
 
     /* Candidates at level j: allowed (Forbid) or every index, in [lo, hi]. */
     LK_SCALAR uint64_t candidates_into(uint64_t j, uint64_t lo, uint64_t hi, uint64_t *out) {
@@ -834,7 +836,7 @@ struct Walker {
     }
 
     /* The subtree of a prefix of j elements ending at index `prev`, leaves [base, base+size). */
-    void walk(uint64_t j, uint64_t prev, uint64_t base, uint64_t size) {
+    void walk(uint64_t j, uint64_t prev, Index base, Index size) {
         uint64_t need = k - j;
         uint64_t lo = prev + 1;
         int64_t hi = hi_of_level[j]; /* children; `total` counts every candidate above prev */
@@ -852,7 +854,7 @@ struct Walker {
         uint64_t *cand = cands.data() + j * WA;
         uint64_t total = candidates_into(j, lo, m - 1, cand);
         if (total < need) { acc.booleans(base, size, false); return; }
-        uint64_t decided = 0;
+        Index decided = 0;
         if (need == 1) {
             if (mode != Mode::Forbid) leaves_valued(j, lo, m, base);
             else if (prob.mirror) leaves_mirror(lo, base, size, cand);
@@ -872,7 +874,7 @@ struct Walker {
                 bits &= bits - 1;
                 ++seen;
                 if ((int64_t)c > hi || total - seen < need - 1) { w = WA; break; } /* too few candidates after c */
-                uint64_t first = child_first(j, lo, base, c), below = child_size(j, c);
+                Index first = child_first(j, lo, base, c), below = child_size(j, c);
                 if (acc.exhausted(first)) { w = WA; break; }
                 if (j == 1 && prob.mirror && !mirror_bounds(vals[0], dict[c])) {
                     acc.booleans(first, below, false);
@@ -898,7 +900,7 @@ struct Walker {
      * the previous element. Sets with last gap above the first gap stand for themselves and
      * their reflections; equal gaps stand for themselves; smaller gaps are reflections of sets
      * counted elsewhere. */
-    void leaves_mirror(uint64_t lo, uint64_t base, uint64_t size, const uint64_t *cand) {
+    void leaves_mirror(uint64_t lo, Index base, Index size, const uint64_t *cand) {
         uint64_t a = vals.back();
         uint64_t threshold = a + g1;
         uint64_t start = threshold <= prob.maxval() ? prob.ge[threshold] : m;
@@ -909,7 +911,7 @@ struct Walker {
             if (!bits) continue;
             if (reduction == Reduction::First) {
                 uint64_t c = w * 64 + __builtin_ctzll(bits);
-                uint64_t index = base + (c - lo);
+                Index index = base + (c - lo);
                 acc.booleans(base, index - base, false);
                 acc.booleans(index, 1, true);
                 return;
@@ -922,7 +924,7 @@ struct Walker {
         acc.visited += size;
     }
 
-    void leaves_forbid(uint64_t lo, uint64_t base, uint64_t size, const uint64_t *cand, uint64_t total) {
+    void leaves_forbid(uint64_t lo, Index base, Index size, const uint64_t *cand, uint64_t total) {
         switch (reduction) {
         case Reduction::Count:
             acc.count += total;
@@ -932,7 +934,7 @@ struct Walker {
             for (uint64_t w = 0; w < WA; ++w)
                 if (cand[w]) {
                     uint64_t c = w * 64 + __builtin_ctzll(cand[w]);
-                    uint64_t index = base + (c - lo);
+                    Index index = base + (c - lo);
                     acc.booleans(base, index - base, false);
                     acc.booleans(index, 1, true);
                     return;
@@ -941,7 +943,7 @@ struct Walker {
             return;
         }
         default: {
-            uint64_t decided = 0;
+            Index decided = 0;
             for (uint64_t w = 0; w < WA; ++w) {
                 uint64_t bits = cand[w];
                 while (bits) {
@@ -957,10 +959,11 @@ struct Walker {
     }
 
     /* Doubling and integer operations at the last level: every index in [lo, end) is a leaf. */
-    void leaves_valued(uint64_t j, uint64_t lo, uint64_t end, uint64_t base) {
+    void leaves_valued(uint64_t j, uint64_t lo, uint64_t end, Index base) {
         uint64_t *P0 = level(j, P), *R0 = level(j, PREV), *S0 = level(j, S), *D0 = level(j, D);
         for (uint64_t c = lo; c < end; ++c) {
-            uint64_t x = dict[c], index = base + (c - lo);
+            uint64_t x = dict[c];
+            Index index = base + (c - lo);
             if (acc.exhausted(index)) return;
             switch (op) {
             case Op::IsSmallDoubling:
@@ -1008,7 +1011,7 @@ struct Walker {
     std::vector<uint32_t> cur;  /* the index prefix currently pushed */
     uint64_t dead_level = UINT64_MAX; /* first level of `cur` that is dead, if any */
 
-    void unit(const uint32_t *idx, uint64_t d, uint64_t first, uint64_t size) {
+    void unit(const uint32_t *idx, uint64_t d, Index first, Index size) {
         if (acc.exhausted(first)) return;
         uint64_t common = 0;
         while (common < d && common < cur.size() && cur[common] == idx[common]) ++common;
@@ -1102,17 +1105,18 @@ Status check_distinct(const Family &fam, uint64_t span) {
     return ok();
 }
 
-/* Saturates at UINT64_MAX: public families fit by construction, and the span table's internal
+/* Saturates at INDEX_MAX: public families fit by construction, and the span table's internal
  * searches only need indices for `first` ordering, where saturation is harmless. */
-uint64_t binom_fits(uint64_t n, uint64_t r) {
+Index binom_fits(uint64_t n, uint64_t r) {
     if (r > n) return 0;
     if (r > n - r) r = n - r;
-    unsigned __int128 v = 1;
+    Index v = 1;
     for (uint64_t i = 1; i <= r; ++i) {
-        v = v * (n - r + i) / i;
-        if (v > UINT64_MAX) return UINT64_MAX;
+        Index f = n - r + i;
+        if (v > INDEX_MAX / f) return INDEX_MAX;
+        v = v * f / i;
     }
-    return (uint64_t)v;
+    return v;
 }
 
 Ambient make_ambient(uint64_t modulus, uint64_t largest) {
@@ -1154,7 +1158,7 @@ std::vector<Accumulator> search(const Problem &P, Reduction reduction, uint32_t 
     uint64_t d = k <= 2 ? k : std::min<uint64_t>(k - 2, 6);
     uint64_t cap = std::max<uint64_t>(1ULL << 16, 4096ULL * threads);
     std::vector<uint32_t> prefixes; /* d indices per unit */
-    std::vector<uint64_t> starts;   /* first leaf index per unit */
+    std::vector<Index> starts;      /* first leaf index per unit */
     for (;; --d) {
         prefixes.clear();
         starts.clear();
@@ -1162,7 +1166,7 @@ std::vector<Accumulator> search(const Problem &P, Reduction reduction, uint32_t 
         uint64_t units = 0;
         bool over = false;
         /* DFS over prefixes with c_j > c_{j-1}, c_j <= level_hi[j] */
-        auto rec = [&](auto &self, uint64_t j, uint64_t prev, uint64_t base) -> void {
+        auto rec = [&](auto &self, uint64_t j, uint64_t prev, Index base) -> void {
             if (over) return;
             if (j == d) {
                 if (++units > cap) { over = true; return; }
@@ -1199,7 +1203,7 @@ std::vector<Accumulator> search(const Problem &P, Reduction reduction, uint32_t 
     walkers.reserve(threads);
     for (uint32_t t = 0; t < threads; ++t) walkers.emplace_back(P, reduction, &shared);
     if (materialised) { /* prefixes outside the span bounds were never listed: they are all false */
-        uint64_t listed = 0;
+        Index listed = 0;
         for (uint64_t u = 0; u < units; ++u) {
             uint32_t last = prefixes[u * d + d - 1];
             listed += P.cum[d - 1][last + 1] - P.cum[d - 1][last];
@@ -1212,15 +1216,15 @@ std::vector<Accumulator> search(const Problem &P, Reduction reduction, uint32_t 
         for (uint64_t u = begin; u < end; ++u) {
             if (materialised) {
                 const uint32_t *idx = prefixes.data() + u * d;
-                uint64_t size = P.cum[d - 1][idx[d - 1] + 1] - P.cum[d - 1][idx[d - 1]];
+                Index size = P.cum[d - 1][idx[d - 1] + 1] - P.cum[d - 1][idx[d - 1]];
                 w.unit(idx, d, starts[u], size);
                 continue;
             }
             if (k == 1) { two[0] = (uint32_t)u; w.unit(two, 1, u, 1); continue; }
             uint64_t c1 = (uint64_t)(std::upper_bound(row_start.begin(), row_start.end(), u) - row_start.begin()) - 1;
             uint64_t c2 = c1 + 1 + (u - row_start[c1]);
-            uint64_t first = P.cum[0][c1] + P.cum[1][c2] - P.cum[1][c1 + 1];
-            uint64_t below = P.cum[1][c2 + 1] - P.cum[1][c2];
+            Index first = P.cum[0][c1] + P.cum[1][c2] - P.cum[1][c1 + 1];
+            Index below = P.cum[1][c2 + 1] - P.cum[1][c2];
             two[0] = (uint32_t)c1; two[1] = (uint32_t)c2;
             w.unit(two, 2, first, below);
         }
@@ -1250,7 +1254,7 @@ bool exists_in(Op op, uint64_t length, uint64_t t, uint64_t L, const std::vector
     fill_cum(P);
     Shared shared;
     search(P, Reduction::First, thread_budget(P, threads), shared);
-    return shared.best.load() != UINT64_MAX;
+    return shared.best.load() != INDEX_MAX;
 }
 
 /* G(0..tmax), exact. G(t) is found by asking for a t-element set in [0, L] for increasing L
@@ -1303,7 +1307,7 @@ R run(const Request &req) {
 
     auto size_r = fam.size();
     if (!size_r.ok) return R::failure(size_r.error.status, size_r.error.message);
-    uint64_t size = size_r.value;
+    Index size = size_r.value;
     Reduction reduction = parse_reduction(req.reduction);
     Shared shared;
     auto prepared = prepare_all(reduction, size, shared);
@@ -1336,7 +1340,7 @@ R run(const Request &req) {
         return assemble(req, reduction, accs, shared);
     }
 
-    if (P.sorted && spannable(op) && P.k >= 2) {
+    if (P.sorted && spannable(op, length) && P.k >= 2) {
         P.spans = span_table(op, length, P.k - 1, threads);
         P.spans.push_back(P.spans.back() + 1);
         bool symmetric = P.k >= 3 && reduction == Reduction::Count;
@@ -1358,7 +1362,10 @@ BackendRegistration registration{Backend{
                req.family->kind == Family::Kind::SubsetsOf;
     },
     run,
-    0}};
+    0,
+    /* big_families: indices are 128-bit throughout; a pruned search decides C(150, 15)
+       members without visiting them. */
+    true}};
 
 } // namespace
 } // namespace lk::sum_free_and_additive
