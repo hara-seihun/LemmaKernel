@@ -1,0 +1,81 @@
+# permutation_statistics: classical statistics and predicates on permutation families.
+# S_n is the existing `group_elements` family applied to a cycle and a transposition. An
+# `explicit` orbits.perms batch represents any reusable class, including a pattern class.
+
+[module]
+name = "permutation_statistics"
+version = 1
+summary = "Statistics on permutation families: inversions, descents, major index, complete cycle type, classical pattern avoidance, and strong Bruhat order. Cycle types use a canonical dense partition code."
+lean = "lean"
+contract = "lean/Permutation_statistics/Contract.lean"
+reference = "lean/Permutation_statistics/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "inversions"
+value = "integer"
+families = ["explicit", "group_elements"]
+summary = "Number of pairs i < j with w(i) > w(j). Histogram on S_n is the Mahonian distribution."
+
+[[operations]]
+name = "descents"
+value = "integer"
+families = ["explicit", "group_elements"]
+summary = "Number of positions i with w(i) > w(i+1). Histogram on S_n is the Eulerian distribution."
+
+[[operations]]
+name = "major_index"
+value = "integer"
+families = ["explicit", "group_elements"]
+summary = "Sum of the one-based descent positions i+1."
+
+[[operations]]
+name = "cycle_type"
+value = "integer"
+families = ["explicit", "group_elements"]
+summary = "Zero-based rank of the complete cycle-length partition, including fixed points, among partitions of n in descending lexicographic order: [n] has code 0 and [1,...,1] has the last code."
+
+[[operations]]
+name = "pattern_avoids"
+value = "boolean"
+args = { patterns = "perms" }
+families = ["explicit", "group_elements"]
+summary = "True exactly when no increasing position subsequence has the relative order of any listed classical pattern. All listed patterns have the degree of the orbits.perms argument."
+
+[[operations]]
+name = "bruhat_leq"
+value = "boolean"
+args = { upper = "perms" }
+families = ["explicit", "group_elements"]
+summary = "Strong Bruhat comparison w <= upper. The upper argument contains exactly one permutation of the same degree; the rank criterion uses every position prefix and upper value threshold."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/permutation_statistics_generic.cpp"]
+accepts = "explicit or group_elements families of permutations; cycle_type requires the number of integer partitions of the degree to fit in u64"
+summary = "Portable C++: parallel per-permutation scans, relation-pruned classical pattern matching, linear cycle decomposition, and dynamic-programming partition ranks."
+
+[[rejections]]
+case = "matrices are not permutations"
+error = "permutation family"
+
+[[rejections]]
+case = "Bruhat degree mismatch"
+error = "same degree"
+
+[[rejections]]
+case = "Bruhat needs one upper bound"
+error = "exactly one"
+
+[[rejections]]
+case = "S4 inversions"
+op = "inversions"
+reduction = "count"
+error = "does not accept integer"
+
+[[rejections]]
+case = "S4 avoids 123"
+op = "pattern_avoids"
+reduction = "histogram"
+error = "does not accept boolean"

@@ -32,6 +32,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/orbits/backends/g
 # module orbits: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/perm_groups/backends/generic/perm_groups_generic.cpp)
 # module perm_groups: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/permutation_statistics/backends/generic/permutation_statistics_generic.cpp)
+# module permutation_statistics: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/projective_sets/backends/generic/projective_sets_generic.cpp)
 # module projective_sets: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/residues/backends/generic/residues_generic.cpp)

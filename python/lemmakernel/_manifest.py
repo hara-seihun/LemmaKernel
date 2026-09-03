@@ -1079,6 +1079,67 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
   'rejections': [{'case': 'matrix rows are not permutations', 'error': 'permutation rows'},
                  {'case': 'two membership targets', 'error': 'exactly one permutation'},
                  {'case': 'wrong-degree membership target', 'error': 'same degree'}]},
+ {'backends': [{'accepts': 'explicit or group_elements families of permutations; cycle_type requires the '
+                           'number of integer partitions of the degree to fit in u64',
+                'name': 'generic',
+                'sources': ['backends/generic/permutation_statistics_generic.cpp'],
+                'summary': 'Portable C++: parallel per-permutation scans, relation-pruned classical pattern '
+                           'matching, linear cycle decomposition, and dynamic-programming partition ranks.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Permutation_statistics/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'permutation_statistics',
+             'reference': 'lean/Permutation_statistics/Reference.lean',
+             'summary': 'Statistics on permutation families: inversions, descents, major index, complete '
+                        'cycle type, classical pattern avoidance, and strong Bruhat order. Cycle types use a '
+                        'canonical dense partition code.',
+             'version': 1},
+  'operations': [{'families': ['explicit', 'group_elements'],
+                  'name': 'inversions',
+                  'summary': 'Number of pairs i < j with w(i) > w(j). Histogram on S_n is the Mahonian '
+                             'distribution.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'group_elements'],
+                  'name': 'descents',
+                  'summary': 'Number of positions i with w(i) > w(i+1). Histogram on S_n is the Eulerian '
+                             'distribution.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'group_elements'],
+                  'name': 'major_index',
+                  'summary': 'Sum of the one-based descent positions i+1.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'group_elements'],
+                  'name': 'cycle_type',
+                  'summary': 'Zero-based rank of the complete cycle-length partition, including fixed '
+                             'points, among partitions of n in descending lexicographic order: [n] has code '
+                             '0 and [1,...,1] has the last code.',
+                  'value': 'integer'},
+                 {'args': {'patterns': 'perms'},
+                  'families': ['explicit', 'group_elements'],
+                  'name': 'pattern_avoids',
+                  'summary': 'True exactly when no increasing position subsequence has the relative order of '
+                             'any listed classical pattern. All listed patterns have the degree of the '
+                             'orbits.perms argument.',
+                  'value': 'boolean'},
+                 {'args': {'upper': 'perms'},
+                  'families': ['explicit', 'group_elements'],
+                  'name': 'bruhat_leq',
+                  'summary': 'Strong Bruhat comparison w <= upper. The upper argument contains exactly one '
+                             'permutation of the same degree; the rank criterion uses every position prefix '
+                             'and upper value threshold.',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'matrices are not permutations', 'error': 'permutation family'},
+                 {'case': 'Bruhat degree mismatch', 'error': 'same degree'},
+                 {'case': 'Bruhat needs one upper bound', 'error': 'exactly one'},
+                 {'case': 'S4 inversions',
+                  'error': 'does not accept integer',
+                  'op': 'inversions',
+                  'reduction': 'count'},
+                 {'case': 'S4 avoids 123',
+                  'error': 'does not accept boolean',
+                  'op': 'pattern_avoids',
+                  'reduction': 'histogram'}]},
  {'backends': [{'accepts': 'subsets of coordinate rows over any prime p < 2^32; line and hyperplane '
                            'incidence is precomputed once per request',
                 'name': 'generic',
