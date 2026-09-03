@@ -9,8 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import lemmakernel as lk  # noqa: E402
-from tools.harness import (Case, companion, cyclic, dihedral, frobenius, projective_points, random_batch,  # noqa: E402
-                           symmetric, unit_vectors)
+from tools.harness import (Case, companion, cyclic, dihedral, frobenius, module, projective_points,  # noqa: E402
+                           random_batch, rotate, symmetric, unit_vectors)
 
 ORBIT_OPS = ["is_canonical", "canonical_index", "orbit_size", "stabilizer_order"]
 
@@ -53,10 +53,14 @@ def cases(ctx, rng):
         ("Singer normaliser on PG(2,2) lines", SINGER, ctx.grassmannian(2, 3, 2)),
         ("Singer normaliser on 1x3", SINGER, ctx.all_matrices(2, 1, 3)),
     ]
+    # every reduction on two cases; one reduction per case, rotating, elsewhere
+    mod = module("orbits")
+    full = {"D6 on 2-subsets", "GL(2,2) on 2x2"}
     out = []
-    for name, G, F in perm_actions + matrix_actions:
-        for op in ORBIT_OPS:
-            out.append(Case(name, F, op, {"group": G, "limit": 3}))
+    for i, (name, G, F) in enumerate(perm_actions + matrix_actions):
+        for j, op in enumerate(ORBIT_OPS):
+            reds = None if name in full else rotate(mod, op, i + j)
+            out.append(Case(name, F, op, {"group": G, "limit": 3}, reductions=reds))
     for name, G, F in perm_actions:
         out.append(Case(f"{name} fixed points", ctx.group_elements(G), "fixed_points", {"on": F}))
 

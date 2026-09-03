@@ -260,15 +260,25 @@ def coverage_gaps(mod: Module, cases: list[Case]) -> list[str]:
 
 
 def claims_for_case(mod: Module, ctx, case: Case, lc, naive=None) -> None:
-    """Add the kernel's answers (and the naive implementation's, if given) as claims."""
+    """Add the kernel's answers as claims. With `naive`, also run the naive implementation: when
+    it agrees with the kernel byte for byte the one claim covers both; when it disagrees both
+    answers are claimed and Lean says which (if either) is right."""
     desc = case.fam.value()
     for red in reductions_of(mod, case):
         args = request_args(mod, case.op, red, case.args)
-        got = ctx.run(case.op, case.fam, red, **args).value()
-        lc.claim(claim(mod, case.op, desc, red, args), lean_result(got), f"{case.name} {case.op}/{red}")
+        h = ctx.run(case.op, case.fam, red, **args)
+        lc.claim(claim(mod, case.op, desc, red, args), lean_result(h.value()), f"{case.name} {case.op}/{red}")
         if naive is not None:
             n = naive.run(case.op, desc, red, **naive_args(args))
-            lc.claim(claim(mod, case.op, desc, red, args), lean_result(n), f"naive {case.name} {case.op}/{red}")
+            if n.encode() != h.export():
+                lc.claim(claim(mod, case.op, desc, red, args), lean_result(n), f"naive {case.name} {case.op}/{red}")
+
+
+def rotate(mod: Module, op: str, i: int) -> list[str]:
+    """One of the op's allowed reductions, chosen by `i`, so a run of cases covers them all
+    without every case paying for every reduction."""
+    allowed = mod.allowed_reductions(op)
+    return [allowed[i % len(allowed)]]
 
 
 def rejection_requests(mod: Module, cases: list[Case]):

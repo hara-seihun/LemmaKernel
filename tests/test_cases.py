@@ -45,28 +45,15 @@ def _params(oracle_only: bool, per_backend: bool):
 
 
 @pytest.mark.parametrize("module,backend,name", _params(oracle_only=True, per_backend=True))
-def test_backend_matches_reference(module, backend, name):
+def test_backend_and_naive_match_reference(module, backend, name):
+    """Kernel answers as Lean claims; the naive implementation on the same requests, which only
+    costs a second Lean claim where it disagrees with the kernel."""
     mod = H.module(module)
     ctx = lk.Context(backend)
+    naive = mod.naive() if backend == mod.backends[0] else None
     lc = LeanCheck(f"{backend}_{H.safe_name(name)}", [f"{mod.lean}.Reference"], [mod.lean, "Lk"])
     for case in _cases_named(mod, ctx, name):
-        H.claims_for_case(mod, ctx, case, lc)
-    lc.verify()
-
-
-@pytest.mark.parametrize("module,backend,name", _params(oracle_only=True, per_backend=False))
-def test_naive_matches_reference(module, backend, name):
-    """The benchmark baseline is held to the same oracle."""
-    mod = H.module(module)
-    ctx = lk.Context()
-    naive = mod.naive()
-    lc = LeanCheck(f"naive_{mod.name}_{H.safe_name(name)}", [f"{mod.lean}.Reference"], [mod.lean, "Lk"])
-    for case in _cases_named(mod, ctx, name):
-        desc = case.fam.value()
-        for red in H.reductions_of(mod, case):
-            args = H.request_args(mod, case.op, red, case.args)
-            got = naive.run(case.op, desc, red, **H.naive_args(args))
-            lc.claim(H.claim(mod, case.op, desc, red, args), H.lean_result(got), f"naive {case.name} {case.op}/{red}")
+        H.claims_for_case(mod, ctx, case, lc, naive)
     lc.verify()
 
 

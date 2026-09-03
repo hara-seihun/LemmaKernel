@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import lemmakernel as lk  # noqa: E402
-from tools.harness import Case, random_batch  # noqa: E402
+from tools.harness import Case, random_batch, rotate  # noqa: E402
 
 PRIMES = [2, 3, 7, 257, 65537, 4294967291]  # small primes, then one per entry width
 WALK_OPS = ["rank", "nullity", "full_row_rank", "full_col_rank", "in_span", "rref", "nullspace"]
@@ -37,15 +37,19 @@ def small_families(ctx, rng, p):
 
 
 def cases(ctx, rng):
+    """Every reduction on the F_2 and F_257 families; one reduction per case, rotating, elsewhere."""
+    from tools.harness import module
+    mod = module("gfp")
     out = []
     for p in PRIMES:
-        for name, fam in small_families(ctx, rng, p):
+        for i, (name, fam) in enumerate(small_families(ctx, rng, p)):
             cols = fam.param("cols")
-            for op in WALK_OPS:
+            for j, op in enumerate(WALK_OPS):
                 args = {"limit": 3}
                 if op == "in_span":
                     args["target"] = random_batch(rng, p, 1, 1, cols)
-                out.append(Case(f"{name} F_{p}", fam, op, args))
+                reds = None if p in (2, 257) else rotate(mod, op, i + j)
+                out.append(Case(f"{name} F_{p}", fam, op, args, reductions=reds))
         for rows, cols in [(1, 1), (2, 3), (3, 3), (4, 2), (5, 5)]:
             fam = ctx.explicit(random_batch(rng, p, 8, rows, cols))
             out.append(Case(f"explicit {rows}x{cols} F_{p}", fam, "rref_witness"))
