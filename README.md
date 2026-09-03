@@ -101,6 +101,7 @@ and committed; the build refuses to configure if they are stale.
 | [orbits](modules/orbits/manifest.toml) | finite groups acting on families: orbit representatives (`is_canonical`), canonical index, orbit size, stabiliser order, fixed points for Burnside, and the projective action that turns a matrix group into permutations of points | `generic` (per-member orbit search, portable C++) |
 | [perm_groups](modules/perm_groups/manifest.toml) | Schreier-Sims for permutation groups: order, membership, transitivity, primitivity, point-orbit partitions, and deterministic bases with strong generators | `generic` (portable C++, parallel across groups) |
 | [permutation_statistics](modules/permutation_statistics/manifest.toml) | inversions, descents, major index, dense complete-cycle-type codes, classical pattern avoidance, and strong Bruhat order on permutation families | `generic` (parallel scans, pruned pattern matching, portable C++) |
+| [polynomials_fq](modules/polynomials_fq/manifest.toml) | univariate polynomials over `F_q` on families of coefficient rows: irreducibility, factorisation degrees, primitivity, the order of `x`, roots and gcd | `generic` (Frobenius distinct-degree factorisation, portable C++) |
 | [projective_sets](modules/projective_sets/manifest.toml) | arcs, caps, blocking sets, hyperovals, ovoids, span rank, maximum collinearity, and secant, tangent and passant counts for point sets in `PG(n,p)` | `generic` (precomputed line and hyperplane incidence, portable C++) |
 | [residues](modules/residues/manifest.toml) | arithmetic in Z/n over ranges of residues: multiplicative order, primitive roots, quadratic residues, discrete logarithms by baby-step giant-step, the Legendre and Jacobi symbols, and the least primitive root of each modulus in a range | `generic` (factorisation of the modulus shared by every member, portable C++) |
 | [set_systems](modules/set_systems/manifest.toml) | extremal predicates on finite set systems: intersecting families, antichains, sunflowers, maximum degree, lower shadows, and exact EKR/Sperner extremality | `generic` (prefix-pruned enumeration, portable C++) |
@@ -141,6 +142,13 @@ isogeny classes; families of another shape are refused rather than reinterpreted
 one: an order is 0 for a non-unit, a discrete logarithm is the least `x < n` and the modulus
 itself when there is none, a quadratic symbol is 0, 1 or 2 with 2 standing for -1, and the least
 primitive root is 0 when the unit group is not cyclic.
+
+`polynomials_fq` reads a `1 x d` member `[a_0, ..., a_{d-1}]` as the monic polynomial
+`x^d + a_{d-1} x^(d-1) + ... + a_0`: entry `i` is the coefficient of `x^i` and the degree is the
+number of columns, so `all_matrices(q, 1, d)` is every monic polynomial of degree `d` and
+`transform`, `subsets` and `explicit` give the derived families. `order` is Lidl and
+Niederreiter's: for `f = x^h g` with `g(0)` nonzero it is the least `e` with `g` dividing
+`x^e - 1`.
 
 `subspace_orbits` treats each matrix as a row space, so it also handles transforms and stacks that
 change the displayed basis or its rank. Set `projective=0` to retain the generated GL group order,

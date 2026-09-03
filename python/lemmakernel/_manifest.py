@@ -1183,6 +1183,76 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'error': 'does not accept boolean',
                   'op': 'pattern_avoids',
                   'reduction': 'histogram'}]},
+ {'backends': [{'accepts': 'any prime q < 2^32, any family of one-row members; `order` and `is_primitive` '
+                           'need q^d < 2^32',
+                'name': 'generic',
+                'sources': ['backends/generic/polynomials_fq_generic.cpp'],
+                'summary': 'Portable C++: Musser squarefree decomposition and distinct-degree factorisation '
+                           'by repeated Frobenius, Euclid for gcd, Horner for roots, and the walk x, x^2, '
+                           '... for the order of x. Threads over member ranges.'}],
+  'kinds': [{'lean': 'elements',
+             'name': 'polynomials_fq.elements',
+             'params': ['p', 'count'],
+             'payload': 'u64 offsets[count+1], then offsets[count] entries of F_p',
+             'summary': 'For each member, a list of field elements (ragged): the roots of `roots`, or the '
+                        'coefficients of the polynomial `gcd` returns.'},
+            {'lean': 'degrees',
+             'name': 'polynomials_fq.degrees',
+             'params': ['count'],
+             'payload': 'u64 offsets[count+1], then offsets[count] u64 degrees',
+             'summary': 'For each member, a list of natural numbers (ragged): the degrees '
+                        '`factorisation_degrees` returns.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Polynomials_fq/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'polynomials_fq',
+             'reference': 'lean/Polynomials_fq/Reference.lean',
+             'summary': 'Univariate polynomials over F_q on families of coefficient rows: irreducibility, '
+                        'factorisation degrees, primitivity, the order of x, roots and gcd. A 1 x d member '
+                        '[a_0, ..., a_{d-1}] is the monic polynomial x^d + sum a_i x^i, so all_matrices(q, '
+                        '1, d) is every monic polynomial of degree d.',
+             'version': 1},
+  'operations': [{'name': 'is_irreducible',
+                  'summary': 'The member is irreducible over F_q. A member of degree 0 (the polynomial 1) is '
+                             'not.',
+                  'value': 'boolean'},
+                 {'name': 'factorisation_degrees',
+                  'summary': 'Degrees of the monic irreducible factors of the member, with multiplicity, in '
+                             'non-decreasing order. They sum to the degree.',
+                  'value': 'polynomials_fq.degrees'},
+                 {'name': 'is_primitive',
+                  'summary': 'The member is a primitive polynomial: irreducible of degree d, with nonzero '
+                             'constant coefficient, and x generates the multiplicative group of F_q[x]/(f), '
+                             'that is `order` = q^d - 1. Refused when q^d is 2^32 or more, because the '
+                             'answer is found by walking the powers of x.',
+                  'value': 'boolean'},
+                 {'name': 'order',
+                  'summary': 'The order of the member: writing f = x^h g with g(0) != 0, the least e >= 1 '
+                             'with g dividing x^e - 1, that is the multiplicative order of x in F_q[x]/(g). '
+                             'It is 1 when g is constant (f = x^h). Refused when q^d is 2^32 or more, '
+                             'because the answer is found by walking the powers of x.',
+                  'value': 'integer'},
+                 {'name': 'roots',
+                  'summary': 'The distinct roots of the member in F_q, in increasing order; multiplicities '
+                             'are not repeated.',
+                  'value': 'polynomials_fq.elements'},
+                 {'name': 'root_count',
+                  'summary': 'How many distinct roots the member has in F_q; the length of `roots`.',
+                  'value': 'integer'},
+                 {'args': {'other': 'vector'},
+                  'name': 'gcd',
+                  'summary': 'The monic gcd of the member and the fixed monic polynomial `other` (a 1 x k '
+                             'row read the same way as a member, so it is x^k + sum b_i x^i), returned in '
+                             'the same convention: the list [c_0, ..., c_{m-1}] of the coefficients below '
+                             'the leading term, so its length is the degree of the gcd and the empty list is '
+                             'the constant 1.',
+                  'value': 'polynomials_fq.elements'}],
+  'rejections': [{'case': 'two rows per member F_2', 'error': 'one row', 'op': 'is_irreducible'},
+                 {'case': 'two rows per member F_2', 'error': 'one row', 'op': 'factorisation_degrees'},
+                 {'case': 'naturals family', 'error': 'no available backend accepts', 'op': 'root_count'},
+                 {'case': 'degree 32 over F_2', 'error': 'residue ring', 'op': 'order'},
+                 {'case': 'degree 32 over F_2', 'error': 'residue ring', 'op': 'is_primitive'}]},
  {'backends': [{'accepts': 'subsets of coordinate rows over any prime p < 2^32; line and hyperplane '
                            'incidence is precomputed once per request',
                 'name': 'generic',

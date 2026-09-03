@@ -2,7 +2,7 @@
 # Lk is the runtime's reference (families, reductions) and contract; then one library
 # per module: its executable reference and contract (against Mathlib).
 name = "LemmaKernel"
-defaultTargets = ["Lk", "Automorphisms", "Burnside", "Cayley", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Hadamard", "Hypergraphs", "Integer_partitions", "Lattice_of_subspaces", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Projective_sets", "Residues", "Set_systems", "Simplicial_complexes", "Subspace_orbits", "Young"]
+defaultTargets = ["Lk", "Automorphisms", "Burnside", "Cayley", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Hadamard", "Hypergraphs", "Integer_partitions", "Lattice_of_subspaces", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Projective_sets", "Residues", "Set_systems", "Simplicial_complexes", "Subspace_orbits", "Young"]
 
 [[require]]
 name = "mathlib"
@@ -103,6 +103,11 @@ roots = ["Perm_groups"]
 name = "Permutation_statistics"
 srcDir = "modules/permutation_statistics/lean"
 roots = ["Permutation_statistics"]
+
+[[lean_lib]]
+name = "Polynomials_fq"
+srcDir = "modules/polynomials_fq/lean"
+roots = ["Polynomials_fq"]
 
 [[lean_lib]]
 name = "Projective_sets"

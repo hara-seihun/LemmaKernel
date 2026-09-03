@@ -518,6 +518,32 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->basis = b;
         return R::success(o);
     }
+    if (h.kind == "polynomials_fq.elements") {
+        auto p = need(h, "p"), count = need(h, "count");
+        for (auto *r : {&p, &count}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        auto e = std::make_shared<Elements>();
+        e->p = p.value; e->count = count.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i <= count.value; ++i) e->offsets.push_back(r.u64());
+        if (r.bad) return R::failure(INVALID, "polynomials_fq.elements payload truncated");
+        r.entries(e->values, e->offsets.back(), entry_width(p.value));
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "polynomials_fq.elements payload length mismatch");
+        o->elements = e;
+        return R::success(o);
+    }
+    if (h.kind == "polynomials_fq.degrees") {
+        auto count = need(h, "count");
+        if (!count.ok) return R::failure(count.error.status, count.error.message);
+        auto d = std::make_shared<Degrees>();
+        d->count = count.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i <= count.value; ++i) d->offsets.push_back(r.u64());
+        if (r.bad) return R::failure(INVALID, "polynomials_fq.degrees payload truncated");
+        for (uint64_t i = 0; i < d->offsets.back(); ++i) d->values.push_back(r.u64());
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "polynomials_fq.degrees payload length mismatch");
+        o->degrees = d;
+        return R::success(o);
+    }
     if (h.kind == "gfp.solutions" || h.kind == "gfp.inverses") {
         bool sol = h.kind == "gfp.solutions";
         auto p = need(h, "p"), count = need(h, "count"), len = need(h, sol ? "length" : "n");
@@ -679,6 +705,8 @@ std::map<std::string, uint64_t> Object::params() const {
     if (solutions) return {{"p", solutions->p}, {"count", solutions->count}, {"length", solutions->length}};
     if (inverses) return {{"p", inverses->p}, {"count", inverses->count}, {"n", inverses->n}};
     if (witness) return {{"p", witness->p}, {"count", witness->count}, {"rows", witness->rows}, {"cols", witness->cols}};
+    if (elements) return {{"p", elements->p}, {"count", elements->count}};
+    if (degrees) return {{"count", degrees->count}};
     if (cycle_index) return {{"degree", cycle_index->degree}, {"count", cycle_index->multiplicities.size()},
                              {"denominator", cycle_index->denominator}};
     if (u64_matrices) return {{"count", u64_matrices->count}, {"rows", u64_matrices->rows}, {"cols", u64_matrices->cols}};
@@ -739,6 +767,14 @@ std::vector<uint8_t> encode(const Object &o) {
         w.entries(o.witness->r, entry_width(o.witness->p));
         w.entries(o.witness->t, entry_width(o.witness->p));
         write_header(out, "gfp.witness", o.params(), w.out);
+    } else if (o.elements) {
+        w.u64s(o.elements->offsets);
+        w.entries(o.elements->values, entry_width(o.elements->p));
+        write_header(out, "polynomials_fq.elements", o.params(), w.out);
+    } else if (o.degrees) {
+        w.u64s(o.degrees->offsets);
+        w.u64s(o.degrees->values);
+        write_header(out, "polynomials_fq.degrees", o.params(), w.out);
     } else if (o.cycle_index) {
         for (uint64_t i = 0; i < o.cycle_index->multiplicities.size(); ++i) {
             w.u64(o.cycle_index->multiplicities[i]);
