@@ -5,6 +5,7 @@
 #include <bit>
 #include <cmath>
 #include <cstring>
+#include <stdexcept>
 
 namespace lk {
 
@@ -21,6 +22,8 @@ struct Writer {
     void str(const std::string &s) { u32((uint32_t)s.size()); out.insert(out.end(), s.begin(), s.end()); }
     void entries(const std::vector<Entry> &e, unsigned width) {
         size_t start = out.size();
+        if (width && e.size() > (out.max_size() - start) / width)
+            throw std::length_error("interchange object is too large");
         out.resize(start + e.size() * width);
         uint8_t *dst = out.data() + start;
         for (Entry v : e) {
@@ -1001,6 +1004,49 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->permutation_generators = g;
         return R::success(o);
     }
+    if (h.kind == "coset_enumeration.representations") {
+        auto count = need(h, "count"), generators = need(h, "generators"), max_cosets = need(h, "max_cosets");
+        for (auto *r : {&count, &generators, &max_cosets})
+            if (!r->ok) return R::failure(r->error.status, r->error.message);
+        if (generators.value == 0 || generators.value >= (1ULL << 31) ||
+            max_cosets.value == 0 || max_cosets.value >= (1ULL << 32))
+            return R::failure(INVALID, "coset representation dimensions are out of range");
+        unsigned __int128 image_count128 =
+            (unsigned __int128)count.value * generators.value * max_cosets.value;
+        unsigned __int128 words = count.value + image_count128;
+        if (words * 4 != h.payload_len)
+            return R::failure(INVALID, "coset_enumeration.representations payload length mismatch");
+        uint64_t image_count = (uint64_t)image_count128;
+        auto reps = std::make_shared<CosetRepresentations>();
+        reps->count = count.value;
+        reps->generators = generators.value;
+        reps->max_cosets = max_cosets.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        r.entries(reps->degrees, count.value, 4);
+        r.entries(reps->images, image_count, 4);
+        if (r.bad || r.p != r.end)
+            return R::failure(INVALID, "coset_enumeration.representations payload truncated");
+        for (uint64_t i = 0; i < count.value; ++i) {
+            Entry degree = reps->degrees[i];
+            if (degree > max_cosets.value)
+                return R::failure(INVALID, "coset representation degree exceeds max_cosets");
+            for (uint64_t g = 0; g < generators.value; ++g) {
+                uint64_t base = (i * generators.value + g) * max_cosets.value;
+                std::vector<bool> seen(degree, false);
+                for (uint64_t point = 0; point < degree; ++point) {
+                    Entry image = reps->images[base + point];
+                    if (image >= degree || seen[image])
+                        return R::failure(INVALID, "coset representation generator is not a permutation");
+                    seen[image] = true;
+                }
+                for (uint64_t point = degree; point < max_cosets.value; ++point)
+                    if (reps->images[base + point] != 0)
+                        return R::failure(INVALID, "coset representation padding must be zero");
+            }
+        }
+        o->coset_representations = reps;
+        return R::success(o);
+    }
     if (h.kind == "posets.mobius") {
         auto count = need(h, "count");
         if (!count.ok) return R::failure(count.error.status, count.error.message);
@@ -1139,6 +1185,9 @@ std::map<std::string, uint64_t> Object::params() const {
     if (coefficients) return {{"count", coefficients->count}, {"length", coefficients->length}};
     if (srg_params) return {{"count", srg_params->count}};
     if (srg_spectra) return {{"count", srg_spectra->count}};
+    if (coset_representations) return {{"count", coset_representations->count},
+                                       {"generators", coset_representations->generators},
+                                       {"max_cosets", coset_representations->max_cosets}};
     if (integers) return {{"count", integers->values.size()}};
     if (degree_sequences) return {{"count", degree_sequences->count}, {"n", degree_sequences->n}};
     if (theta_series) return {{"count", theta_series->count}, {"bound", theta_series->bound}};
@@ -1300,6 +1349,10 @@ std::vector<uint8_t> encode(const Object &o) {
             w.u64(o.srg_spectra->multiplicity_minus[i]);
         }
         write_header(out, "strongly_regular.spectra", o.params(), w.out);
+    } else if (o.coset_representations) {
+        w.entries(o.coset_representations->degrees, 4);
+        w.entries(o.coset_representations->images, 4);
+        write_header(out, "coset_enumeration.representations", o.params(), w.out);
     } else if (o.integers) {
         w.u64s(o.integers->values);
         const char *kind = o.kind == "burnside.counts" ? "burnside.counts" :

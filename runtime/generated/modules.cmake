@@ -20,6 +20,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/code_equivalence/
 # module code_equivalence: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/continued_fractions_and_pell/backends/generic/continued_fractions_and_pell_generic.cpp)
 # module continued_fractions_and_pell: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/coset_enumeration/backends/generic/coset_enumeration_generic.cpp)
+# module coset_enumeration: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/designs/backends/generic/designs_generic.cpp)
 # module designs: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/difference_sets/backends/generic/difference_sets_generic.cpp)

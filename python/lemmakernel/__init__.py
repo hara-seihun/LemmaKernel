@@ -18,12 +18,12 @@ from pathlib import Path
 
 from . import interchange
 from .interchange import (GRAMS, NATURALS, Basis, Bsgs, BurnsideCounts, CharacterIndicators,
-                          CharacterMultiplicities, CharacterTable, Characters, Coefficients, Count, CurveGroups,
-                          CycleIndex, Degrees, DegreeSequences, Elements, Expansions, Extremum, Family, First,
-                          GraphGroups, Histogram, Hits, Integers, Inverses, Matrix, MobiusMatrices, Partitions, Perms,
-                          PermutationGenerators, QuadraticUnits, RegularSubgroups, RskPairs, ShortVectors,
-                          SignedMatrices, Solutions, Spectra, SubgroupLists, ThetaSeries, U64Matrices, U64Vectors,
-                          WeightEnumerators, Witness, gram, matrix, naturals, perms)
+                          CharacterMultiplicities, CharacterTable, Characters, Coefficients, CosetRepresentations,
+                          Count, CurveGroups, CycleIndex, Degrees, DegreeSequences, Elements, Expansions, Extremum,
+                          Family, First, GraphGroups, Histogram, Hits, Integers, Inverses, Matrix, MobiusMatrices,
+                          Partitions, Perms, PermutationGenerators, QuadraticUnits, RegularSubgroups, RskPairs,
+                          ShortVectors, SignedMatrices, Solutions, Spectra, SubgroupLists, ThetaSeries, U64Matrices,
+                          U64Vectors, WeightEnumerators, Witness, gram, matrix, naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "gram", "perms", "naturals", "interchange", "MODULES",
@@ -31,8 +31,8 @@ __all__ = ["Context", "Handle", "Error", "describe", "matrix", "gram", "perms", 
            "CycleIndex", "Spectra", "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "CharacterTable",
            "CharacterIndicators", "CharacterMultiplicities", "PermutationGenerators", "SubgroupLists",
            "MobiusMatrices", "Characters", "RskPairs", "CurveGroups", "Elements", "Degrees", "DegreeSequences",
-           "Expansions", "QuadraticUnits", "Coefficients", "ThetaSeries",
-           "ShortVectors", "SignedMatrices", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family",
+           "Expansions", "QuadraticUnits", "Coefficients", "ThetaSeries", "ShortVectors", "CosetRepresentations",
+           "SignedMatrices", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family",
            "GraphGroups", "RegularSubgroups", "NATURALS", "GRAMS"]
 
 
@@ -185,7 +185,8 @@ _PARAM_NAMES = {
     "perm_groups.bsgs": ["count", "n"], "automorphisms.generators": ["count", "order"],
     "subgroups.lists": ["count"], "posets.mobius": ["count"], "young.characters": ["count"], "young.rsk_pairs": ["count", "length"],
     "elliptic_curves_fp.group": ["count"], "polynomials_fq.elements": ["p", "count"],
-    "polynomials_fq.degrees": ["count"], "lk.signed_matrices": ["count", "rows", "cols"], "integers": ["count"],
+    "polynomials_fq.degrees": ["count"], "coset_enumeration.representations": ["count", "generators", "max_cosets"],
+    "lk.signed_matrices": ["count", "rows", "cols"], "integers": ["count"],
     "continued_fractions_and_pell.expansion": ["count"], "continued_fractions_and_pell.unit": ["count"],
     "count": ["value", "visited", "family_size"], "histogram": ["visited", "family_size", "bins"],
     "hits": ["p", "rows", "cols", "total", "visited", "family_size", "count", "materialised"],

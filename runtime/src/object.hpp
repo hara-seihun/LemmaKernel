@@ -224,6 +224,12 @@ struct SrgSpectra {
     std::vector<uint64_t> k, delta_negative, delta_abs, discriminant, multiplicity_plus, multiplicity_minus;
 };
 
+struct CosetRepresentations {
+    uint64_t count = 0, generators = 0, max_cosets = 0;
+    std::vector<Entry> degrees;
+    std::vector<Entry> images;
+};
+
 struct Integers {
     std::vector<uint64_t> values;
 };
@@ -306,6 +312,7 @@ struct Object {
     std::shared_ptr<Coefficients> coefficients;
     std::shared_ptr<SrgParams> srg_params;
     std::shared_ptr<SrgSpectra> srg_spectra;
+    std::shared_ptr<CosetRepresentations> coset_representations;
     std::shared_ptr<Integers> integers;
     std::shared_ptr<DegreeSequences> degree_sequences;
     std::shared_ptr<ThetaSeries> theta_series;

@@ -901,6 +901,28 @@ class ShortVectors:
 
 
 @dataclass
+class CosetRepresentations:
+    count: int
+    generators: int
+    max_cosets: int
+    degrees: object
+    images: object
+
+    def member(self, i: int):
+        degree = int(self.degrees[i])
+        if degree == 0:
+            return None
+        base = i * self.generators * self.max_cosets
+        return [[int(x) for x in self.images[base + g * self.max_cosets:base + g * self.max_cosets + degree]]
+                for g in range(self.generators)]
+
+    def encode(self) -> bytes:
+        return encode("coset_enumeration.representations",
+                      {"count": self.count, "generators": self.generators, "max_cosets": self.max_cosets},
+                      pack_entries(self.degrees, 0) + pack_entries(self.images, 0))
+
+
+@dataclass
 class Integers:
     values: list[int]
 
@@ -1016,6 +1038,7 @@ KINDS = {"gfp.matrix": Matrix, "lattices.gram": Matrix, "orbits.perms": Perms, "
          "strongly_regular.params": StronglyRegularParams,
          "strongly_regular.spectra": StronglyRegularSpectra,
          "lattices.theta_series": ThetaSeries, "lattices.short_vectors": ShortVectors,
+         "coset_enumeration.representations": CosetRepresentations,
          "integers": Integers, "count": Count, "histogram": Histogram, "hits": Hits,
          "first": First, "extremum": Extremum}
 
@@ -1226,6 +1249,25 @@ def decode_at(buf: bytes, offset: int):
         rest = pl[8 * (q["count"] + 1):]
         entries = unpack_entries(rest, GRAMS, offsets[-1] * q["n"])
         return ShortVectors(q["count"], q["n"], q["bound"], offsets, entries), end
+    if k == "coset_enumeration.representations":
+        count, generators, bound = q["count"], q["generators"], q["max_cosets"]
+        degree_bytes = 4 * count
+        degrees = unpack_entries(pl[:degree_bytes], 0, count)
+        images = unpack_entries(pl[degree_bytes:], 0, count * generators * bound)
+        if generators < 1 or generators >= 1 << 31 or bound < 1 or bound >= 1 << 32:
+            raise ValueError("coset representation dimensions are out of range")
+        for i, raw_degree in enumerate(degrees):
+            degree = int(raw_degree)
+            if degree > bound:
+                raise ValueError("coset representation degree exceeds max_cosets")
+            for g in range(generators):
+                base = (i * generators + g) * bound
+                permutation = [int(x) for x in images[base:base + degree]]
+                if sorted(permutation) != list(range(degree)):
+                    raise ValueError("coset representation generator is not a permutation")
+                if any(int(x) != 0 for x in images[base + degree:base + bound]):
+                    raise ValueError("coset representation padding must be zero")
+        return CosetRepresentations(count, generators, bound, degrees, images), end
     if k == "integers":
         return Integers(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "count":

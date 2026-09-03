@@ -48,6 +48,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | hadamard | all_4x4_hadamard | 65,536 | 0.17 s | 0.00292 s | 58× | 267× |
 | matchings_and_flows | all_unit_networks_4 | 65,536 | 0.338 s | 0.00618 s | 55× | 359× |
 | bilinear_invariants | rank census of symmetric 5x5 forms | 32,768 | 0.28 s | 0.00576 s | 49× | 212× |
+| coset_enumeration | two involutions with a varying relator | 4,096 | 0.331 s | 0.0075 s | 44× | 321× |
 | circulants | spectra of pairs on Z101 | 4,950 | 0.214 s | 0.00518 s | 41× | 79× |
 | hypergraphs | ramsey_R33_on_six_vertices | 6,435 | 0.0577 s | 0.00154 s | 37× | 121× |
 | continued_fractions_and_pell | class_numbers_to_50000 | 50,000 | 5.01 s | 0.176 s | 28× | 365× |
@@ -75,6 +76,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | continued_fractions_and_pell | negative_pell_to_200000 | for how many d below 200000 the equation x^2 - d y^2 = -1 is solvable | 200,000 | 3 s | 0.126 s | 0.00662 s | 24× | 454× |
 | continued_fractions_and_pell | largest_partial_quotient | the largest partial quotient in any period of sqrt(d) for d below 200000 | 200,000 | 2.37 s | 0.124 s | 0.00911 s | 19× | 260× |
 | continued_fractions_and_pell | class_numbers_to_50000 | the class number of every imaginary quadratic order of discriminant above -50000 | 50,000 | 5.01 s | 0.176 s | 0.0137 s | 28× | 365× |
+| coset_enumeration | two involutions with a varying relator | which length-6 relators make <x,y | x^2,y^2,w> close within 64 Todd-Coxeter rows | 4,096 | 0.331 s | 0.0075 s | 0.00103 s | 44× | 321× |
 | designs | complete 6-subsets of 12 | multiplicities of all triples in the complete family of 6-subsets of 12 points | 924 | 0.0451 s | 0.000587 s | 0.000573 s | 77× | 79× |
 | difference_sets | C31 (31,6,1) search | search all 6-subsets of C31 for cyclic projective-plane difference sets | 736,281 | 1,076 s~ | 0.0779 s | 0.0148 s | 13,816× | 72,721× |
 | elliptic_curves_fp | point_counts_F_1009 | the number of points on every curve over F_1009; one histogram bin per isogeny class | 1,018,081 | 506 s~ | 0.815 s | 0.0712 s | 621× | 7,107× |
