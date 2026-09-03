@@ -64,6 +64,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/strongly_regular/
 # module strongly_regular: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/subspace_orbits/backends/generic/subspace_orbits_generic.cpp)
 # module subspace_orbits: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/sum_free_and_additive/backends/generic/sum_free_and_additive_generic.cpp)
+# module sum_free_and_additive: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/words_and_growth/backends/generic/words_and_growth_generic.cpp)
 # module words_and_growth: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/young/backends/generic/young_generic.cpp)

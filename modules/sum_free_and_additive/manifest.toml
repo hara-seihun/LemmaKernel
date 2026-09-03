@@ -1,0 +1,111 @@
+# sum_free_and_additive: additive-combinatorics predicates on finite sets of naturals.
+# This file is the only declaration of the module; tools/manifest.py generates the rest.
+
+[module]
+name = "sum_free_and_additive"
+version = 1
+summary = """A member is a finite set of natural numbers: one element per row of a one-column \
+`lk.naturals` matrix, with distinct entries. `modulus = 0` reads it as a set of integers; \
+`modulus = n > 0` reads it as a subset of Z/n, and every element must then be below n. Sums \
+x + y and differences x - y range over all ordered pairs, x = y included, so a set containing \
+x and 2x is not sum-free and 0 always lies in the difference set. The usual input is `subsets` \
+of a dictionary of naturals, or `subsets_of` a `range`."""
+lean = "lean"
+contract = "lean/Sum_free_and_additive/Contract.lean"
+reference = "lean/Sum_free_and_additive/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+# Every operation takes `modulus`; the three family kinds below are the ones whose members are
+# sets. No new object kind: a member is an lk.naturals matrix with one column.
+
+[[operations]]
+name = "is_sum_free"
+value = "boolean"
+args = { modulus = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "No x, y, z in the set with x + y = z. x = y counts, so {3, 6} is not sum-free."
+
+[[operations]]
+name = "is_sidon"
+value = "boolean"
+args = { modulus = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "A Sidon (B_2) set: a + b = c + d with a, b, c, d in the set forces {a, b} = {c, d}; equivalently every nonzero difference has one representation."
+
+[[operations]]
+name = "is_ap_free"
+value = "boolean"
+args = { length = "int", modulus = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "No arithmetic progression a, a+d, ..., a+(length-1)d with d != 0 lies in the set. Only d != 0 is required, not distinct terms, so {0, 3} in Z/6 is not 3-AP-free. `length` must be at least 2."
+
+[[operations]]
+name = "sumset_size"
+value = "integer"
+args = { modulus = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "|S + S|: the number of distinct sums x + y over ordered pairs of the set, x = y included."
+
+[[operations]]
+name = "difference_set_size"
+value = "integer"
+args = { modulus = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "|S - S|: the number of distinct differences x - y, counting 0 and, over the integers, each negative difference separately, so the value is odd there."
+
+[[operations]]
+name = "schur_triple_count"
+value = "integer"
+args = { modulus = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "The number of ordered pairs (x, y) in S x S with x + y in S, equal to the number of triples (x, y, z) in S^3 with x + y = z. Zero exactly when the set is sum-free."
+
+[[operations]]
+name = "max_difference_multiplicity"
+value = "integer"
+args = { modulus = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "The largest number of ordered pairs (x, y) in S x S sharing one nonzero difference x - y; 0 for a set of size 1, and at most 1 exactly when the set is Sidon."
+
+[[operations]]
+name = "is_small_doubling"
+value = "boolean"
+args = { bound_den = "int", bound_num = "int", modulus = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Doubling constant at most bound_num / bound_den, as the exact integer test |S + S| * bound_den <= bound_num * |S|. `bound_den` must be at least 1."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/sum_free_and_additive_generic.cpp"]
+accepts = "explicit, subsets and subsets_of families of one-column lk.naturals members; modulus < 2^22, and elements below 2^21 when modulus is 0"
+summary = "Portable C++: depth-first enumeration carrying the prefix's Schur count, sumset, difference multiplicities and longest progressions, so each element costs O(|prefix|); subtrees whose prefix already fails a subset-closed predicate are skipped."
+
+# Requests the runtime must refuse. `case` names a case in cases.py.
+[[rejections]]
+case = "range of naturals"
+error = "families only"
+
+[[rejections]]
+case = "residues are not naturals"
+error = "lk.naturals"
+
+[[rejections]]
+case = "two-column dictionary"
+error = "one column"
+
+[[rejections]]
+case = "repeated element"
+error = "duplicate"
+
+[[rejections]]
+case = "element outside Z/7"
+error = "below the modulus"
+
+[[rejections]]
+case = "progression shorter than two"
+error = "length"
+
+[[rejections]]
+case = "zero denominator"
+error = "bound_den"

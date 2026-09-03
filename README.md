@@ -115,6 +115,7 @@ and committed; the build refuses to configure if they are stale.
 | [spreads_and_partitions](modules/spreads_and_partitions/manifest.toml) | sets of subspaces of F_p^n that miss each other: partial spreads, spreads, vector space partitions of mixed dimension, how many pairs of a set meet, and packings (parallelisms) whose rows are disjoint spreads | `generic` (incremental echelon per prefix, portable C++) |
 | [strongly_regular](modules/strongly_regular/manifest.toml) | strongly regular graph parameters, exact spectra, and Krein and absolute-bound checks on adjacency-matrix families | `generic` (bit-packed common-neighbour tests, portable C++) |
 | [subspace_orbits](modules/subspace_orbits/manifest.toml) | GL, PGL and PGammaL orbits of row spaces from Grassmannians and their transform/stack derivatives; canonical indices use the least rref in Grassmannian order | `generic` (per-member rref orbit search, portable C++) |
+| [sum_free_and_additive](modules/sum_free_and_additive/manifest.toml) | sum-free, Sidon and k-AP-free sets of integers or of Z/n, with sumset and difference-set sizes, Schur triple counts, difference multiplicities and a doubling-constant test | `generic` (incremental prefix state, pruned subsets walk, portable C++) |
 | [words_and_growth](modules/words_and_growth/manifest.toml) | ball sizes, spherical growth-series coefficients, and geodesic-word counts for finite complete rewriting presentations of groups | `generic` (critical-pair validation and normal-form automata, portable C++) |
 | [young](modules/young/manifest.toml) | partitions and standard Young tableaux, hook-length counts, Kostka numbers, RSK, and irreducible S_n character values by Murnaghan-Nakayama | `generic` (portable C++) |
 
@@ -142,7 +143,7 @@ orbits, where each step is an elimination) to a few thousand× (independence of 
 isomorphism classes of elliptic curves), and higher where the backend changes the algorithm
 (Burnside counts from cycle types) or refuses to look at most of the family at all (spreads: one
 meeting pair kills every extension of that prefix, which is where 47,000× on the spreads of
-PG(3,2) comes from).
+PG(3,2) comes from, and sum-free subsets are the same trick: 30 million members in 9 ms).
 
 `elliptic_curves_fp` reads a `1 x 2` member as the pair `(a, b)` of `y^2 = x^3 + ax + b`, so
 `all_matrices(p, 1, 2)` is every curve over `F_p` and a histogram of `point_count` over it is the

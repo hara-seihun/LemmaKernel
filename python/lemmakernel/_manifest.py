@@ -2030,6 +2030,85 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'wrong group dimension', 'error': 'n x n'},
                  {'case': 'singular generator', 'error': 'invertible'},
                  {'case': 'invalid projective flag', 'error': 'projective'}]},
+ {'backends': [{'accepts': 'explicit, subsets and subsets_of families of one-column lk.naturals members; '
+                           'modulus < 2^22, and elements below 2^21 when modulus is 0',
+                'name': 'generic',
+                'sources': ['backends/generic/sum_free_and_additive_generic.cpp'],
+                'summary': "Portable C++: depth-first enumeration carrying the prefix's Schur count, sumset, "
+                           'difference multiplicities and longest progressions, so each element costs '
+                           'O(|prefix|); subtrees whose prefix already fails a subset-closed predicate are '
+                           'skipped.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Sum_free_and_additive/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'sum_free_and_additive',
+             'reference': 'lean/Sum_free_and_additive/Reference.lean',
+             'summary': 'A member is a finite set of natural numbers: one element per row of a one-column '
+                        '`lk.naturals` matrix, with distinct entries. `modulus = 0` reads it as a set of '
+                        'integers; `modulus = n > 0` reads it as a subset of Z/n, and every element must '
+                        'then be below n. Sums x + y and differences x - y range over all ordered pairs, x = '
+                        'y included, so a set containing x and 2x is not sum-free and 0 always lies in the '
+                        'difference set. The usual input is `subsets` of a dictionary of naturals, or '
+                        '`subsets_of` a `range`.',
+             'version': 1},
+  'operations': [{'args': {'modulus': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'is_sum_free',
+                  'summary': 'No x, y, z in the set with x + y = z. x = y counts, so {3, 6} is not sum-free.',
+                  'value': 'boolean'},
+                 {'args': {'modulus': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'is_sidon',
+                  'summary': 'A Sidon (B_2) set: a + b = c + d with a, b, c, d in the set forces {a, b} = '
+                             '{c, d}; equivalently every nonzero difference has one representation.',
+                  'value': 'boolean'},
+                 {'args': {'length': 'int', 'modulus': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'is_ap_free',
+                  'summary': 'No arithmetic progression a, a+d, ..., a+(length-1)d with d != 0 lies in the '
+                             'set. Only d != 0 is required, not distinct terms, so {0, 3} in Z/6 is not '
+                             '3-AP-free. `length` must be at least 2.',
+                  'value': 'boolean'},
+                 {'args': {'modulus': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'sumset_size',
+                  'summary': '|S + S|: the number of distinct sums x + y over ordered pairs of the set, x = '
+                             'y included.',
+                  'value': 'integer'},
+                 {'args': {'modulus': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'difference_set_size',
+                  'summary': '|S - S|: the number of distinct differences x - y, counting 0 and, over the '
+                             'integers, each negative difference separately, so the value is odd there.',
+                  'value': 'integer'},
+                 {'args': {'modulus': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'schur_triple_count',
+                  'summary': 'The number of ordered pairs (x, y) in S x S with x + y in S, equal to the '
+                             'number of triples (x, y, z) in S^3 with x + y = z. Zero exactly when the set '
+                             'is sum-free.',
+                  'value': 'integer'},
+                 {'args': {'modulus': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'max_difference_multiplicity',
+                  'summary': 'The largest number of ordered pairs (x, y) in S x S sharing one nonzero '
+                             'difference x - y; 0 for a set of size 1, and at most 1 exactly when the set is '
+                             'Sidon.',
+                  'value': 'integer'},
+                 {'args': {'bound_den': 'int', 'bound_num': 'int', 'modulus': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'is_small_doubling',
+                  'summary': 'Doubling constant at most bound_num / bound_den, as the exact integer test |S '
+                             '+ S| * bound_den <= bound_num * |S|. `bound_den` must be at least 1.',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'range of naturals', 'error': 'families only'},
+                 {'case': 'residues are not naturals', 'error': 'lk.naturals'},
+                 {'case': 'two-column dictionary', 'error': 'one column'},
+                 {'case': 'repeated element', 'error': 'duplicate'},
+                 {'case': 'element outside Z/7', 'error': 'below the modulus'},
+                 {'case': 'progression shorter than two', 'error': 'length'},
+                 {'case': 'zero denominator', 'error': 'bound_den'}]},
  {'backends': [{'accepts': '1 to 128 generators, equation rows of width at most 514, at most 256 equations '
                            'and 2^20 critical-pair checks, normal forms needing at most 2^20 rewrites, radii '
                            'at most 10^6, and u64 counts; geodesic_count with equal-length rules enumerates '

@@ -202,6 +202,7 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         return o;
     };
     if (sub == "explicit") {
+        /* any matrix batch: residues, permutations or naturals, as make_explicit accepts */
         auto b = child_object("matrix");
         if (!b.ok) return R::failure(b.error.status, b.error.message);
         return make_explicit(b.value->matrix);
@@ -276,7 +277,8 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
     if (sub == "transform" || sub == "stack") {
         auto inner = child_object("family");
         if (!inner.ok) return R::failure(inner.error.status, inner.error.message);
-        auto mat = child_object("gfp.matrix");
+        /* transform multiplies, so it needs residues; stack only appends rows, of any kind */
+        auto mat = child_object(sub == "stack" ? "matrix" : "gfp.matrix");
         if (!mat.ok) return R::failure(mat.error.status, mat.error.message);
         return sub == "transform" ? make_transform(inner.value->family, mat.value->matrix)
                                   : make_stack(inner.value->family, mat.value->matrix);

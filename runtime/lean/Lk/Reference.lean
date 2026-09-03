@@ -204,13 +204,28 @@ inductive Family
   | compositions (total parts maxPart : Nat)
   | standardTableaux (shape : Vec)
 
-/-- The prime of a matrix family; 0 for permutations and for natural-number members. -/
+/-- The tag a matrix carries in place of a prime when its entries are natural numbers rather than
+residues (`NATURALS` in `runtime/src/object.hpp`). An `explicit` or `subsets` family takes its
+prime from such a matrix and so reports the tag, but the kinds that are natural by construction
+carry no prime at all: ask `Family.naturals`, not `Family.p`, whether members are naturals. -/
+def naturals : Nat := 18446744073709551615
+
+/-- The prime of a matrix family; 0 for permutations and for the natural-number kinds. -/
 def Family.p : Family → Nat
   | .explicit p _ | .subsets p _ _ | .grassmannian p _ _ | .allMatrices p _ _ | .symmetricMatrices p _ => p
   | .transform f _ | .stack f _ | .subsetsOf f _ => f.p
   | .groupElements p _ => p
   | .groupTables _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ |
     .compositions _ _ _ | .standardTableaux _ => 0
+
+/-- Whether members are natural numbers rather than residues of a prime. -/
+def Family.naturals : Family → Bool
+  | .explicit p _ | .subsets p _ _ => p == Lk.naturals
+  | .stack f _ | .subsetsOf f _ => f.naturals
+  | .groupTables _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ |
+    .compositions _ _ _ | .standardTableaux _ => true
+  | .transform _ _ | .grassmannian _ _ _ | .allMatrices _ _ _ | .symmetricMatrices _ _ |
+    .groupElements _ _ => false
 
 /-- Members in canonical order. A permutation is a one-row matrix; so is a word, and an integer
 is a `1 x 1` matrix. -/

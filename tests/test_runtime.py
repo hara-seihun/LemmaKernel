@@ -44,12 +44,16 @@ def test_describe_lists_every_module():
 
 
 def test_natural_number_families_enumerate_like_the_naive_layer():
-    """Natural-number families agree with the shared naive enumeration member for member."""
+    """Natural-number families agree with the shared naive enumeration member for member, and
+    `explicit`, `subsets` and `subsets_of` carry naturals onwards to sum_free_and_additive."""
     from lemmakernel import naive as rt
     ctx = lk.Context()
     families = [ctx.range(10, 15), ctx.words(3, 3), ctx.range(0, 1), ctx.partitions(7),
                 ctx.partitions(9, distinct=True, odd=True), ctx.compositions(6),
-                ctx.compositions(8, parts=3, max_part=4)]
+                ctx.compositions(8, parts=3, max_part=4),
+                ctx.explicit(lk.naturals([[[3], [5]], [[4], [9]]])),
+                ctx.subsets(lk.naturals([[2], [3], [5]]), 2),
+                ctx.subsets_of(ctx.range(0, 4), 2)]
     for fam in families:
         desc = fam.value()
         expected, p = rt.members(desc)
@@ -58,7 +62,7 @@ def test_natural_number_families_enumerate_like_the_naive_layer():
         for i, m in enumerate(expected):
             got = ctx.member(fam, i).value()
             assert got.p == lk.NATURALS and got.member(0) == m
-        assert ctx.put(desc).value() == desc
+        assert ctx.put(desc).export() == desc.encode()
     with pytest.raises(lk.Error, match="a < b"):
         ctx.range(5, 5)
     with pytest.raises(lk.Error, match="alphabet"):
