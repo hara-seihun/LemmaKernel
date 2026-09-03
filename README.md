@@ -49,9 +49,17 @@ pytest -n auto tests                                # every module's cases again
 tools/bench.py                                      # kernel vs naive on each module's bench cases
 ```
 
-The Lean side (`lake build`) needs Mathlib; `.lake/packages` is a hardlink copy of
-`~/projects/LemmaLib/.lake/packages`, which pins the same Lean and Mathlib versions. Tests only
-need `Lk.Reference` and the module's `Reference` (no Mathlib import) and take a few seconds each.
+The Lean side (`lake build`) needs Mathlib. In the canonical checkout `.lake/packages` is a
+hardlink copy of `~/projects/LemmaLib/.lake/packages`, which pins the same Lean and Mathlib
+versions. A task checkout (under `~/work/clones`) should share it rather than fetch its own:
+
+```
+mkdir -p .lake && ln -s /home/kenan/projects/LemmaKernel/.lake/packages .lake/packages
+```
+
+after which `lake build` finishes in seconds. Tests only need `Lk.Reference` and the module's
+`Reference` (no Mathlib import) and take a few seconds each; on a shared machine use
+`pytest -n 8 tests` rather than `auto`.
 No test or bench script is written per module: a module ships `cases.py` and the manifest, and
 `tools/harness.py` derives the rest.
 
