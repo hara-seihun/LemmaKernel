@@ -42,6 +42,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/polynomials_fq/ba
 # module polynomials_fq: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/projective_sets/backends/generic/projective_sets_generic.cpp)
 # module projective_sets: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/quantum_codes/backends/generic/quantum_codes_generic.cpp)
+# module quantum_codes: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/residues/backends/generic/residues_generic.cpp)
 # module residues: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/set_systems/backends/generic/set_systems_generic.cpp)
