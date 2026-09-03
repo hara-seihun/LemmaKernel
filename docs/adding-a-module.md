@@ -17,16 +17,17 @@ operation is a much smaller change than a new module.
   in `runtime/manifest.toml`.
   `tools/manifest.py generate` derives the C++ registry data, the runtime `describe()` JSON, the
   CMake source list, the Lake libraries, and the Python-side manifest from it;
-  `tools/manifest.py check` (run at CMake configure) refuses stale output. Arguments are used in
-  alphabetical order everywhere, including the order the harness passes them to the reference's
-  `Op` constructor, so declare them in that order; `check` says so if you do not. Two arguments
-  of the same type in the wrong order type-check in Lean and quietly answer a different question.
+  `tools/manifest.py check` (run at CMake configure) refuses stale output. Arguments are used by
+  name everywhere, so declare them in the order that reads best.
 - `lean/<Name>.lean`, `lean/<Name>/Reference.lean`, `lean/<Name>/Contract.lean`. The reference
   imports `Lk.Reference` (families, reductions, `Result α`) and defines the module's `Op`, its
   `Value` type, and `run : Op → Family → Red → Result Value`, as structural recursion so
-  `decide +kernel` can evaluate it; it is the oracle for every test. The contract states, against
-  Mathlib, what the reference means. Unproved statements carry `sorry` and say so; that is honest
-  and expected.
+  `decide +kernel` can evaluate it; it is the oracle for every test. An `Op` constructor is the
+  camelCase of the operation's name and its binders are the camelCase of the manifest's argument
+  names (`args = { clique_size = "int" }` is `(cliqueSize : Nat)`); the harness passes them by
+  name, in any order, and Lean rejects the claim if a name is missing. The contract states,
+  against Mathlib, what the reference means. Unproved statements carry `sorry` and say so; that
+  is honest and expected.
 - `backends/`: at least a portable one. See [adding-a-backend.md](adding-a-backend.md).
 - `naive/naive.py`: the obvious Python implementation, `run(op, family, reduction, prefix=None,
   **args)`. It is the benchmark baseline, and the tests hold it to the same oracle as the
@@ -81,8 +82,8 @@ Keep the C ABI additive: new functions, never changed signatures.
 Write `Reference.lean` for the kernel evaluator, not for elegance:
 
 - structural recursion only (a `fuel` argument is fine; well-founded recursion does not reduce);
-- one constructor of `Op` per operation, taking that operation's arguments in alphabetical order
-  by name, which is the order the harness renders a claim in;
+- one constructor of `Op` per operation, whose binders are the camelCase of that operation's
+  manifest arguments; the harness passes them by name, so their order is yours to choose;
 - `Nat` with `% p` everywhere; the kernel accelerates `Nat` arithmetic, comparison and `pow`,
   but `pow` computes the whole power, so modular exponentiation must be written by hand
   (`Gfp.powMod`);

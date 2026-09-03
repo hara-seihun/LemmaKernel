@@ -84,7 +84,8 @@ def normalise (p : Nat) (v : Vec) : Vec :=
 /-! ## Operations and values -/
 
 inductive Op
-  | isCanonical (g : Group) | canonicalIndex (g : Group) | orbitSize (g : Group) | stabilizerOrder (g : Group)
+  | isCanonical (group : Group) | canonicalIndex (group : Group) | orbitSize (group : Group)
+  | stabilizerOrder (group : Group)
   | fixedPoints (on : Family)
   | projectiveAction (points : List Vec)
 

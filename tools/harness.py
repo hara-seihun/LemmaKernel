@@ -216,15 +216,22 @@ def camel(name: str) -> str:
     return head + "".join(w[:1].upper() + w[1:] for w in rest)
 
 
+def lean_call(ctor: str, decl_args: dict, args: dict) -> str:
+    """`(.isPacking (n := 4) (h := 2))`. Arguments are passed by name: the binder of the Lean
+    constructor is the camelCase of the manifest's argument name (`clique_size` is `cliqueSize`),
+    and nothing else about the two declarations has to agree. Lean rejects the claim when a name
+    is wrong, rather than an operation quietly reading its arguments in another order."""
+    parts = [f".{ctor}"] + [f"({camel(a)} := {lean_arg(t, args[a])})" for a, t in decl_args.items()]
+    return parts[0] if len(parts) == 1 else "(" + " ".join(parts) + ")"
+
+
 def lean_op(mod: Module, op: str, args: dict) -> str:
     decl = mod.operation(op)
-    parts = [f".{camel(decl['name'])}"] + [lean_arg(t, args[a]) for a, t in decl.get("args", {}).items()]
-    return parts[0] if len(parts) == 1 else "(" + " ".join(parts) + ")"
+    return lean_call(camel(decl["name"]), decl.get("args", {}), args)
 
 
 def lean_red(red: str, args: dict) -> str:
-    parts = [f".{red}"] + [lean_arg(t, args[a]) for a, t in REDUCTIONS[red].get("args", {}).items()]
-    return parts[0] if len(parts) == 1 else "(" + " ".join(parts) + ")"
+    return lean_call(red, REDUCTIONS[red].get("args", {}), args)
 
 
 def lean_result(r) -> str:

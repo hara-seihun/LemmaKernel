@@ -2,7 +2,7 @@
 # Lk is the runtime's reference (families, reductions) and contract; then one library
 # per module: its executable reference and contract (against Mathlib).
 name = "LemmaKernel"
-defaultTargets = ["Lk", "Automorphisms", "Burnside", "Cayley", "Char_poly", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Hadamard", "Hypergraphs", "Integer_partitions", "Lattice_of_subspaces", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Posets", "Projective_sets", "Quantum_codes", "Residues", "Set_systems", "Simplicial_complexes", "Subspace_orbits", "Words_and_growth", "Young"]
+defaultTargets = ["Lk", "Automorphisms", "Burnside", "Cayley", "Char_poly", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Hadamard", "Hypergraphs", "Integer_partitions", "Lattice_of_subspaces", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Posets", "Projective_sets", "Quantum_codes", "Residues", "Set_systems", "Simplicial_complexes", "Spreads_and_partitions", "Subspace_orbits", "Words_and_growth", "Young"]
 
 [[require]]
 name = "mathlib"
@@ -143,6 +143,11 @@ roots = ["Set_systems"]
 name = "Simplicial_complexes"
 srcDir = "modules/simplicial_complexes/lean"
 roots = ["Simplicial_complexes"]
+
+[[lean_lib]]
+name = "Spreads_and_partitions"
+srcDir = "modules/spreads_and_partitions/lean"
+roots = ["Spreads_and_partitions"]
 
 [[lean_lib]]
 name = "Subspace_orbits"

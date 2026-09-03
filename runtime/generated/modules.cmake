@@ -52,6 +52,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/set_systems/backe
 # module set_systems: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/simplicial_complexes/backends/generic/simplicial_complexes_generic.cpp)
 # module simplicial_complexes: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/spreads_and_partitions/backends/generic/spreads_generic.cpp)
+# module spreads_and_partitions: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/subspace_orbits/backends/generic/subspace_orbits_generic.cpp)
 # module subspace_orbits: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/words_and_growth/backends/generic/words_and_growth_generic.cpp)

@@ -88,11 +88,6 @@ def validate(runtime: dict, modules: list[dict]) -> list[str]:
                 problems.append(f"{name}: operation {op['name']} produces kind {op['value']}, which declares no Lean value constructor")
             if not any(op["value"] in r["accepts"] or "*" in r["accepts"] for r in reductions.values()):
                 problems.append(f"{name}: no reduction accepts operation {op['name']}")
-            declared = list(op.get("args", {}))
-            if declared != sorted(declared):
-                problems.append(f"{name}: operation {op['name']} declares its arguments as "
-                                f"{declared}, but they are passed in the order {sorted(declared)}; "
-                                f"declare them sorted so the manifest reads the way it behaves")
             for arg, typ in arg_items(op):
                 if typ not in ARG_TYPES:
                     problems.append(f"{name}: operation {op['name']} argument {arg} has unknown type {typ}")
@@ -102,10 +97,6 @@ def validate(runtime: dict, modules: list[dict]) -> list[str]:
             if "op" in rej and rej["op"] not in op_names:
                 problems.append(f"{name}: rejection names unknown operation {rej['op']}")
     for r in runtime.get("reductions", []):
-        declared = list(r.get("args", {}))
-        if declared != sorted(declared):
-            problems.append(f"runtime: reduction {r['name']} declares its arguments as {declared}, "
-                            f"but they are passed in the order {sorted(declared)}")
         for arg, typ in arg_items(r):
             if typ not in ARG_TYPES:
                 problems.append(f"runtime: reduction {r['name']} argument {arg} has unknown type {typ}")

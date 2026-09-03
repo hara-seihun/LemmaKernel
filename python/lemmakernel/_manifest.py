@@ -1688,6 +1688,79 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'error': 'does not accept',
                   'op': 'betti',
                   'reduction': 'count'}]},
+ {'backends': [{'accepts': 'any p < 2^32; any family of matrices over F_p; any operation',
+                'name': 'generic',
+                'sources': ['backends/generic/spreads_generic.cpp'],
+                'summary': 'Portable C++: depth-first enumeration keeping one echelon basis per component of '
+                           'the prefix, so a k-set is only ever extended while it is still a partial spread; '
+                           'a prefix with two meeting components, a zero component, a dimension change or '
+                           'too much cover is skipped with its whole subtree. Threads over top-level '
+                           'branches. Costs, so the next backend knows what to beat: one elimination of at '
+                           'most h rows per (new component, earlier component) pair, i.e. depth * h '
+                           'reductions per node; for small p^n a bitset of the projective points per '
+                           'component would replace the eliminations with one AND.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Spreads_and_partitions/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'spreads_and_partitions',
+             'reference': 'lean/Spreads_and_partitions/Reference.lean',
+             'summary': 'Sets of subspaces of F_p^n: partial spreads, spreads, vector space partitions and '
+                        'packings, on families of k-sets of subspaces. Each row of a member is a component, '
+                        'read as an h x n basis with h = cols / n and meaning its row space; every component '
+                        'must be nonzero. A partial spread is a set of components of one dimension meeting '
+                        'pairwise in 0; a spread is a partial spread that covers every nonzero vector; a '
+                        'vector space partition is the same without the equal-dimension requirement; a '
+                        'packing splits every row into m = cols / (n*h) components and asks that every row '
+                        'be a spread by h-subspaces and that the k*m components be every h-subspace of F_p^n '
+                        'exactly once.',
+             'version': 1},
+  'operations': [{'args': {'n': 'int'},
+                  'name': 'is_partial_spread',
+                  'summary': 'The components are nonzero, all of the same dimension, and meet pairwise in 0 '
+                             'only. With `count`, how many k-sets of the family are partial spreads; with '
+                             '`first`, the least one.',
+                  'value': 'boolean'},
+                 {'args': {'n': 'int'},
+                  'name': 'is_spread',
+                  'summary': 'A partial spread whose components cover every nonzero vector of F_p^n: '
+                             'pairwise trivial meets and k * (p^d - 1) = p^n - 1, so every nonzero vector '
+                             'lies in exactly one component.',
+                  'value': 'boolean'},
+                 {'args': {'n': 'int'},
+                  'name': 'is_vector_space_partition',
+                  'summary': 'Every nonzero vector of F_p^n lies in exactly one component: nonzero '
+                             'components, pairwise trivial meets, and sum over components of (p^dim - 1) = '
+                             'p^n - 1. Dimensions may differ; on components of one dimension this is '
+                             '`is_spread`.',
+                  'value': 'boolean'},
+                 {'args': {'n': 'int'},
+                  'name': 'intersecting_pairs',
+                  'summary': 'The number of unordered pairs of components (by position, i < j) whose '
+                             'intersection is nonzero. Zero means pairwise trivial meets, which for nonzero '
+                             'components of equal dimension is a partial spread; with `min` over a family, '
+                             'the k-set closest to being one.',
+                  'value': 'integer'},
+                 {'args': {'h': 'int', 'n': 'int'},
+                  'name': 'is_packing',
+                  'summary': 'Each row is one spread: it is split into m = cols / (n*h) components of h*n '
+                             'entries each. True when every row is a spread of F_p^n by h-dimensional '
+                             'subspaces and the k*m components are pairwise distinct subspaces numbering the '
+                             'Gaussian binomial [n choose h]_p, so together they are every h-subspace '
+                             'exactly once.',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'ragged ambient dimension', 'error': 'does not divide'},
+                 {'case': 'zero ambient dimension', 'error': 'at least 1'},
+                 {'case': 'words are not a field', 'error': 'no available backend'},
+                 {'case': 'packing block too wide', 'error': 'does not divide'},
+                 {'case': 'PG(3,2) candidates',
+                  'error': 'does not accept',
+                  'op': 'is_spread',
+                  'reduction': 'histogram'},
+                 {'case': 'PG(3,2) candidates',
+                  'error': 'does not accept integer',
+                  'op': 'intersecting_pairs',
+                  'reduction': 'count'}]},
  {'backends': [{'accepts': 'Any p < 2^32 and Grassmannian-derived transform/stack family whose ambient '
                            'Grassmannian size at each encountered rank fits u64; group closure up to 2^26 '
                            'elements.',
