@@ -99,7 +99,15 @@ RUNTIME = {'families': [{'lean': 'explicit',
                'summary': 'Every undirected Cayley graph of a permutation group from an inverse-closed '
                           'subset of its nonidentity elements. Inverse classes and vertices follow '
                           'lexicographic permutation order; connection-set bits are lexicographic with the '
-                          'first class slowest.'}],
+                          'first class slowest.'},
+              {'lean': 'sublattices',
+               'member': 'lattices.gram',
+               'name': 'sublattices',
+               'summary': 'Index-d sublattices of a fixed rank-n integral lattice, for 1 <= d <= 46340; '
+                          'materialization rejects a resulting entry outside signed i32. Each member is H G '
+                          'H^T, where H ranges over upper row-Hermite-normal-form matrices with positive '
+                          'diagonal product d; diagonal tuples are lexicographic, then strict-upper entries '
+                          'are row-major lexicographic with 0 <= H[i,j] < H[j,j].'}],
  'kinds': [{'lean': 'naturals',
             'name': 'lk.naturals',
             'params': ['count', 'rows', 'cols'],
@@ -1223,6 +1231,74 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
   'rejections': [{'case': 'q below two', 'error': 'q must be at least 2'},
                  {'case': 'flag count on a range', 'error': 'defined on words families only'},
                  {'case': 'wrong subspace width', 'error': 'same number of columns'}]},
+ {'backends': [{'accepts': 'signed i32 positive-definite Gram matrices of rank at most 16; theta and vector '
+                           'bounds at most 10^6',
+                'name': 'generic',
+                'sources': ['backends/generic/lattices_small_generic.cpp'],
+                'summary': 'Portable C++: exact norm checks and determinant tests, with Fincke-Pohst '
+                           'enumeration from an LDL decomposition; members run in parallel.'}],
+  'kinds': [{'name': 'lattices.gram',
+             'params': ['count', 'n'],
+             'payload': 'count*n*n ZigZag-encoded i32 entries, row-major',
+             'summary': 'A batch of symmetric positive-definite n x n integral Gram matrices. Operations '
+                        'reject matrices that are not positive definite.'},
+            {'lean': 'thetaSeries',
+             'name': 'lattices.theta_series',
+             'params': ['count', 'bound'],
+             'payload': 'count*(bound+1) u64 coefficients',
+             'summary': 'Per member G, coefficients a_0 through a_bound, where a_k is the number of integer '
+                        'coordinate vectors x with x^T G x = k.'},
+            {'lean': 'shortVectors',
+             'name': 'lattices.short_vectors',
+             'params': ['count', 'n', 'bound'],
+             'payload': 'u64 offsets[count+1], then offsets[count]*n ZigZag-encoded i32 coordinates',
+             'summary': 'Per member G, every nonzero integer coordinate vector x with x^T G x <= bound, '
+                        'sorted lexicographically by signed coordinates.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Lattices_small/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'lattices_small',
+             'reference': 'lean/Lattices_small/Reference.lean',
+             'summary': 'Small positive-definite integral lattices from signed Gram matrices: minimum, '
+                        'kissing number, theta-series prefixes, parity, unimodularity, and canonical short '
+                        'vectors. Short vectors exclude zero and are sorted lexicographically by signed '
+                        'coordinates.',
+             'version': 1},
+  'operations': [{'families': ['explicit', 'sublattices'],
+                  'name': 'minimum',
+                  'summary': 'The least positive squared norm x^T G x of a nonzero integer coordinate '
+                             'vector.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'sublattices'],
+                  'name': 'kissing_number',
+                  'summary': 'The number of nonzero integer coordinate vectors attaining the minimum; x and '
+                             '-x are counted separately.',
+                  'value': 'integer'},
+                 {'args': {'bound': 'int'},
+                  'families': ['explicit', 'sublattices'],
+                  'name': 'theta_series',
+                  'summary': 'The theta-series prefix [a_0,...,a_bound], where a_k counts all x in Z^n with '
+                             'x^T G x = k, including zero in a_0.',
+                  'value': 'lattices.theta_series'},
+                 {'families': ['explicit', 'sublattices'],
+                  'name': 'is_unimodular',
+                  'summary': 'Whether det(G) = 1. Positive-definite Gram matrices have positive determinant.',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'sublattices'],
+                  'name': 'is_even',
+                  'summary': 'Whether x^T G x is even for every x in Z^n, equivalently every diagonal entry '
+                             'of G is even.',
+                  'value': 'boolean'},
+                 {'args': {'bound': 'int'},
+                  'families': ['explicit', 'sublattices'],
+                  'name': 'short_vectors',
+                  'summary': 'Fincke-Pohst enumeration of every nonzero x in Z^n with x^T G x <= bound, '
+                             'sorted lexicographically by signed coordinates.',
+                  'value': 'lattices.short_vectors'}],
+  'rejections': [{'case': 'indefinite Gram', 'error': 'positive definite'},
+                 {'case': 'nonsymmetric Gram', 'error': 'symmetric'},
+                 {'case': 'field matrix is not a Gram', 'error': 'no available backend'}]},
  {'backends': [{'accepts': 'prime fields p < 2^32; codeword and ambient-space counts must fit u64; aut_order '
                            'accepts n <= 10',
                 'name': 'generic',

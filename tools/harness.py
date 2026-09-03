@@ -145,13 +145,20 @@ def vectors_of(m: ic.Matrix | ic.Perms) -> list:
     return [r[0] for r in m.tolist()] if m.rows == 1 else m.member(0)
 
 
+def encoded_matrices(m: ic.Matrix) -> list:
+    """Lean's shared Mat type is Nat-valued, so signed matrices use their interchange ZigZag words."""
+    if m.p != ic.GRAMS:
+        return m.tolist()
+    return [[[2 * x if x >= 0 else -2 * x - 1 for x in row] for row in a] for a in m.tolist()]
+
+
 def lean_family(f: ic.Family) -> str:
     q, ctor = f.params, RUNTIME_FAMILIES[f.kind]["lean"]
     if f.kind == "explicit":
         (b,) = f.children
         if isinstance(b, ic.Perms):
             return f"(.{ctor} 0 {L([[g] for g in b.tolist()])})"
-        return f"(.{ctor} {b.p} {L(b.tolist())})"
+        return f"(.{ctor} {b.p} {L(encoded_matrices(b))})"
     if f.kind == "subsets":
         (d,) = f.children
         p = 0 if isinstance(d, ic.Perms) else d.p
@@ -199,6 +206,9 @@ def lean_family(f: ic.Family) -> str:
     if f.kind == "cayley_graphs":
         (gens,) = f.children
         return f"(.{ctor} {L(gens.tolist())})"
+    if f.kind == "sublattices":
+        (g,) = f.children
+        return f"(.{ctor} {L(encoded_matrices(g)[0])} {q['index']})"
     raise ValueError(f.kind)
 
 
@@ -253,16 +263,16 @@ def lean_result(r) -> str:
         return f".histogram {r.family_size} {L(r.bins)}"
     if isinstance(r, ic.Hits):
         assert r.visited == r.family_size and r.total == len(r.indices)
-        return f".hits {r.family_size} {L(r.indices)} {L(r.members.tolist())}"
+        return f".hits {r.family_size} {L(r.indices)} {L(encoded_matrices(r.members))}"
     if isinstance(r, ic.First):
         if not r.found:
             assert r.visited == r.family_size, "incomplete enumeration reported"
             return f".first {r.family_size} none"
         assert r.visited == r.index + 1
-        return f".first {r.family_size} (some ({r.index}, {L(r.member.member(0))}))"
+        return f".first {r.family_size} (some ({r.index}, {L(encoded_matrices(r.member)[0])}))"
     if isinstance(r, ic.Extremum):
         assert r.visited == r.family_size, "incomplete enumeration reported"
-        return f".extremum {r.family_size} {r.value} {r.index} {L(r.member.member(0))}"
+        return f".extremum {r.family_size} {r.value} {r.index} {L(encoded_matrices(r.member)[0])}"
     ctor = KIND_LEAN.get(ic.kind_of(r))
     if ctor is None:
         raise TypeError(f"{ic.kind_of(r)} declares no Lean value constructor")

@@ -1,0 +1,88 @@
+# lattices_small: positive-definite integral lattices represented by Gram matrices.
+
+[module]
+name = "lattices_small"
+version = 1
+summary = "Small positive-definite integral lattices from signed Gram matrices: minimum, kissing number, theta-series prefixes, parity, unimodularity, and canonical short vectors. Short vectors exclude zero and are sorted lexicographically by signed coordinates."
+lean = "lean"
+contract = "lean/Lattices_small/Contract.lean"
+reference = "lean/Lattices_small/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+# Signed entries use u32 ZigZag encoding: z >= 0 maps to 2z and z < 0 maps to -2z-1.
+[[kinds]]
+name = "lattices.gram"
+params = ["count", "n"]
+payload = "count*n*n ZigZag-encoded i32 entries, row-major"
+summary = "A batch of symmetric positive-definite n x n integral Gram matrices. Operations reject matrices that are not positive definite."
+
+[[kinds]]
+name = "lattices.theta_series"
+params = ["count", "bound"]
+payload = "count*(bound+1) u64 coefficients"
+lean = "thetaSeries"
+summary = "Per member G, coefficients a_0 through a_bound, where a_k is the number of integer coordinate vectors x with x^T G x = k."
+
+[[kinds]]
+name = "lattices.short_vectors"
+params = ["count", "n", "bound"]
+payload = "u64 offsets[count+1], then offsets[count]*n ZigZag-encoded i32 coordinates"
+lean = "shortVectors"
+summary = "Per member G, every nonzero integer coordinate vector x with x^T G x <= bound, sorted lexicographically by signed coordinates."
+
+[[operations]]
+name = "minimum"
+value = "integer"
+families = ["explicit", "sublattices"]
+summary = "The least positive squared norm x^T G x of a nonzero integer coordinate vector."
+
+[[operations]]
+name = "kissing_number"
+value = "integer"
+families = ["explicit", "sublattices"]
+summary = "The number of nonzero integer coordinate vectors attaining the minimum; x and -x are counted separately."
+
+[[operations]]
+name = "theta_series"
+value = "lattices.theta_series"
+args = { bound = "int" }
+families = ["explicit", "sublattices"]
+summary = "The theta-series prefix [a_0,...,a_bound], where a_k counts all x in Z^n with x^T G x = k, including zero in a_0."
+
+[[operations]]
+name = "is_unimodular"
+value = "boolean"
+families = ["explicit", "sublattices"]
+summary = "Whether det(G) = 1. Positive-definite Gram matrices have positive determinant."
+
+[[operations]]
+name = "is_even"
+value = "boolean"
+families = ["explicit", "sublattices"]
+summary = "Whether x^T G x is even for every x in Z^n, equivalently every diagonal entry of G is even."
+
+[[operations]]
+name = "short_vectors"
+value = "lattices.short_vectors"
+args = { bound = "int" }
+families = ["explicit", "sublattices"]
+summary = "Fincke-Pohst enumeration of every nonzero x in Z^n with x^T G x <= bound, sorted lexicographically by signed coordinates."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/lattices_small_generic.cpp"]
+accepts = "signed i32 positive-definite Gram matrices of rank at most 16; theta and vector bounds at most 10^6"
+summary = "Portable C++: exact norm checks and determinant tests, with Fincke-Pohst enumeration from an LDL decomposition; members run in parallel."
+
+[[rejections]]
+case = "indefinite Gram"
+error = "positive definite"
+
+[[rejections]]
+case = "nonsymmetric Gram"
+error = "symmetric"
+
+[[rejections]]
+case = "field matrix is not a Gram"
+error = "no available backend"

@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 MAGIC = b"LKIF"
 VERSION = 1
 NATURALS = (1 << 64) - 1  # Matrix.p for natural-number matrices (kind lk.naturals)
+GRAMS = (1 << 64) - 2     # Matrix.p for signed integral Gram matrices (kind lattices.gram)
 
 try:
     import numpy as _np
@@ -26,7 +27,7 @@ except ImportError:  # numpy is optional; entries fall back to lists
 
 
 def entry_width(p: int) -> int:
-    if p in (0, NATURALS):  # permutations: point indices; naturals
+    if p in (0, NATURALS, GRAMS):  # permutations, naturals, and ZigZag-encoded signed integers
         return 4
     if p < 1 << 8:
         return 1
@@ -37,8 +38,21 @@ def entry_width(p: int) -> int:
     return 8
 
 
+def _zigzag_encode(x: int) -> int:
+    x = int(x)
+    if not -(1 << 31) <= x < (1 << 31):
+        raise ValueError("signed matrix entries must fit i32")
+    return 2 * x if x >= 0 else -2 * x - 1
+
+
+def _zigzag_decode(x: int) -> int:
+    return x // 2 if x % 2 == 0 else -(x // 2) - 1
+
+
 def pack_entries(entries, p: int) -> bytes:
     w = entry_width(p)
+    if p == GRAMS:
+        entries = [_zigzag_encode(e) for e in entries]
     if _np is not None:
         arr = _np.ascontiguousarray(_np.asarray(entries, dtype=_np.uint64).ravel())
         return arr.astype({1: "<u1", 2: "<u2", 4: "<u4", 8: "<u8"}[w]).tobytes()
@@ -51,9 +65,13 @@ def unpack_entries(buf: bytes, p: int, n: int):
     if len(buf) != n * w:
         raise ValueError(f"expected {n * w} bytes of entries, got {len(buf)}")
     if _np is not None:
-        return _np.frombuffer(buf, dtype={1: "<u1", 2: "<u2", 4: "<u4", 8: "<u8"}[w]).astype(_np.int64)
+        out = _np.frombuffer(buf, dtype={1: "<u1", 2: "<u2", 4: "<u4", 8: "<u8"}[w]).astype(_np.int64)
+        if p == GRAMS:
+            out = _np.where(out % 2 == 0, out // 2, -(out // 2) - 1)
+        return out
     fmt = {1: "B", 2: "H", 4: "I", 8: "Q"}[w]
-    return list(struct.unpack(f"<{n}{fmt}", buf))
+    out = list(struct.unpack(f"<{n}{fmt}", buf))
+    return [_zigzag_decode(x) for x in out] if p == GRAMS else out
 
 
 def _str(s: str) -> bytes:
@@ -129,8 +147,58 @@ class Matrix:
         if self.p == NATURALS:
             return encode("lk.naturals", {"count": self.count, "rows": self.rows, "cols": self.cols},
                           pack_entries(self.entries, self.p))
+        if self.p == GRAMS:
+            if self.rows != self.cols:
+                raise ValueError("integral Gram matrices must be square")
+            return encode("lattices.gram", {"count": self.count, "n": self.rows},
+                          pack_entries(self.entries, self.p))
         return encode("gfp.matrix", {"p": self.p, "count": self.count, "rows": self.rows, "cols": self.cols},
                       pack_entries(self.entries, self.p))
+
+
+def gram(data, n: int | None = None) -> Matrix:
+    """Build a batch of signed integral Gram matrices. Entries must fit i32."""
+    if n is not None:
+        if n <= 0:
+            raise ValueError("Gram matrix rank must be positive")
+        flat = [int(x) for x in data]
+        if len(flat) % (n * n):
+            raise ValueError("flat data length is not a multiple of n*n")
+        if any(not -(1 << 31) <= x < (1 << 31) for x in flat):
+            raise ValueError("signed matrix entries must fit i32")
+        return Matrix(GRAMS, len(flat) // (n * n), n, n, flat)
+    if _np is not None and isinstance(data, _np.ndarray):
+        if data.ndim == 2:
+            data = data[None, :, :]
+        if data.ndim != 3:
+            raise ValueError("integral Gram matrices need a rank-two matrix or rank-three batch")
+        data = data.tolist()
+    else:
+        data = list(data)
+    if not data:
+        raise ValueError("cannot infer shape from empty data")
+    try:
+        if len(data[0]) == 0:
+            raise ValueError("integral Gram matrices must be square and nonempty")
+        try:
+            len(data[0][0])
+            is_batch = True
+        except TypeError:
+            is_batch = False
+    except (IndexError, TypeError):
+        raise ValueError("integral Gram matrices must be square and nonempty") from None
+    mats = data if is_batch else [data]
+    n = len(mats[0])
+    if n == 0:
+        raise ValueError("Gram matrix rank must be positive")
+    flat = []
+    for m in mats:
+        if len(m) != n or any(len(r) != n for r in m):
+            raise ValueError("integral Gram matrices must be square and non-ragged")
+        flat.extend(int(x) for r in m for x in r)
+    if any(not -(1 << 31) <= x < (1 << 31) for x in flat):
+        raise ValueError("signed matrix entries must fit i32")
+    return Matrix(GRAMS, len(mats), n, n, flat)
 
 
 def naturals(data, rows: int | None = None, cols: int | None = None) -> Matrix:
@@ -702,6 +770,38 @@ class StronglyRegularSpectra:
 
 
 @dataclass
+class ThetaSeries:
+    count: int
+    bound: int
+    coefficients: list[int]
+
+    def member(self, i: int):
+        width = self.bound + 1
+        return self.coefficients[i * width:(i + 1) * width]
+
+    def encode(self) -> bytes:
+        return encode("lattices.theta_series", {"count": self.count, "bound": self.bound},
+                      struct.pack(f"<{len(self.coefficients)}Q", *self.coefficients))
+
+
+@dataclass
+class ShortVectors:
+    count: int
+    n: int
+    bound: int
+    offsets: list[int]
+    entries: object
+
+    def member(self, i: int):
+        return [[int(x) for x in self.entries[j * self.n:(j + 1) * self.n]]
+                for j in range(self.offsets[i], self.offsets[i + 1])]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.offsets)}Q", *self.offsets) + pack_entries(self.entries, GRAMS)
+        return encode("lattices.short_vectors", {"count": self.count, "n": self.n, "bound": self.bound}, payload)
+
+
+@dataclass
 class Integers:
     values: list[int]
 
@@ -796,7 +896,7 @@ class Family:
         return encode("family." + self.kind, self.params, b"".join(c.encode() for c in self.children))
 
 
-KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphGroups,
+KINDS = {"gfp.matrix": Matrix, "lattices.gram": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphGroups,
          "gfp.basis": Basis, "gfp.solutions": Solutions, "gfp.inverses": Inverses,
          "gfp.witness": Witness, "linear_codes.weight_enumerators": WeightEnumerators,
          "graphs.degree_sequences": DegreeSequences,
@@ -807,13 +907,14 @@ KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphG
          "polytopes_small.vectors": U64Vectors,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
          "automorphisms.generators": PermutationGenerators, "posets.mobius": MobiusMatrices,
-         "young.characters": Characters,
-         "young.rsk_pairs": RskPairs, "elliptic_curves_fp.group": CurveGroups,
-         "polynomials_fq.elements": Elements, "polynomials_fq.degrees": Degrees,
-         "graph_polynomials.coefficients": Coefficients,
+         "young.characters": Characters, "young.rsk_pairs": RskPairs,
+         "elliptic_curves_fp.group": CurveGroups, "polynomials_fq.elements": Elements,
+         "polynomials_fq.degrees": Degrees, "graph_polynomials.coefficients": Coefficients,
          "strongly_regular.params": StronglyRegularParams,
-         "strongly_regular.spectra": StronglyRegularSpectra, "integers": Integers, "count": Count,
-         "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
+         "strongly_regular.spectra": StronglyRegularSpectra,
+         "lattices.theta_series": ThetaSeries, "lattices.short_vectors": ShortVectors,
+         "integers": Integers, "count": Count, "histogram": Histogram, "hits": Hits,
+         "first": First, "extremum": Extremum}
 
 
 def kind_of(obj) -> str:
@@ -822,6 +923,8 @@ def kind_of(obj) -> str:
         return "family." + obj.kind
     if isinstance(obj, Matrix) and obj.p == NATURALS:
         return "lk.naturals"
+    if isinstance(obj, Matrix) and obj.p == GRAMS:
+        return "lattices.gram"
     for kind, cls in KINDS.items():
         if isinstance(obj, cls):
             return kind
@@ -841,6 +944,9 @@ def decode_at(buf: bytes, offset: int):
     if k == "gfp.matrix":
         n = q["count"] * q["rows"] * q["cols"]
         return Matrix(q["p"], q["count"], q["rows"], q["cols"], unpack_entries(pl, q["p"], n)), end
+    if k == "lattices.gram":
+        n = q["count"] * q["n"] * q["n"]
+        return Matrix(GRAMS, q["count"], q["n"], q["n"], unpack_entries(pl, GRAMS, n)), end
     if k == "orbits.perms":
         return Perms(q["n"], q["count"], unpack_entries(pl, 0, q["count"] * q["n"])), end
     if k == "graph_iso.groups":
@@ -982,6 +1088,14 @@ def decode_at(buf: bytes, offset: int):
         flags = list(pl[:count])
         records = [struct.unpack_from("<6Q", pl, count + 48 * i) for i in range(count)]
         return StronglyRegularSpectra(count, flags, records), end
+    if k == "lattices.theta_series":
+        words = list(struct.unpack_from(f"<{q['count'] * (q['bound'] + 1)}Q", pl, 0))
+        return ThetaSeries(q["count"], q["bound"], words), end
+    if k == "lattices.short_vectors":
+        offsets = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
+        rest = pl[8 * (q["count"] + 1):]
+        entries = unpack_entries(rest, GRAMS, offsets[-1] * q["n"])
+        return ShortVectors(q["count"], q["n"], q["bound"], offsets, entries), end
     if k == "integers":
         return Integers(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "count":

@@ -155,6 +155,58 @@ def compositionLists (maxPart rem : Nat) : Nat → List Vec
   | parts + 1 =>
     (descending (min maxPart rem)).flatMap fun x =>
       (compositionLists maxPart (rem - x) parts).map (x :: ·)
+/-! ## Signed integral matrices and sublattices -/
+
+/-- The `Matrix.p` tag used by the interchange layer for ZigZag-encoded signed matrices. -/
+def gramTag : Nat := 18446744073709551614
+
+def encodeInt : Int → Nat
+  | .ofNat n => 2 * n
+  | .negSucc n => 2 * n + 1
+
+def decodeInt (z : Nat) : Int :=
+  if z % 2 = 0 then Int.ofNat (z / 2) else Int.negSucc (z / 2)
+
+/-- Positive divisors in increasing order. -/
+def divisors (d : Nat) : List Nat := ((List.range d).map (· + 1)).filter fun x => d % x = 0
+
+/-- Positive diagonal tuples of length `n` and product `d`, in lexicographic order. -/
+def diagonalTuples : Nat → Nat → List (List Nat)
+  | 0, d => if d = 1 then [[]] else []
+  | n + 1, d => (divisors d).flatMap fun x => (diagonalTuples n (d / x)).map (x :: ·)
+
+/-- Tuples with position-dependent radices, lexicographic with the first coordinate slowest. -/
+def mixedTuples : List Nat → List (List Nat)
+  | [] => [[]]
+  | r :: rs => (List.range r).flatMap fun x => (mixedTuples rs).map (x :: ·)
+
+/-- Strict-upper positions in row-major order. -/
+def upperPositions (n : Nat) : List (Nat × Nat) :=
+  (List.range n).flatMap fun i => ((List.range n).drop (i + 1)).map fun j => (i, j)
+
+def hnfOf (n : Nat) (diagonal digits : List Nat) : Mat :=
+  let assigned := (upperPositions n).zip digits
+  (List.range n).map fun i => (List.range n).map fun j =>
+    if i = j then diagonal.getD i 1
+    else match assigned.find? fun (pos, _) => pos = (i, j) with
+      | some (_, x) => x
+      | none => 0
+
+/-- Upper row-Hermite-normal-form matrices of determinant `d`: diagonal tuples first, then
+strict-upper entries row-major, both lexicographic. -/
+def hnfMatrices (n d : Nat) : List Mat :=
+  (diagonalTuples n d).flatMap fun diagonal =>
+    let radices := (upperPositions n).map fun (_, j) => diagonal.getD j 1
+    (mixedTuples radices).map (hnfOf n diagonal)
+
+/-- `H G Hᵀ`, where `G` is ZigZag encoded and `H` has natural entries. -/
+def sublatticeGram (g h : Mat) : Mat :=
+  let n := g.length
+  (List.range n).map fun i => (List.range n).map fun j =>
+    encodeInt ((List.range n).foldl (fun total a =>
+      (List.range n).foldl (fun total b =>
+        total + Int.ofNat ((h.getD i []).getD a 0) * decodeInt ((g.getD a []).getD b 0) *
+          Int.ofNat ((h.getD j []).getD b 0)) total) 0)
 
 def cornerRows (shape : Vec) : List Nat :=
   (List.range shape.length).filter fun i => shape.getD i 0 > shape.getD (i + 1) 0
@@ -259,6 +311,7 @@ inductive Family
   | allGraphs (n : Nat)
   | edgeSubgraphs (host : Mat) (k : Nat)
   | cayleyGraphs (gens : List Perm)
+  | sublattices (gram : Mat) (index : Nat)
 
 /-- The tag a matrix carries in place of a prime when its entries are natural numbers rather than
 residues (`NATURALS` in `runtime/src/object.hpp`). An `explicit` or `subsets` family takes its
@@ -272,6 +325,7 @@ def Family.p : Family → Nat
   | .transform f _ | .stack f _ | .subsetsOf f _ => f.p
   | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ => 2
   | .groupElements p _ => p
+  | .sublattices _ _ => gramTag
   | .groupTables _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ |
     .compositions _ _ _ | .standardTableaux _ => 0
 
@@ -282,7 +336,7 @@ def Family.naturals : Family → Bool
   | .groupTables _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ |
     .compositions _ _ _ | .standardTableaux _ => true
   | .transform _ _ | .grassmannian _ _ _ | .allMatrices _ _ _ | .symmetricMatrices _ _ |
-    .groupElements _ _ | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ => false
+    .groupElements _ _ | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ | .sublattices _ _ => false
 
 /-- Members in canonical order. A permutation is a one-row matrix; so is a word, and an integer
 is a `1 x 1` matrix. -/
@@ -312,6 +366,7 @@ def Family.members : Family → List Mat
   | .allGraphs n => allGraphMembers n
   | .edgeSubgraphs host k => (combos (graphEdges host) k).map (graphFromEdges host.length)
   | .cayleyGraphs gens => cayleyGraphMembers gens
+  | .sublattices gram index => (hnfMatrices gram.length index).map (sublatticeGram gram)
 
 /-- The dictionary a `subsets` or `subsets_of` family draws from, for modules whose groups act
 on dictionary positions. -/

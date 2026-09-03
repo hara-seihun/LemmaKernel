@@ -189,6 +189,56 @@ uint64_t permutation_index(const std::vector<Entry> &elements, uint64_t degree, 
     return lo;
 }
 
+void diagonal_tuples(uint64_t remaining_dim, uint64_t index, std::vector<uint64_t> &prefix,
+                     std::vector<std::vector<uint64_t>> &out) {
+    if (remaining_dim == 0) {
+        if (index == 1) out.push_back(prefix);
+        return;
+    }
+    std::vector<uint64_t> divisors;
+    for (uint64_t d = 1; d <= index / d; ++d) {
+        if (index % d) continue;
+        divisors.push_back(d);
+        if (d != index / d) divisors.push_back(index / d);
+    }
+    std::sort(divisors.begin(), divisors.end());
+    for (uint64_t d : divisors) {
+        prefix.push_back(d);
+        diagonal_tuples(remaining_dim - 1, index / d, prefix, out);
+        prefix.pop_back();
+    }
+}
+
+Result<uint64_t> hnf_block_size(const std::vector<uint64_t> &diagonal) {
+    uint64_t block = 1;
+    for (uint64_t j = 0; j < diagonal.size(); ++j) {
+        auto power = pow_checked(diagonal[j], j);
+        if (!power.ok) return power;
+        if (mul_overflows(block, power.value, block))
+            return Result<uint64_t>::failure(INVALID, "sublattices family size does not fit in 64 bits");
+    }
+    return Result<uint64_t>::success(block);
+}
+
+Result<std::vector<std::vector<uint64_t>>> all_diagonals(uint64_t n, uint64_t index) {
+    std::vector<std::vector<uint64_t>> out;
+    std::vector<uint64_t> prefix;
+    diagonal_tuples(n, index, prefix, out);
+    return Result<std::vector<std::vector<uint64_t>>>::success(std::move(out));
+}
+
+Result<uint64_t> sublattice_count(uint64_t n, uint64_t index) {
+    auto ds = all_diagonals(n, index);
+    uint64_t total = 0;
+    for (const auto &d : ds.value) {
+        auto block = hnf_block_size(d);
+        if (!block.ok) return block;
+        if (add_overflows(total, block.value, total))
+            return Result<uint64_t>::failure(INVALID, "sublattices family size does not fit in 64 bits");
+    }
+    return Result<uint64_t>::success(total);
+}
+
 } // namespace
 
 /* Pivot sets of a Grassmannian in lexicographic order with the leaf count under each. */
@@ -304,6 +354,7 @@ const char *family_kind_name(Family::Kind k) {
     case Family::Kind::AllGraphs: return "all_graphs";
     case Family::Kind::EdgeSubgraphs: return "edge_subgraphs";
     case Family::Kind::CayleyGraphs: return "cayley_graphs";
+    case Family::Kind::Sublattices: return "sublattices";
     }
     return "?";
 }
@@ -336,6 +387,7 @@ uint64_t Family::rows() const {
     case Kind::AllGraphs:
     case Kind::EdgeSubgraphs:
     case Kind::CayleyGraphs: return n;
+    case Kind::Sublattices: return data->rows;
     }
     return 0;
 }
@@ -360,6 +412,7 @@ uint64_t Family::cols() const {
     case Kind::AllGraphs:
     case Kind::EdgeSubgraphs:
     case Kind::CayleyGraphs: return n;
+    case Kind::Sublattices: return data->cols;
     }
     return 0;
 }
@@ -421,6 +474,7 @@ Result<uint64_t> Family::size() const {
     }
     case Kind::EdgeSubgraphs: return binom(h, k);
     case Kind::CayleyGraphs: return pow_checked(2, h);
+    case Kind::Sublattices: return sublattice_count(data->rows, k);
     }
     return Result<uint64_t>::failure(INTERNAL, "unknown family kind");
 }
@@ -444,7 +498,8 @@ Result<uint64_t> Family::top_count() const {
     case Kind::GroupElements:
     case Kind::AllGraphs:
     case Kind::EdgeSubgraphs:
-    case Kind::CayleyGraphs: return size();
+    case Kind::CayleyGraphs:
+    case Kind::Sublattices: return size();
     }
     return Result<uint64_t>::failure(INTERNAL, "unknown family kind");
 }
@@ -693,6 +748,49 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
                 }
             }
         }
+        break;
+    }
+    case Kind::Sublattices: {
+        uint64_t n_ = data->rows;
+        auto ds = all_diagonals(n_, k);
+        const std::vector<uint64_t> *diagonal = nullptr;
+        uint64_t local = index;
+        for (const auto &d : ds.value) {
+            auto block = hnf_block_size(d);
+            if (!block.ok) return fail(block.error.status, block.error.message);
+            if (local < block.value) { diagonal = &d; break; }
+            local -= block.value;
+        }
+        if (!diagonal) return fail(INTERNAL, "sublattices: diagonal tuple not found");
+        std::vector<uint64_t> h(n_ * n_, 0);
+        for (uint64_t i = 0; i < n_; ++i) h[i * n_ + i] = (*diagonal)[i];
+        std::vector<std::pair<uint64_t, uint64_t>> positions;
+        for (uint64_t i = 0; i < n_; ++i)
+            for (uint64_t j = i + 1; j < n_; ++j) positions.push_back({i, j});
+        for (int64_t q = (int64_t)positions.size() - 1; q >= 0; --q) {
+            auto [i, j] = positions[q];
+            h[i * n_ + j] = local % (*diagonal)[j];
+            local /= (*diagonal)[j];
+        }
+        out.entries.assign(n_ * n_, 0);
+        for (uint64_t i = 0; i < n_; ++i)
+            for (uint64_t j = 0; j < n_; ++j) {
+                __int128 value = 0;
+                for (uint64_t a = 0; a < n_; ++a)
+                    for (uint64_t b = 0; b < n_; ++b) {
+                        __int128 hg, term, next;
+                        if (__builtin_mul_overflow((__int128)h[i * n_ + a],
+                                                   (__int128)decode_signed(data->entries[a * n_ + b]), &hg) ||
+                            __builtin_mul_overflow(hg, (__int128)h[j * n_ + b], &term) ||
+                            __builtin_add_overflow(value, term, &next))
+                            return fail(INVALID, "sublattices: Gram computation exceeds the exact-arithmetic limit");
+                        value = next;
+                    }
+                if (value < INT32_MIN || value > INT32_MAX)
+                    return fail(INVALID, "sublattices: a resulting Gram entry does not fit i32");
+                if (!encode_signed((int64_t)value, out.entries[i * n_ + j]))
+                    return fail(INTERNAL, "sublattices: failed to encode an in-range entry");
+            }
         break;
     }
     }
@@ -1122,7 +1220,8 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
     }
     case Kind::AllGraphs:
     case Kind::EdgeSubgraphs:
-    case Kind::CayleyGraphs: {
+    case Kind::CayleyGraphs:
+    case Kind::Sublattices: {
         Matrix member;
         for (uint64_t i = top_begin; i < top_end; ++i) {
             auto st = member_into(i, member);
@@ -1356,6 +1455,26 @@ Result<std::shared_ptr<Family>> make_range(uint64_t a, uint64_t b) {
     f->kind = Family::Kind::Range;
     f->a = a;
     f->b = b;
+    return R::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_sublattices(std::shared_ptr<Matrix> gram, uint64_t index) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (gram->p != GRAMS || gram->count != 1 || gram->rows == 0 || gram->rows != gram->cols)
+        return R::failure(INVALID, "sublattices: base must be one lattices.gram matrix");
+    if (index == 0) return R::failure(INVALID, "sublattices: index must be positive");
+    /* Every positive-definite integral Gram matrix has diagonal entries at least one, and the HNF
+     * family contains a basis with `index` on the diagonal. Larger indices therefore force an
+     * entry above INT32_MAX, outside the lattices.gram interchange representation. */
+    if (index > 46340) return R::failure(INVALID, "sublattices: index must be at most 46340");
+    if (gram->rows > 16) return R::failure(INVALID, "sublattices: rank must be at most 16");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::Sublattices;
+    f->data = std::move(gram);
+    f->p = GRAMS;
+    f->k = index;
+    auto total = f->size();
+    if (!total.ok) return R::failure(total.error.status, total.error.message);
     return R::success(f);
 }
 

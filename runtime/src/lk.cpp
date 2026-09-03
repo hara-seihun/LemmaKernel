@@ -60,7 +60,7 @@ struct lk_context {
     Result<std::shared_ptr<Matrix>> get_matrix(lk_handle h, const char *what) {
         auto o = get(h);
         if (!o.ok) return Result<std::shared_ptr<Matrix>>::failure(o.error.status, o.error.message);
-        if (!o.value->matrix) return Result<std::shared_ptr<Matrix>>::failure(LK_INVALID_ARGUMENT, std::string(what) + " must be a matrix batch (gfp.matrix, orbits.perms or lk.naturals)");
+        if (!o.value->matrix) return Result<std::shared_ptr<Matrix>>::failure(LK_INVALID_ARGUMENT, std::string(what) + " must be a matrix batch");
         return Result<std::shared_ptr<Matrix>>::success(o.value->matrix);
     }
     Result<std::shared_ptr<Family>> get_family(lk_handle h) {
@@ -331,6 +331,13 @@ lk_status lk_family_cayley_graphs(lk_context *ctx, lk_handle group, lk_handle *o
     if (!o.value->matrix || o.value->matrix->p != 0)
         return ctx->set_error(LK_INVALID_ARGUMENT, "group must be an orbits.perms batch");
     FAMILY_RESULT(make_cayley_graphs(o.value->matrix));
+}
+
+lk_status lk_family_sublattices(lk_context *ctx, lk_handle gram, uint64_t index, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    auto g = ctx->get_matrix(gram, "base Gram matrix");
+    if (!g.ok) return ctx->set_error(g.error);
+    FAMILY_RESULT(make_sublattices(g.value, index));
 }
 
 lk_status lk_run(lk_context *ctx, const char *op, lk_handle family, const char *reduction,

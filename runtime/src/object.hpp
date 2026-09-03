@@ -26,13 +26,23 @@ inline Status fail(int status, std::string msg) { return Status::failure(status,
 
 using Entry = uint32_t;
 
-/* Matrix::p for a batch of natural-number matrices (entries < 2^32, no arithmetic meaning;
- * interchange kind "lk.naturals"). Members of natural-number families use these. */
+/* Distinguished Matrix::p values for non-field matrix kinds. Signed integers use the standard
+ * u32 ZigZag map: z >= 0 maps to 2z, and z < 0 maps to -2z-1. */
 constexpr uint64_t NATURALS = UINT64_MAX;
+constexpr uint64_t GRAMS = UINT64_MAX - 1;
+
+inline int64_t decode_signed(Entry z) {
+    return (z & 1) ? -(int64_t)(((uint64_t)z + 1) / 2) : (int64_t)(z / 2);
+}
+inline bool encode_signed(int64_t z, Entry &out) {
+    if (z < INT32_MIN || z > INT32_MAX) return false;
+    out = z >= 0 ? (Entry)(2 * (uint64_t)z) : (Entry)(-2 * z - 1);
+    return true;
+}
 
 /* A batch of count rows x cols matrices. p is the field-size tag and entries are labels below p;
  * a module decides whether p denotes a prime field or an explicitly presented extension field.
- * p is 0 for permutations (rows == 1) and NATURALS for natural-number matrices. */
+ * p is 0 for permutations, NATURALS for naturals, or GRAMS for signed integral Gram matrices. */
 struct Matrix {
     uint64_t p = 0, count = 0, rows = 0, cols = 0;
     std::vector<Entry> entries;
@@ -190,6 +200,17 @@ struct DegreeSequences {
     std::vector<Entry> entries;
 };
 
+struct ThetaSeries {
+    uint64_t count = 0, bound = 0;
+    std::vector<uint64_t> coefficients;
+};
+
+struct ShortVectors {
+    uint64_t count = 0, n = 0, bound = 0;
+    std::vector<uint64_t> offsets;
+    std::vector<Entry> entries;
+};
+
 struct Count {
     uint64_t value = 0, visited = 0, family_size = 0;
 };
@@ -249,6 +270,8 @@ struct Object {
     std::shared_ptr<SrgSpectra> srg_spectra;
     std::shared_ptr<Integers> integers;
     std::shared_ptr<DegreeSequences> degree_sequences;
+    std::shared_ptr<ThetaSeries> theta_series;
+    std::shared_ptr<ShortVectors> short_vectors;
     std::shared_ptr<Count> count;
     std::shared_ptr<Histogram> histogram;
     std::shared_ptr<Hits> hits;
@@ -258,9 +281,10 @@ struct Object {
     std::map<std::string, uint64_t> params() const;
 };
 
-unsigned entry_width(uint64_t p); /* 4 when p == 0 (permutations) or NATURALS */
+unsigned entry_width(uint64_t p); /* 4 for permutations, naturals, and signed Gram entries */
 inline const char *matrix_kind(const Matrix &m) {
-    return m.p == 0 ? "orbits.perms" : m.p == NATURALS ? "lk.naturals" : "gfp.matrix";
+    return m.p == 0 ? "orbits.perms" : m.p == NATURALS ? "lk.naturals" :
+           m.p == GRAMS ? "lattices.gram" : "gfp.matrix";
 }
 bool is_prime(uint64_t p);
 

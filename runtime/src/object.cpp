@@ -141,6 +141,7 @@ std::vector<uint8_t> encode_matrix(const Matrix &m) {
     Writer out;
     if (m.p == 0) write_header(out, "orbits.perms", {{"n", m.cols}, {"count", m.count}}, w.out);
     else if (m.p == NATURALS) write_header(out, "lk.naturals", {{"count", m.count}, {"rows", m.rows}, {"cols", m.cols}}, w.out);
+    else if (m.p == GRAMS) write_header(out, "lattices.gram", {{"count", m.count}, {"n", m.rows}}, w.out);
     else write_header(out, "gfp.matrix", {{"p", m.p}, {"count", m.count}, {"rows", m.rows}, {"cols", m.cols}}, w.out);
     return out.out;
 }
@@ -154,6 +155,20 @@ Result<std::shared_ptr<Matrix>> decode_naturals(const Header &h) {
     m->p = NATURALS; m->count = count.value; m->rows = rows.value; m->cols = cols.value;
     unsigned __int128 total = (unsigned __int128)count.value * rows.value * cols.value;
     if (total * 4 != h.payload_len) return R::failure(INVALID, "lk.naturals payload length does not match count*rows*cols");
+    Reader r{h.payload, h.payload + h.payload_len};
+    r.entries(m->entries, (uint64_t)total, 4);
+    return R::success(m);
+}
+
+Result<std::shared_ptr<Matrix>> decode_gram(const Header &h) {
+    using R = Result<std::shared_ptr<Matrix>>;
+    auto count = need(h, "count"), n = need(h, "n");
+    for (auto *r : {&count, &n}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+    if (n.value == 0) return R::failure(INVALID, "lattices.gram: need n >= 1");
+    unsigned __int128 total = (unsigned __int128)count.value * n.value * n.value;
+    if (total * 4 != h.payload_len) return R::failure(INVALID, "lattices.gram payload length does not match count*n*n");
+    auto m = std::make_shared<Matrix>();
+    m->p = GRAMS; m->count = count.value; m->rows = n.value; m->cols = n.value;
     Reader r{h.payload, h.payload + h.payload_len};
     r.entries(m->entries, (uint64_t)total, 4);
     return R::success(m);
@@ -271,6 +286,13 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         if (!shape.ok) return R::failure(shape.error.status, shape.error.message);
         return make_standard_tableaux(shape.value->matrix);
     }
+    if (sub == "sublattices") {
+        auto index = need(h, "index");
+        if (!index.ok) return R::failure(index.error.status, index.error.message);
+        auto gram = child_object("lattices.gram");
+        if (!gram.ok) return R::failure(gram.error.status, gram.error.message);
+        return make_sublattices(gram.value->matrix, index.value);
+    }
     if (sub == "grassmannian") {
         auto p = need(h, "p"), n = need(h, "n"), hh = need(h, "h");
         for (auto *r : {&p, &n, &hh}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -355,6 +377,10 @@ std::vector<uint8_t> encode_family(const Family &f) {
     case Family::Kind::GroupTables:
         payload.bytes(encode_matrix(*f.data));
         break;
+    case Family::Kind::Sublattices:
+        payload.bytes(encode_matrix(*f.data));
+        params["index"] = f.k;
+        break;
     case Family::Kind::Transform:
     case Family::Kind::Stack:
         payload.bytes(encode_family(*f.child));
@@ -374,8 +400,9 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
     *next = h.next;
     auto o = std::make_shared<Object>();
     o->kind = h.kind;
-    if (h.kind == "gfp.matrix" || h.kind == "orbits.perms" || h.kind == "lk.naturals") {
-        auto m = h.kind == "gfp.matrix" ? decode_matrix(h) : h.kind == "orbits.perms" ? decode_perms(h) : decode_naturals(h);
+    if (h.kind == "gfp.matrix" || h.kind == "orbits.perms" || h.kind == "lk.naturals" || h.kind == "lattices.gram") {
+        auto m = h.kind == "gfp.matrix" ? decode_matrix(h) : h.kind == "orbits.perms" ? decode_perms(h) :
+                 h.kind == "lk.naturals" ? decode_naturals(h) : decode_gram(h);
         if (!m.ok) return R::failure(m.error.status, m.error.message);
         o->matrix = m.value;
         return R::success(o);
@@ -543,6 +570,41 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         Reader r{h.payload, h.payload + h.payload_len};
         for (unsigned __int128 i = 0; i < words; ++i) enumerators->coefficients.push_back(r.u64());
         o->weight_enumerators = enumerators;
+        return R::success(o);
+    }
+    if (h.kind == "lattices.theta_series") {
+        auto count = need(h, "count"), bound = need(h, "bound");
+        for (auto *r : {&count, &bound}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        unsigned __int128 words = (unsigned __int128)count.value * ((unsigned __int128)bound.value + 1);
+        if (words * 8 != h.payload_len) return R::failure(INVALID, "lattices.theta_series payload length mismatch");
+        o->theta_series = std::make_shared<ThetaSeries>();
+        o->theta_series->count = count.value; o->theta_series->bound = bound.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i < (uint64_t)words; ++i) o->theta_series->coefficients.push_back(r.u64());
+        return R::success(o);
+    }
+    if (h.kind == "lattices.short_vectors") {
+        auto count = need(h, "count"), n = need(h, "n"), bound = need(h, "bound");
+        for (auto *r : {&count, &n, &bound}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        if (n.value == 0) return R::failure(INVALID, "lattices.short_vectors: need n >= 1");
+        unsigned __int128 offset_words = (unsigned __int128)count.value + 1;
+        if (offset_words * 8 > h.payload_len)
+            return R::failure(INVALID, "lattices.short_vectors offsets truncated");
+        auto sv = std::make_shared<ShortVectors>();
+        sv->count = count.value; sv->n = n.value; sv->bound = bound.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i < count.value + 1; ++i) sv->offsets.push_back(r.u64());
+        if (r.bad || sv->offsets[0] != 0)
+            return R::failure(INVALID, "lattices.short_vectors offsets must start at zero");
+        for (uint64_t i = 1; i < sv->offsets.size(); ++i)
+            if (sv->offsets[i] < sv->offsets[i - 1])
+                return R::failure(INVALID, "lattices.short_vectors offsets must be nondecreasing");
+        unsigned __int128 entries = (unsigned __int128)sv->offsets.back() * n.value;
+        if (entries * 4 != (uint64_t)(r.end - r.p))
+            return R::failure(INVALID, "lattices.short_vectors payload length mismatch");
+        r.entries(sv->entries, (uint64_t)entries, 4);
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "lattices.short_vectors payload length mismatch");
+        o->short_vectors = sv;
         return R::success(o);
     }
     if (h.kind == "histogram") {
@@ -884,7 +946,7 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
 } // namespace
 
 unsigned entry_width(uint64_t p) {
-    if (p == 0 || p == NATURALS) return 4; /* permutations: point indices; naturals */
+    if (p == 0 || p == NATURALS || p == GRAMS) return 4;
     if (p < (1ULL << 8)) return 1;
     if (p < (1ULL << 16)) return 2;
     if (p < (1ULL << 32)) return 4;
@@ -922,6 +984,7 @@ bool is_prime(uint64_t n) {
 std::map<std::string, uint64_t> Object::params() const {
     if (matrix && matrix->p == 0) return {{"n", matrix->cols}, {"count", matrix->count}};
     if (matrix && matrix->p == NATURALS) return {{"count", matrix->count}, {"rows", matrix->rows}, {"cols", matrix->cols}};
+    if (matrix && matrix->p == GRAMS) return {{"count", matrix->count}, {"n", matrix->rows}};
     if (matrix) return {{"p", matrix->p}, {"count", matrix->count}, {"rows", matrix->rows}, {"cols", matrix->cols}};
     if (basis) return {{"p", basis->p}, {"count", basis->count}, {"cols", basis->cols}};
     if (graph_groups) return {{"count", graph_groups->count}, {"n", graph_groups->n}};
@@ -951,6 +1014,8 @@ std::map<std::string, uint64_t> Object::params() const {
     if (srg_spectra) return {{"count", srg_spectra->count}};
     if (integers) return {{"count", integers->values.size()}};
     if (degree_sequences) return {{"count", degree_sequences->count}, {"n", degree_sequences->n}};
+    if (theta_series) return {{"count", theta_series->count}, {"bound", theta_series->bound}};
+    if (short_vectors) return {{"count", short_vectors->count}, {"n", short_vectors->n}, {"bound", short_vectors->bound}};
     if (count) return {{"value", count->value}, {"visited", count->visited}, {"family_size", count->family_size}};
     if (histogram) return {{"visited", histogram->visited}, {"family_size", histogram->family_size}, {"bins", histogram->bins.size()}};
     if (hits) return {{"p", hits->p}, {"rows", hits->rows}, {"cols", hits->cols}, {"total", hits->total},
@@ -1092,6 +1157,13 @@ std::vector<uint8_t> encode(const Object &o) {
         const char *kind = o.kind == "burnside.counts" ? "burnside.counts" :
                            o.kind == "characters.multiplicities" ? "characters.multiplicities" : "integers";
         write_header(out, kind, o.params(), w.out);
+    } else if (o.theta_series) {
+        w.u64s(o.theta_series->coefficients);
+        write_header(out, "lattices.theta_series", o.params(), w.out);
+    } else if (o.short_vectors) {
+        w.u64s(o.short_vectors->offsets);
+        w.entries(o.short_vectors->entries, 4);
+        write_header(out, "lattices.short_vectors", o.params(), w.out);
     } else if (o.count) {
         write_header(out, "count", o.params(), {});
     } else if (o.histogram) {

@@ -17,8 +17,9 @@ from __future__ import annotations
 
 import functools
 import itertools
+import math
 
-from .interchange import NATURALS, Count, Extremum, Family, First, Histogram, Hits, Integers, Matrix, Perms
+from .interchange import GRAMS, NATURALS, Count, Extremum, Family, First, Histogram, Hits, Integers, Matrix, Perms
 
 
 # ---- arithmetic the families need ---------------------------------------------------------------
@@ -263,6 +264,34 @@ def cayley_graph_members(gens):
         yield a
 
 
+def _diagonals(n: int, index: int):
+    if n == 0:
+        if index == 1:
+            yield ()
+        return
+    divisors = {d for d in range(1, math.isqrt(index) + 1) if index % d == 0}
+    divisors |= {index // d for d in divisors}
+    for d in sorted(divisors):
+        for tail in _diagonals(n - 1, index // d):
+            yield (d, *tail)
+
+
+def sublattice_members(base, index: int):
+    """Gram matrices H G H^T for upper row-HNF matrices H, in canonical order."""
+    n = len(base)
+    positions = [(i, j) for i in range(n) for j in range(i + 1, n)]
+    for diagonal in _diagonals(n, index):
+        radices = [diagonal[j] for i, j in positions]
+        for digits in itertools.product(*(range(r) for r in radices)):
+            h = [[0] * n for _ in range(n)]
+            for i, d in enumerate(diagonal):
+                h[i][i] = d
+            for (i, j), x in zip(positions, digits):
+                h[i][j] = x
+            hg = [[sum(h[i][k] * base[k][j] for k in range(n)) for j in range(n)] for i in range(n)]
+            yield [[sum(hg[i][k] * h[j][k] for k in range(n)) for j in range(n)] for i in range(n)]
+
+
 def prime(f: Family) -> int:
     if f.kind in ("group_tables", "range", "words", "partitions", "compositions", "standard_tableaux"):
         return NATURALS
@@ -352,6 +381,9 @@ def iter_members(f: Family):
     elif f.kind == "cayley_graphs":
         (gens,) = f.children
         yield from cayley_graph_members(gens.tolist())
+    elif f.kind == "sublattices":
+        (base,) = f.children
+        yield from sublattice_members(base.member(0), f.params["index"])
     else:
         raise ValueError(f"unknown family {f.kind}")
 

@@ -70,6 +70,7 @@ lk_status lk_family_standard_tableaux(lk_context *ctx, lk_handle shape, lk_handl
 lk_status lk_family_all_graphs(lk_context *ctx, uint64_t n, lk_handle *out);
 lk_status lk_family_edge_subgraphs(lk_context *ctx, lk_handle host, uint64_t k, lk_handle *out);
 lk_status lk_family_cayley_graphs(lk_context *ctx, lk_handle group, lk_handle *out);
+lk_status lk_family_sublattices(lk_context *ctx, lk_handle gram, uint64_t index, lk_handle *out);
 lk_status lk_family_size(lk_context *ctx, lk_handle family, uint64_t *size);
 lk_status lk_family_member(lk_context *ctx, lk_handle family, uint64_t index, lk_handle *out);
 

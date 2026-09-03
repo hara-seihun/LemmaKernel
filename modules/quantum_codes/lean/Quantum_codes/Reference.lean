@@ -35,6 +35,7 @@ def familyCols : Family → Nat
   | .compositions total _ _ => total
   | .standardTableaux shape => shape.headD 0
   | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ => 0
+  | .sublattices gram _ => (gram.headD []).length
 where
   familyRows : Family → Nat
     | .explicit _ batch => (batch.headD []).length
@@ -53,6 +54,7 @@ where
     | .compositions _ _ _ => 1
     | .standardTableaux shape => shape.length
     | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ => 0
+    | .sublattices gram _ => gram.length
 
 /-- Families whose members are field matrices rather than permutations or natural-number rows. -/
 def matrixFamily : Family → Bool
@@ -61,7 +63,7 @@ def matrixFamily : Family → Bool
   | .transform inner _ | .stack inner _ | .subsetsOf inner _ => matrixFamily inner
   | .groupElements _ _ | .groupTables _ | .range _ _ | .words _ _ |
     .partitions _ _ _ _ _ _ | .compositions _ _ _ | .standardTableaux _ |
-    .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ => false
+    .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ | .sublattices _ _ => false
 
 def validFamily (f : Family) : Bool := matrixFamily f && f.p = 2 && familyCols f % 2 = 0
 

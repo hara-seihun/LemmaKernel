@@ -19,8 +19,9 @@ each module's manifest (`[[kinds]]`) and in the runtime's own kinds below. Field
 in `0..q-1`; the existing `p` header parameter carries this field-size tag. The `gfp` module requires
 it to be prime, while `gfq` supplies an explicit extension-field presentation. Entries use the
 smallest width holding q−1: 1 byte for q < 2^8, 2 for q < 2^16, 4 for q < 2^32, 8 otherwise.
-Permutations (`orbits.perms`, p = 0) and naturals (`lk.naturals`, p = 2^64 - 1 in
-a result header) are packed as 4-byte values.
+Permutations (`orbits.perms`, p = 0) and naturals (`lk.naturals`, p = 2^64 - 1 in a result header)
+are packed as 4-byte values. Signed integral matrices (`lattices.gram`, p = 2^64 - 2 in a result
+header) use 4-byte ZigZag values: z >= 0 maps to 2z, and z < 0 maps to -2z-1.
 
 Runtime kinds (not module-specific):
 

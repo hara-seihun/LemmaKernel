@@ -17,20 +17,21 @@ import os
 from pathlib import Path
 
 from . import interchange
-from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, CharacterIndicators, CharacterMultiplicities,
-                          CharacterTable, Characters, Coefficients, Count, CurveGroups, CycleIndex, Degrees,
-                          DegreeSequences, Elements, Extremum, Family, First, GraphGroups, Histogram, Hits, Integers,
-                          Inverses, Matrix, MobiusMatrices, Partitions, Perms, PermutationGenerators, RskPairs,
-                          Solutions, Spectra, U64Matrices, U64Vectors, WeightEnumerators, Witness, matrix, naturals,
-                          perms)
+from .interchange import (GRAMS, NATURALS, Basis, Bsgs, BurnsideCounts, CharacterIndicators,
+                          CharacterMultiplicities, CharacterTable, Characters, Coefficients, Count, CurveGroups,
+                          CycleIndex, Degrees, DegreeSequences, Elements, Extremum, Family, First, GraphGroups,
+                          Histogram, Hits, Integers, Inverses, Matrix, MobiusMatrices, Partitions, Perms,
+                          PermutationGenerators, RskPairs, ShortVectors, Solutions, Spectra, ThetaSeries, U64Matrices,
+                          U64Vectors, WeightEnumerators, Witness, gram, matrix, naturals, perms)
 from ._manifest import MODULES
 
-__all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
-           "Matrix", "Basis", "Solutions", "Inverses", "Witness", "WeightEnumerators", "BurnsideCounts", "CycleIndex",
-           "Spectra", "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "CharacterTable", "CharacterIndicators",
-           "CharacterMultiplicities", "PermutationGenerators", "MobiusMatrices", "Characters", "RskPairs",
-           "CurveGroups", "Elements", "Degrees", "DegreeSequences", "Coefficients", "Integers", "Count", "Histogram",
-           "Hits", "First", "Extremum", "Family", "GraphGroups", "NATURALS"]
+__all__ = ["Context", "Handle", "Error", "describe", "matrix", "gram", "perms", "naturals", "interchange", "MODULES",
+           "Perms", "Matrix", "Basis", "Solutions", "Inverses", "Witness", "WeightEnumerators", "BurnsideCounts",
+           "CycleIndex", "Spectra", "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "CharacterTable",
+           "CharacterIndicators", "CharacterMultiplicities", "PermutationGenerators", "MobiusMatrices", "Characters",
+           "RskPairs", "CurveGroups", "Elements", "Degrees", "DegreeSequences", "Coefficients", "ThetaSeries",
+           "ShortVectors", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family", "GraphGroups",
+           "NATURALS", "GRAMS"]
 
 
 class Error(RuntimeError):
@@ -93,6 +94,7 @@ _lib.lk_family_standard_tableaux.argtypes = [_P, _H, ctypes.POINTER(_H)]
 _lib.lk_family_all_graphs.argtypes = [_P, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_edge_subgraphs.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_cayley_graphs.argtypes = [_P, _H, ctypes.POINTER(_H)]
+_lib.lk_family_sublattices.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_size.argtypes = [_P, _H, ctypes.POINTER(ctypes.c_uint64)]
 _lib.lk_family_member.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_run.argtypes = [_P, ctypes.c_char_p, _H, ctypes.c_char_p, ctypes.POINTER(_Arg), ctypes.c_size_t, ctypes.POINTER(_H)]
@@ -182,7 +184,8 @@ _PARAM_NAMES = {
     "polynomials_fq.degrees": ["count"], "integers": ["count"],
     "count": ["value", "visited", "family_size"], "histogram": ["visited", "family_size", "bins"],
     "hits": ["p", "rows", "cols", "total", "visited", "family_size", "count", "materialised"],
-    "lk.naturals": ["count", "rows", "cols"],
+    "lk.naturals": ["count", "rows", "cols"], "lattices.gram": ["count", "n"],
+    "lattices.theta_series": ["count", "bound"], "lattices.short_vectors": ["count", "n", "bound"],
     "first": ["p", "rows", "cols", "found", "index", "visited", "family_size"],
     "extremum": ["p", "rows", "cols", "value", "index", "visited", "family_size"],
 }
@@ -249,6 +252,9 @@ class Context:
 
     def naturals(self, data, rows: int | None = None, cols: int | None = None) -> Handle:
         return self.put(naturals(data, rows, cols))
+
+    def gram(self, data, n: int | None = None) -> Handle:
+        return self.put(gram(data, n))
 
     # families
     def explicit(self, batch) -> Handle:
@@ -370,6 +376,13 @@ class Context:
         out = _H()
         g = self._keep(group)
         self._check(_lib.lk_family_cayley_graphs(self._ptr, g._h, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def sublattices(self, gram_matrix, index: int) -> Handle:
+        """Index-`index` sublattices, represented by Gram matrices in canonical row-HNF bases."""
+        out = _H()
+        g = self._keep(gram_matrix)
+        self._check(_lib.lk_family_sublattices(self._ptr, g._h, index, ctypes.byref(out)))
         return self._wrap(out)
 
     def size(self, family) -> int:

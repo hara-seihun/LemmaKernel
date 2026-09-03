@@ -117,6 +117,12 @@ theorem standardTableaux_order (shape : Vec) :
     (Family.standardTableaux shape).members = standardTableauMembers shape := by
   rfl
 
+/-- Index-`d` sublattices use upper row-Hermite-normal-form bases in the exact order declared by
+`hnfMatrices`; their Gram matrices are `H G Hᵀ`. -/
+theorem sublattices_spec (g : Mat) (d : ℕ) :
+    (Family.sublattices g d).members = (hnfMatrices g.length d).map (sublatticeGram g) := by
+  rfl
+
 /-- `permElements` is the generated subgroup of `Equiv.Perm (Fin n)`, each element once. -/
 theorem permElements_spec (gens : List Perm) (n : ℕ) (h : gens.all (·.length = n) = true) :
     (permElements gens).Nodup ∧ (permElements gens).length = Nat.card (Subgroup.closure

@@ -120,6 +120,12 @@ member = "gfp.matrix"
 lean = "cayleyGraphs"
 summary = "Every undirected Cayley graph of a permutation group from an inverse-closed subset of its nonidentity elements. Inverse classes and vertices follow lexicographic permutation order; connection-set bits are lexicographic with the first class slowest."
 
+[[families]]
+name = "sublattices"
+member = "lattices.gram"
+lean = "sublattices"
+summary = "Index-d sublattices of a fixed rank-n integral lattice, for 1 <= d <= 46340; materialization rejects a resulting entry outside signed i32. Each member is H G H^T, where H ranges over upper row-Hermite-normal-form matrices with positive diagonal product d; diagonal tuples are lexicographic, then strict-upper entries are row-major lexicographic with 0 <= H[i,j] < H[j,j]."
+
 [[reductions]]
 name = "all"
 accepts = ["*"]

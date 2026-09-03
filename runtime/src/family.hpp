@@ -4,8 +4,9 @@
 
 namespace lk {
 
-/* A family is a tree of descriptions. Every member is a matrix with one field-size tag p (or a
- * permutation, p == 0, or naturals, p == NATURALS) and a fixed shape; members have canonical
+/* A family is a tree of descriptions. Every member is a matrix with one field-size tag p, a
+ * permutation with p == 0, naturals with p == NATURALS, or an integral Gram matrix with
+ * p == GRAMS. Members have canonical
  * indices 0..size-1 (order defined in the manifest). Enumeration is depth-first over rows so that
  * a consumer can share work along common prefixes: rows are pushed one at a time, and the
  * consumer may refuse to descend (Skip) or accept every leaf below without visiting it (TakeAll).
@@ -16,7 +17,7 @@ struct PartitionTable;
 struct Family {
     enum class Kind { Explicit, Subsets, Grassmannian, AllMatrices, Transform, Stack, GroupElements,
                       GroupTables, SubsetsOf, SymmetricMatrices, Range, Words, Partitions, Compositions,
-                      StandardTableaux, AllGraphs, EdgeSubgraphs, CayleyGraphs };
+                      StandardTableaux, AllGraphs, EdgeSubgraphs, CayleyGraphs, Sublattices };
     Kind kind;
     /* Batch, group tables, dictionary (Subsets, and the materialised inner family for SubsetsOf),
      * C, stacked rows, group generators, or the shape of a StandardTableaux family. */
@@ -39,7 +40,7 @@ struct Family {
     mutable std::atomic<const PivotTable *> pivots_ready{nullptr};
     /* Partitions: the immutable sparse counting table used to unrank every member. */
     std::shared_ptr<const PartitionTable> partition_counts;
-    uint64_t prime() const; /* 0 for permutation members, NATURALS for integer members */
+    uint64_t prime() const; /* 0 for permutations, NATURALS for naturals, GRAMS for integral Grams */
     uint64_t rows() const; /* rows of one member */
     uint64_t cols() const;
     Result<uint64_t> size() const;
@@ -96,6 +97,7 @@ Result<std::shared_ptr<Family>> make_standard_tableaux(std::shared_ptr<Matrix> s
 Result<std::shared_ptr<Family>> make_all_graphs(uint64_t n);
 Result<std::shared_ptr<Family>> make_edge_subgraphs(std::shared_ptr<Matrix> host, uint64_t k);
 Result<std::shared_ptr<Family>> make_cayley_graphs(std::shared_ptr<Matrix> generators);
+Result<std::shared_ptr<Family>> make_sublattices(std::shared_ptr<Matrix> gram, uint64_t index);
 
 /* Closures under composition or multiplication, sorted lexicographically. */
 Result<std::vector<Entry>> permutation_closure(const Matrix &generators, uint64_t limit);
