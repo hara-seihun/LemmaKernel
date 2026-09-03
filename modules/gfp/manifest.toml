@@ -1,0 +1,159 @@
+# gfp: linear algebra over prime fields, on families of matrices.
+# This file is the only declaration of the module. tools/manifest.py generates the C registry,
+# the runtime description, the CMake source list and the Python wrappers from it.
+
+[module]
+name = "gfp"
+version = 1
+summary = "Linear algebra over F_p (p prime) on families of matrices: rref, rank, nullspace, solve, inverse, span membership."
+contract = "contract/Gfp.lean"
+reference = "contract/Reference.lean"
+naive = "naive/naive.py"
+bench = "bench/bench.py"
+tests = "tests/test_gfp.py"
+
+# Entries of every object over F_p are stored in the smallest unsigned width that holds p-1:
+# 1 byte for p < 2^8, 2 for p < 2^16, 4 for p < 2^32, 8 otherwise. Row-major, little-endian.
+
+[[kinds]]
+name = "gfp.matrix"
+params = ["p", "count", "rows", "cols"]
+payload = "count*rows*cols entries"
+summary = "A batch of `count` matrices, each rows x cols over F_p. Vectors are 1 x n matrices."
+
+[[kinds]]
+name = "gfp.basis"
+params = ["p", "count", "cols"]
+payload = "u64 offsets[count+1], then entries of offsets[count] row vectors of length cols"
+summary = "For each of `count` members, a list of row vectors (ragged)."
+
+[[kinds]]
+name = "gfp.solutions"
+params = ["p", "count", "length"]
+payload = "u8 solvable[count], then count*length entries"
+summary = "Per member: a flag and a solution vector (zeros when unsolvable)."
+
+[[kinds]]
+name = "gfp.inverses"
+params = ["p", "count", "n"]
+payload = "u8 invertible[count], then count*n*n entries"
+summary = "Per member: a flag and the inverse (zeros when singular)."
+
+[[kinds]]
+name = "gfp.witness"
+params = ["p", "count", "rows", "cols"]
+payload = "count*rows*cols entries of R, then count*rows*rows entries of T"
+summary = "Per member A: its rref R and an invertible T with T*A = R."
+
+[[families]]
+name = "explicit"
+member = "gfp.matrix"
+summary = "One member per matrix of the batch, in batch order."
+
+[[families]]
+name = "subsets"
+member = "gfp.matrix"
+summary = "Every k-row matrix formed by choosing k rows of the dictionary, indices increasing; lexicographic order of the index tuple."
+
+[[families]]
+name = "grassmannian"
+member = "gfp.matrix"
+summary = "Every h-dimensional subspace of F_p^n as its reduced row echelon basis (h x n); ordered by pivot set (lexicographic), then by free entries (row-major, lexicographic)."
+
+[[families]]
+name = "all_matrices"
+member = "gfp.matrix"
+summary = "Every rows x cols matrix over F_p; index is the row-major base-p number of the entries."
+
+[[families]]
+name = "transform"
+member = "gfp.matrix"
+summary = "Each member M of the inner family replaced by M * C for a fixed matrix C. Same order and indices."
+
+[[families]]
+name = "stack"
+member = "gfp.matrix"
+summary = "Each member M of the inner family with a fixed block of rows appended below it. Same order and indices."
+
+# Reductions. `visited` and `family_size` on every non-`all` result are the completeness check.
+[[reductions]]
+name = "all"
+accepts = ["integer", "boolean", "gfp.matrix", "gfp.basis", "gfp.solutions", "gfp.inverses", "gfp.witness"]
+summary = "Materialise the per-member value for every member, in family order. Integers and booleans come back as kind `integers`."
+
+[[reductions]]
+name = "count"
+accepts = ["boolean"]
+summary = "Number of members whose value is true (kind `count`: value, visited, family_size)."
+
+[[reductions]]
+name = "histogram"
+accepts = ["integer"]
+summary = "Number of members per value (kind `histogram`: u64 bins[0..max])."
+
+[[reductions]]
+name = "hits"
+accepts = ["boolean"]
+args = ["limit"]
+summary = "Canonical indices of every member whose value is true, and the first `limit` of them materialised (kind `hits`)."
+
+[[operations]]
+name = "rank"
+value = "integer"
+summary = "Rank of the member."
+
+[[operations]]
+name = "nullity"
+value = "integer"
+summary = "cols - rank."
+
+[[operations]]
+name = "full_row_rank"
+value = "boolean"
+summary = "rank == rows."
+
+[[operations]]
+name = "full_col_rank"
+value = "boolean"
+summary = "rank == cols."
+
+[[operations]]
+name = "in_span"
+value = "boolean"
+args = ["target"]
+summary = "The 1 x cols matrix `target` lies in the row space of the member."
+
+[[operations]]
+name = "rref"
+value = "gfp.matrix"
+summary = "Reduced row echelon form of the member."
+
+[[operations]]
+name = "nullspace"
+value = "gfp.basis"
+summary = "Canonical basis of {x : M x^T = 0}: one vector per free column f of rref(M), in increasing f, with x_f = 1, x_pivot_i = -R[i][f], zeros elsewhere."
+
+[[operations]]
+name = "solve"
+value = "gfp.solutions"
+args = ["rhs"]
+explicit_only = true
+summary = "For member A_i and rhs vector b_i (1 x rows): x with A_i x^T = b_i^T, free coordinates zero; flag 0 when none exists."
+
+[[operations]]
+name = "inverse"
+value = "gfp.inverses"
+explicit_only = true
+summary = "Inverse of a square member; flag 0 when singular."
+
+[[operations]]
+name = "rref_witness"
+value = "gfp.witness"
+explicit_only = true
+summary = "rref R and the transform T of Gauss-Jordan elimination with first-nonzero-row pivoting, so T*A = R with T invertible."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/gfp_generic.cpp"]
+accepts = "any p < 2^32; any family; any operation"
+summary = "Portable C++: depth-first enumeration with an incremental echelon basis shared along each prefix, subtree pruning, threads over top-level branches."
