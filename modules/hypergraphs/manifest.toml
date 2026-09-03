@@ -31,7 +31,7 @@ summary = "Weak vertex colouring number: the least positive number of colours fo
 [[operations]]
 name = "has_berge_cycle"
 value = "boolean"
-args = { vertices = "int", length = "int" }
+args = { length = "int", vertices = "int" }
 families = ["explicit", "subsets", "subsets_of"]
 summary = "Whether there are `length` distinct vertices and distinct edges in cyclic alternating order, each edge containing its two adjacent cycle vertices. Length 2 is allowed."
 
@@ -45,14 +45,14 @@ summary = "The least Berge-cycle length, including length 2; 0 when the hypergra
 [[operations]]
 name = "is_clique_free"
 value = "boolean"
-args = { vertices = "int", clique_size = "int" }
+args = { clique_size = "int", vertices = "int" }
 families = ["explicit", "subsets", "subsets_of"]
 summary = "Whether no `clique_size` vertices contain every edge of the member's uniformity. Searching fixed edge counts with `first` or `hits` gives exact finite Turan bounds."
 
 [[operations]]
 name = "is_ramsey_colouring"
 value = "boolean"
-args = { vertices = "int", red_clique = "int", blue_clique = "int" }
+args = { blue_clique = "int", red_clique = "int", vertices = "int" }
 families = ["explicit", "subsets", "subsets_of"]
 summary = "Treat the member's edges as red and every other edge of the same uniformity as blue; true exactly when it has neither a red `red_clique` nor a blue `blue_clique`."
 

@@ -40,6 +40,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/residues/backends
 # module residues: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/set_systems/backends/generic/set_systems_generic.cpp)
 # module set_systems: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/simplicial_complexes/backends/generic/simplicial_complexes_generic.cpp)
+# module simplicial_complexes: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/subspace_orbits/backends/generic/subspace_orbits_generic.cpp)
 # module subspace_orbits: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/young/backends/generic/young_generic.cpp)

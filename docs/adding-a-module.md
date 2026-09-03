@@ -17,7 +17,10 @@ operation is a much smaller change than a new module.
   in `runtime/manifest.toml`.
   `tools/manifest.py generate` derives the C++ registry data, the runtime `describe()` JSON, the
   CMake source list, the Lake libraries, and the Python-side manifest from it;
-  `tools/manifest.py check` (run at CMake configure) refuses stale output.
+  `tools/manifest.py check` (run at CMake configure) refuses stale output. Arguments are used in
+  alphabetical order everywhere, including the order the harness passes them to the reference's
+  `Op` constructor, so declare them in that order; `check` says so if you do not. Two arguments
+  of the same type in the wrong order type-check in Lean and quietly answer a different question.
 - `lean/<Name>.lean`, `lean/<Name>/Reference.lean`, `lean/<Name>/Contract.lean`. The reference
   imports `Lk.Reference` (families, reductions, `Result α`) and defines the module's `Op`, its
   `Value` type, and `run : Op → Family → Red → Result Value`, as structural recursion so
@@ -78,6 +81,8 @@ Keep the C ABI additive: new functions, never changed signatures.
 Write `Reference.lean` for the kernel evaluator, not for elegance:
 
 - structural recursion only (a `fuel` argument is fine; well-founded recursion does not reduce);
+- one constructor of `Op` per operation, taking that operation's arguments in alphabetical order
+  by name, which is the order the harness renders a claim in;
 - `Nat` with `% p` everywhere; the kernel accelerates `Nat` arithmetic, comparison and `pow`,
   but `pow` computes the whole power, so modular exponentiation must be written by hand
   (`Gfp.powMod`);

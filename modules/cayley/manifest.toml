@@ -25,7 +25,7 @@ summary = "Whether the simple undirected Cayley graph is connected. For non-inve
 [[operations]]
 name = "is_regular_of_degree"
 value = "boolean"
-args = { group = "group", degree = "int" }
+args = { degree = "int", group = "group" }
 families = ["explicit", "subsets", "subsets_of"]
 summary = "Whether every vertex has exactly `degree` neighbours in the simple undirected Cayley graph."
 

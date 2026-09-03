@@ -47,7 +47,7 @@ summary = "Return one row h[0..k], where h[j] is the number of unordered pairs o
 [[operations]]
 name = "kramer_mesner_matrix"
 value = "designs.matrix"
-args = { t = "int", group = "group" }
+args = { group = "group", t = "int" }
 families = ["subsets"]
 summary = "For a group on the dictionary positions of the k-subsets family, return the Kramer-Mesner matrix. Rows and columns are t-subset and k-subset orbits ordered by their least lexicographic member; entry (i,j) counts blocks in column orbit j containing the least member of row orbit i."
 

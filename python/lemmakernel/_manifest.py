@@ -1330,6 +1330,74 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
   'rejections': [{'case': 'subsets of integers', 'error': 'family of the form'},
                  {'case': 'ternary words', 'error': 'family of the form'},
                  {'case': 'sunflower k=1', 'error': 'k must be at least 2'}]},
+ {'backends': [{'accepts': 'families of 0/1 matrices over F_2 with at most 64 columns; any prime p < 2^32; '
+                           'at most 2^22 faces per member; boundary matrices of at most 2^24 entries; at '
+                           'most 20 facets for is_shellable',
+                'name': 'generic',
+                'sources': ['backends/generic/simplicial_complexes_generic.cpp'],
+                'summary': 'Portable C++: faces as 64-bit vertex masks, enumerated by submask walk '
+                           '(nonfaces=0) or by depth-first extension that never leaves the complex '
+                           '(nonfaces=1), sorted so each dimension is a contiguous block; boundary matrices '
+                           'are eliminated as bitsets over F_2 and densely over any other prime, and '
+                           'shellability is a memoised search over subsets of the facets. Threaded over '
+                           'members.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Simplicial_complexes/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'simplicial_complexes',
+             'reference': 'lean/Simplicial_complexes/Reference.lean',
+             'summary': 'Simplicial complexes carried by 0/1 matrices over F_2: each row is a face that '
+                        'generates the complex (nonfaces=0) or a forbidden set that cuts it out (nonfaces=1, '
+                        'weight-2 rows giving the independence complex of a graph). Faces are the nonempty '
+                        'sets of the complex, so homology is unreduced: betti(p, i) = f_i - rank(boundary_i) '
+                        '- rank(boundary_{i+1}) over F_p, and f_count(i) is the i-th entry of the f-vector. '
+                        'euler_characteristic returns the alternating sum of the f-vector reduced modulo p, '
+                        "in [0, p), because the runtime's integer channel is unsigned. is_shellable is "
+                        'shellability in the sense of Bjorner-Wachs, non-pure allowed: some ordering F_1, '
+                        '..., F_t of the facets has, for every j > 1 and i < j, some k < j with F_i n F_j '
+                        'subset of F_k and |F_j \\ F_k| = 1; a complex with at most one facet is shellable.',
+             'version': 1},
+  'operations': [{'args': {'dim': 'int', 'nonfaces': 'int'},
+                  'name': 'f_count',
+                  'summary': 'f_dim: the number of faces with dim+1 vertices. Zero above the dimension of '
+                             'the complex, so the f-vector is this operation over dim = 0, 1, 2, ...',
+                  'value': 'integer'},
+                 {'args': {'nonfaces': 'int'},
+                  'name': 'faces',
+                  'summary': 'The number of nonempty faces, the sum of the f-vector.',
+                  'value': 'integer'},
+                 {'args': {'nonfaces': 'int', 'p': 'int'},
+                  'name': 'euler_characteristic',
+                  'summary': 'The Euler characteristic sum_i (-1)^i f_i reduced modulo the prime p, in [0, '
+                             'p). Integers cross the boundary unsigned, so a signed answer needs p above the '
+                             'range in play: with p = 65537 a value v > p/2 means the characteristic v - p.',
+                  'value': 'integer'},
+                 {'args': {'dim': 'int', 'nonfaces': 'int', 'p': 'int'},
+                  'name': 'betti',
+                  'summary': 'dim_{F_p} H_dim(Delta; F_p) for unreduced simplicial homology: f_dim - '
+                             'rank(boundary_dim) - rank(boundary_{dim+1}) over F_p, with boundary_0 = 0. '
+                             'beta_0 is the number of connected components; beta_dim is 0 above the '
+                             'dimension of the complex.',
+                  'value': 'integer'},
+                 {'args': {'nonfaces': 'int'},
+                  'name': 'is_shellable',
+                  'summary': 'Whether the facets admit a shelling order in the sense of Bjorner-Wachs '
+                             '(non-pure allowed): an order F_1, ..., F_t such that for every j > 1 and every '
+                             'i < j there is k < j with F_i n F_j contained in F_k and |F_j \\ F_k| = 1. '
+                             'Complexes with at most one facet, including the void complex, are shellable.',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'graphs over F_3', 'error': 'over F_2'},
+                 {'case': 'nonfaces flag out of range', 'error': 'nonfaces must be 0 or 1'},
+                 {'case': 'composite modulus', 'error': 'prime'},
+                 {'case': 'triangles on 5 vertices',
+                  'error': 'does not accept',
+                  'op': 'is_shellable',
+                  'reduction': 'histogram'},
+                 {'case': 'triangles on 5 vertices',
+                  'error': 'does not accept',
+                  'op': 'betti',
+                  'reduction': 'count'}]},
  {'backends': [{'accepts': 'Any p < 2^32 and Grassmannian-derived transform/stack family whose ambient '
                            'Grassmannian size at each encountered rank fits u64; group closure up to 2^26 '
                            'elements.',
