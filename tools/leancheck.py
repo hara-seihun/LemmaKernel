@@ -11,18 +11,34 @@ reference definition itself.
     lc.claim("run .rank (.grassmannian 2 4 2) .histogram", ".histogram 35 [0, 0, 35]", label="G(2,4,2) rank")
     lc.verify()          # raises AssertionError listing the failed claims
 
-Each claim becomes one `example`. `verify` runs `lake env lean` once per LeanCheck, so group
-related claims to amortise the ~0.5 s startup. Kernel evaluation costs roughly 10 ms per
-matrix member in gfp; keep families in the hundreds of members.
+Each claim becomes one `example`. `verify` runs `lean` once per LeanCheck (the toolchain and
+search path are resolved from `lake env` once per process, since that alone costs 0.45 s; Lean
+itself starts in ~0.1 s). Kernel checking is single-threaded within a process, so parallelism
+comes from many small files, not one big one. Kernel evaluation costs roughly 10 ms per matrix
+member in gfp; keep oracle inputs to a few dozen members.
 """
 from __future__ import annotations
 
+import functools
+import os
 import re
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "build" / "leancheck"
+
+
+@functools.cache
+def lean_command() -> tuple[str, dict]:
+    """The `lean` binary and environment that `lake env lean` would use, resolved once."""
+    env = dict(os.environ)
+    out = subprocess.run(["lake", "env", "env", "-0"], cwd=ROOT, capture_output=True, text=True).stdout
+    for entry in out.split("\0"):
+        if entry.startswith(("LEAN", "PATH=")):
+            key, _, value = entry.partition("=")
+            env[key] = value
+    return env.get("LEAN", "lean"), env
 
 
 class LeanCheck:
@@ -52,7 +68,8 @@ class LeanCheck:
         path = OUT / f"{self.name}.lean"
         text = self.render()
         path.write_text(text)
-        proc = subprocess.run(["lake", "env", "lean", "--tstack=1000000", str(path)], cwd=ROOT,
+        lean, env = lean_command()
+        proc = subprocess.run([lean, "--tstack=1000000", str(path)], cwd=ROOT, env=env,
                               capture_output=True, text=True, timeout=timeout)
         if proc.returncode == 0 and not proc.stdout.strip():
             return
