@@ -46,9 +46,11 @@ gfp is the worked example of all of this; copy its shape.
 
 ## Runtime pieces you may need to extend
 
-The runtime (`runtime/src/`) knows matrices over F_p, permutations (a `Matrix` with p = 0) and
-natural-number matrices (p = `NATURALS`, kind `lk.naturals`, no arithmetic meaning), and thirteen
-family kinds: `explicit`, `subsets` of a dictionary, `subsets_of` another family, `grassmannian`,
+The runtime (`runtime/src/`) knows labelled field matrices with entries below the field-size tag
+(`gfp` requires a prime tag; `gfq` supplies an extension-field presentation), permutations (a
+`Matrix` with p = 0), and natural-number matrices (p = `NATURALS`, kind `lk.naturals`, no
+arithmetic meaning). It provides thirteen family kinds: `explicit`, `subsets` of a dictionary,
+`subsets_of` another family, `grassmannian`,
 `all_matrices`, `symmetric_matrices`, the `transform`/`stack` wrappers, `group_elements` of a
 permutation group, `range`/`words` over naturals, and constrained `partitions`/`compositions`.
 Look there before adding a family: k-subsets

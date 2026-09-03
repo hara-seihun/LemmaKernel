@@ -117,8 +117,8 @@ Result<std::shared_ptr<Matrix>> decode_matrix(const Header &h) {
     auto p = need(h, "p"), count = need(h, "count"), rows = need(h, "rows"), cols = need(h, "cols");
     for (auto *r : {&p, &count, &rows, &cols})
         if (!r->ok) return Result<std::shared_ptr<Matrix>>::failure(r->error.status, r->error.message);
-    if (!is_prime(p.value)) return Result<std::shared_ptr<Matrix>>::failure(INVALID, "p is not prime");
-    if (p.value >= (1ULL << 32)) return Result<std::shared_ptr<Matrix>>::failure(INVALID, "p must be < 2^32");
+    if (p.value < 2 || p.value >= (1ULL << 32))
+        return Result<std::shared_ptr<Matrix>>::failure(INVALID, "field-size tag must satisfy 2 <= p < 2^32");
     auto m = std::make_shared<Matrix>();
     m->p = p.value; m->count = count.value; m->rows = rows.value; m->cols = cols.value;
     unsigned w = entry_width(m->p);
@@ -127,7 +127,7 @@ Result<std::shared_ptr<Matrix>> decode_matrix(const Header &h) {
     Reader r{h.payload, h.payload + h.payload_len};
     r.entries(m->entries, (uint64_t)n, w);
     for (Entry e : m->entries)
-        if (e >= m->p) return Result<std::shared_ptr<Matrix>>::failure(INVALID, "entry not reduced mod p");
+        if (e >= m->p) return Result<std::shared_ptr<Matrix>>::failure(INVALID, "matrix entry is outside 0..p-1");
     return Result<std::shared_ptr<Matrix>>::success(m);
 }
 

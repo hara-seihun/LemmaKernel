@@ -20,8 +20,9 @@ def test_request_checking_is_specific():
         ctx.run("gfp.determinant", G)
     with pytest.raises(lk.Error, match="unexpected argument"):
         ctx.run("gfp.rank", G, "histogram", limit=3)
-    with pytest.raises(lk.Error, match="not prime"):
-        ctx.matrix(4, [[1, 2]])
+    assert ctx.matrix(4, [[1, 2]]).value().p == 4
+    with pytest.raises(lk.Error, match="field-size tag"):
+        ctx.matrix(1, [[0]])
     with pytest.raises(ValueError, match="not a permutation"):
         ctx.perms(3, [[0, 0, 1]])
     with pytest.raises(lk.Error):

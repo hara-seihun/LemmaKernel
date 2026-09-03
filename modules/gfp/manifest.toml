@@ -17,36 +17,37 @@ reference = "lean/Gfp/Reference.lean"
 naive = "naive/naive.py"
 cases = "cases.py"
 
-# Entries of every object over F_p are stored in the smallest unsigned width that holds p-1:
-# 1 byte for p < 2^8, 2 for p < 2^16, 4 for p < 2^32, 8 otherwise. Row-major, little-endian.
+# Matrix entries are labels below the field-size tag p and use the smallest unsigned width that
+# holds p-1. gfp requires p prime; gfq reuses these interchange kinds with p set to q and supplies
+# an explicit field presentation. Payloads are row-major and little-endian.
 
 [[kinds]]
 name = "gfp.matrix"
 params = ["p", "count", "rows", "cols"]
 payload = "count*rows*cols entries"
 lean = "matrix"
-summary = "A batch of `count` matrices, each rows x cols over F_p. Vectors are 1 x n matrices."
+summary = "A batch of `count` labelled field matrices, each rows x cols. Vectors are 1 x n matrices; the consuming module interprets the field-size tag."
 
 [[kinds]]
 name = "gfp.basis"
 params = ["p", "count", "cols"]
 payload = "u64 offsets[count+1], then entries of offsets[count] row vectors of length cols"
 lean = "basis"
-summary = "For each of `count` members, a list of row vectors (ragged)."
+summary = "For each of `count` labelled field matrices, a list of row vectors (ragged)."
 
 [[kinds]]
 name = "gfp.solutions"
 params = ["p", "count", "length"]
 payload = "u8 solvable[count], then count*length entries"
 lean = "solution"
-summary = "Per member: a flag and a solution vector (zeros when unsolvable)."
+summary = "Per labelled field matrix: a flag and a solution vector (zeros when unsolvable)."
 
 [[kinds]]
 name = "gfp.inverses"
 params = ["p", "count", "n"]
 payload = "u8 invertible[count], then count*n*n entries"
 lean = "inverse"
-summary = "Per member: a flag and the inverse (zeros when singular)."
+summary = "Per labelled field matrix: a flag and the inverse (zeros when singular)."
 
 [[kinds]]
 name = "gfp.witness"

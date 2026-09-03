@@ -956,8 +956,8 @@ Result<std::shared_ptr<Family>> make_subsets(std::shared_ptr<Matrix> dictionary,
 }
 
 Result<std::shared_ptr<Family>> make_grassmannian(uint64_t p, uint64_t n, uint64_t h) {
-    if (!is_prime(p)) return Result<std::shared_ptr<Family>>::failure(INVALID, "p is not prime");
-    if (p >= (1ULL << 32)) return Result<std::shared_ptr<Family>>::failure(INVALID, "p must be < 2^32");
+    if (p < 2 || p >= (1ULL << 32))
+        return Result<std::shared_ptr<Family>>::failure(INVALID, "field size must satisfy 2 <= p < 2^32");
     if (h == 0 || h > n || n > 64)
         return Result<std::shared_ptr<Family>>::failure(INVALID, "grassmannian: need 1 <= h <= n <= 64");
     auto f = std::make_shared<Family>();
@@ -971,8 +971,8 @@ Result<std::shared_ptr<Family>> make_grassmannian(uint64_t p, uint64_t n, uint64
 }
 
 Result<std::shared_ptr<Family>> make_all_matrices(uint64_t p, uint64_t rows, uint64_t cols) {
-    if (!is_prime(p)) return Result<std::shared_ptr<Family>>::failure(INVALID, "p is not prime");
-    if (p >= (1ULL << 32)) return Result<std::shared_ptr<Family>>::failure(INVALID, "p must be < 2^32");
+    if (p < 2 || p >= (1ULL << 32))
+        return Result<std::shared_ptr<Family>>::failure(INVALID, "field size must satisfy 2 <= p < 2^32");
     if (rows == 0 || cols == 0) return Result<std::shared_ptr<Family>>::failure(INVALID, "all_matrices: need rows, cols >= 1");
     auto f = std::make_shared<Family>();
     f->kind = Family::Kind::AllMatrices;
@@ -986,8 +986,8 @@ Result<std::shared_ptr<Family>> make_all_matrices(uint64_t p, uint64_t rows, uin
 
 Result<std::shared_ptr<Family>> make_transform(std::shared_ptr<Family> inner, std::shared_ptr<Matrix> c) {
     if (c->count != 1) return Result<std::shared_ptr<Family>>::failure(INVALID, "transform: C must be a single matrix");
-    if (inner->prime() == 0 || inner->prime() == NATURALS)
-        return Result<std::shared_ptr<Family>>::failure(INVALID, "transform: members must be matrices over a prime");
+    if (!is_prime(inner->prime()))
+        return Result<std::shared_ptr<Family>>::failure(INVALID, "transform: matrix multiplication is defined over a prime field only");
     if (c->p != inner->prime()) return Result<std::shared_ptr<Family>>::failure(INVALID, "transform: prime mismatch");
     if (c->rows != inner->cols())
         return Result<std::shared_ptr<Family>>::failure(INVALID, "transform: C must have as many rows as the members have columns");
@@ -1041,8 +1041,7 @@ Result<std::shared_ptr<Family>> make_subsets_of(std::shared_ptr<Family> inner, u
 
 Result<std::shared_ptr<Family>> make_symmetric_matrices(uint64_t p, uint64_t n) {
     using R = Result<std::shared_ptr<Family>>;
-    if (!is_prime(p)) return R::failure(INVALID, "p is not prime");
-    if (p >= (1ULL << 32)) return R::failure(INVALID, "p must be < 2^32");
+    if (p < 2 || p >= (1ULL << 32)) return R::failure(INVALID, "field size must satisfy 2 <= p < 2^32");
     if (n == 0) return R::failure(INVALID, "symmetric_matrices: need n >= 1");
     auto f = std::make_shared<Family>();
     f->kind = Family::Kind::SymmetricMatrices;

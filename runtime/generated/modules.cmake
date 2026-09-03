@@ -8,6 +8,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/designs/backends/
 # module designs: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/gfp/backends/generic/gfp_generic.cpp)
 # module gfp: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/gfq/backends/generic/gfq_generic.cpp)
+# module gfq: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/hadamard/backends/generic/hadamard_generic.cpp)
 # module hadamard: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/integer_partitions/backends/generic/integer_partitions_generic.cpp)

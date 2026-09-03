@@ -11,7 +11,7 @@ here, once, and matches the runtime's canonical orders and the Lean reference ex
     reduce_bool(reduction, flags, members, p, limit=0) -> interchange object
     reduce_values(reduction, obj)                      -> obj (`all` only)
 
-`p` is the prime of the members, 0 for permutations, and NATURALS for integer members.
+`p` is the field-size tag of the members, 0 for permutations, and NATURALS for integer members.
 """
 from __future__ import annotations
 
@@ -62,8 +62,8 @@ def vectors_of(m):
 
 
 def grassmannian_members(p, n, h):
-    """Every h-dimensional subspace of F_p^n as its rref basis: pivot sets in lexicographic
-    order, then free entries in row-major lexicographic order."""
+    """Every field-labelled RREF basis shape: pivot sets in lexicographic order, then free
+    entries in row-major lexicographic order."""
     for piv in itertools.combinations(range(n), h):
         free = [(i, c) for i in range(h) for c in range(piv[i] + 1, n) if c not in piv]
         for digits in itertools.product(range(p), repeat=len(free)):
@@ -76,8 +76,8 @@ def grassmannian_members(p, n, h):
 
 
 def symmetric_members(p, n):
-    """Every symmetric n x n matrix over F_p; the upper triangle, row-major, are the base-p
-    digits of the index."""
+    """Every symmetric n x n matrix over an alphabet of size p. The upper triangle, row-major,
+    contains the base-p digits of the index."""
     upper = [(i, j) for i in range(n) for j in range(i, n)]
     for digits in itertools.product(range(p), repeat=len(upper)):
         m = [[0] * n for _ in range(n)]

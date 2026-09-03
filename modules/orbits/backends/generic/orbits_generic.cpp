@@ -176,6 +176,8 @@ Result<Setup> setup_action(const Request &req) {
         if (s.group->cols != f.data->count)
             return Result<Setup>::failure(INVALID, "permutations of " + std::to_string(s.group->cols) + " points cannot act on a dictionary of " + std::to_string(f.data->count) + " rows");
     } else {
+        if (!is_prime(s.group->p))
+            return Result<Setup>::failure(INVALID, "matrix group actions currently support prime fields only");
         if (f.kind != Family::Kind::Grassmannian && f.kind != Family::Kind::AllMatrices)
             return Result<Setup>::failure(INVALID, "matrix generators act on `grassmannian` and `all_matrices` families only");
         if (s.group->rows != s.group->cols || s.group->cols != f.cols() || s.group->p != f.prime())
@@ -327,6 +329,7 @@ R run_fixed_points(const Request &req) {
 
 R run_projective_action(const Request &req) {
     const Matrix &batch = *req.family->data;
+    if (!is_prime(batch.p)) return R::failure(INVALID, "projective_action currently supports prime fields only");
     auto it = req.handle_args.find("points");
     if (it == req.handle_args.end() || !it->second->matrix) return R::failure(INVALID, "`points` must be a gfp.matrix dictionary of 1 x n rows");
     Matrix pts = *it->second->matrix;

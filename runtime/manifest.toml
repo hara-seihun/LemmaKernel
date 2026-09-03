@@ -21,19 +21,19 @@ summary = "Every k-row matrix formed by choosing k rows of a matrix or permutati
 name = "grassmannian"
 member = "gfp.matrix"
 lean = "grassmannian"
-summary = "Every h-dimensional subspace of F_p^n as its reduced row echelon basis (h x n); ordered by pivot set (lexicographic), then by free entries (row-major, lexicographic)."
+summary = "Every h-dimensional subspace of a field with q labelled elements as its reduced row echelon basis (h x n); ordered by pivot set (lexicographic), then by free entries (row-major, lexicographic). The consuming module supplies extension-field arithmetic."
 
 [[families]]
 name = "all_matrices"
 member = "gfp.matrix"
 lean = "allMatrices"
-summary = "Every rows x cols matrix over F_p; index is the row-major base-p number of the entries."
+summary = "Every rows x cols matrix with entries 0..q-1; index is the row-major base-q number of the entries."
 
 [[families]]
 name = "transform"
 member = "gfp.matrix"
 lean = "transform"
-summary = "Each member M of the inner family replaced by M * C for a fixed matrix C. Same order and indices."
+summary = "Each prime-field member M replaced by M * C for a fixed matrix C. Same order and indices."
 
 [[families]]
 name = "stack"
@@ -57,7 +57,7 @@ summary = "Every k-subset of the members of an inner family, each member flatten
 name = "symmetric_matrices"
 member = "gfp.matrix"
 lean = "symmetricMatrices"
-summary = "Every symmetric n x n matrix over F_p; index is the base-p number of the upper triangle read row-major."
+summary = "Every symmetric n x n matrix with entries 0..q-1; index is the base-q number of the upper triangle read row-major."
 
 [[families]]
 name = "range"

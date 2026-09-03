@@ -2,7 +2,8 @@
 
 A blob is: magic "LKIF", u32 version (1), string kind, u32 parameter count, that many
 (string name, u64 value) pairs, u64 payload length, payload. Strings are u32 length + UTF-8.
-Everything is little-endian. F_p entries are packed at the width `entry_width(p)`.
+Everything is little-endian. Field labels are packed at the width `entry_width(p)`, where the
+header parameter `p` carries the field size.
 
 This module is used by the binding (to build inputs and read results), by the naive
 implementation (so it consumes exactly what the kernel consumes), and by the tests (to compare
@@ -108,7 +109,7 @@ def split(buf: bytes, offset: int = 0) -> tuple[Blob, int]:
 
 @dataclass
 class Matrix:
-    """A batch of `count` matrices, each rows x cols over F_p. `entries` is flat, row-major."""
+    """A batch of labelled field matrices. `p` is the field size; `entries` is flat, row-major."""
     p: int
     count: int
     rows: int

@@ -4,8 +4,8 @@
 
 namespace lk {
 
-/* A family is a tree of descriptions. Every member is a matrix over one prime p (or of
- * permutations, p == 0, or of naturals, p == NATURALS) with a fixed shape; members have canonical
+/* A family is a tree of descriptions. Every member is a matrix with one field-size tag p (or a
+ * permutation, p == 0, or naturals, p == NATURALS) and a fixed shape; members have canonical
  * indices 0..size-1 (order defined in the manifest). Enumeration is depth-first over rows so that
  * a consumer can share work along common prefixes: rows are pushed one at a time, and the
  * consumer may refuse to descend (Skip) or accept every leaf below without visiting it (TakeAll).

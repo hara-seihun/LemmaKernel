@@ -15,9 +15,11 @@ bytes     payload
 ```
 
 All integers little-endian. Kinds, their parameters, and their payload layouts are declared in
-each module's manifest (`[[kinds]]`) and in the runtime's own kinds below. Entries over F_p are
-packed at the smallest width holding p−1: 1 byte for p < 2^8, 2 for p < 2^16, 4 for p < 2^32,
-8 otherwise. Permutations (`orbits.perms`, p = 0) and naturals (`lk.naturals`, p = 2^64 - 1 in
+each module's manifest (`[[kinds]]`) and in the runtime's own kinds below. Field entries are labels
+in `0..q-1`; the existing `p` header parameter carries this field-size tag. The `gfp` module requires
+it to be prime, while `gfq` supplies an explicit extension-field presentation. Entries use the
+smallest width holding q−1: 1 byte for q < 2^8, 2 for q < 2^16, 4 for q < 2^32, 8 otherwise.
+Permutations (`orbits.perms`, p = 0) and naturals (`lk.naturals`, p = 2^64 - 1 in
 a result header) are packed as 4-byte values.
 
 Runtime kinds (not module-specific):

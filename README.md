@@ -86,6 +86,7 @@ and committed; the build refuses to configure if they are stale.
 | [cayley](modules/cayley/manifest.toml) | simple undirected Cayley graphs of finite permutation groups: connectivity, regularity, girth, diameter, graph automorphism order, and the CI property of a connection set | `generic` (exact group closure, graph search, partition refinement and individualisation, portable C++) |
 | [designs](modules/designs/manifest.toml) | whole-family tests and data for finite block designs: t-design multiplicities, resolutions, dual 2-designs, intersections, and Kramer-Mesner matrices | `generic` (portable C++) |
 | [gfp](modules/gfp/manifest.toml) | linear algebra over F_p on families of matrices: rank, rref, nullspace, span membership, solve, inverse, rref witness | `generic` (any p < 2^32, portable C++) |
+| [gfq](modules/gfq/manifest.toml) | linear algebra over explicitly presented GF(q): rank, rref, nullspace, span membership, solve, inverse | `generic` (polynomial-basis arithmetic for q < 2^32, portable C++) |
 | [hadamard](modules/hadamard/manifest.toml) | Hadamard, skew, regular and conference predicates for F_2 matrices read as signs, plus signed-equivalence canonical forms | `generic` (portable C++) |
 | [integer_partitions](modules/integer_partitions/manifest.toml) | constrained partitions and compositions: number of parts, largest part, and rank/crank distributions | `generic` (portable C++ enumeration) |
 | [lattice_of_subspaces](modules/lattice_of_subspaces/manifest.toml) | Gaussian binomials, flag counts, counts above and below a row space, and subspace incidence predicates | `generic` (checked formulas and row reduction, portable C++) |
@@ -97,6 +98,11 @@ and committed; the build refuses to configure if they are stale.
 A `designs` block on `v` labelled points is a `k x v` matrix of distinct standard basis rows in
 increasing point order. The family members are the indexed blocks. Kramer-Mesner rows and columns
 use the least lexicographic member of each subset orbit, so their matrix is canonical.
+
+For `gfq`, tag matrices and families with `q`. Pass the monic irreducible polynomial as
+`modulus=[c_0, ..., c_(d-1), 1]` in increasing-degree order over F_p. The integer label of a field
+element is its little-endian base-p coefficient vector. For example, GF(4) uses `q=4` and may use
+`modulus=lk.matrix(4, [[1, 1, 1]])` for x^2 + x + 1.
 
 An orbit is a permutation of member indices; the representative is the least index. Permutation
 groups act on `subsets` families, matrix groups on `grassmannian` and `all_matrices` families

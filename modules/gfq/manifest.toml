@@ -1,0 +1,83 @@
+# gfq: linear algebra over explicitly presented finite fields.
+
+[module]
+name = "gfq"
+version = 1
+summary = "Linear algebra over GF(q), presented as F_p[x]/(modulus). Elements use base-p little-endian coefficient codes 0..q-1. RREF takes the first nonzero row as pivot; nullspace and solve set free coordinates to zero in increasing-column order."
+lean = "lean"
+contract = "lean/Gfq/Contract.lean"
+reference = "lean/Gfq/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+# `modulus` is [c_0, ..., c_(d-1), 1], the coefficients in increasing-degree order of a monic
+# irreducible polynomial over F_p. The family tag is q = p^d. A field element a in 0..q-1 is
+# sum_i digit_i(a) x^i, where digit_i is the i-th base-p digit.
+
+[[operations]]
+name = "rank"
+value = "integer"
+args = { modulus = "vector" }
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "stack"]
+summary = "Rank over F_p[x]/(modulus)."
+
+[[operations]]
+name = "in_span"
+value = "boolean"
+args = { modulus = "vector", target = "vector" }
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "stack"]
+summary = "Whether target lies in the row space over F_p[x]/(modulus)."
+
+[[operations]]
+name = "rref"
+value = "gfp.matrix"
+args = { modulus = "vector" }
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "stack"]
+summary = "Unique reduced row echelon form, with the first nonzero row at or below each pivot chosen during elimination."
+
+[[operations]]
+name = "nullspace"
+value = "gfp.basis"
+args = { modulus = "vector" }
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "stack"]
+summary = "Canonical basis of {x : M x^T = 0}: one vector per free column f in increasing order, x_f = 1 and x_pivot_i = -R[i,f]."
+
+[[operations]]
+name = "solve"
+value = "gfp.solutions"
+args = { modulus = "vector", rhs = "vectors" }
+families = ["explicit"]
+summary = "For A_i and b_i, the solution of A_i x^T = b_i^T with every free coordinate zero; a false flag and zero vector when inconsistent."
+
+[[operations]]
+name = "inverse"
+value = "gfp.inverses"
+args = { modulus = "vector" }
+families = ["explicit"]
+summary = "The unique inverse of each square member; a false flag and zero matrix when singular."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/gfq_generic.cpp"]
+accepts = "q < 2^32 with an explicit monic irreducible modulus; every non-arithmetic matrix family except transform; solve and inverse on explicit families"
+summary = "Portable C++ polynomial-basis arithmetic and depth-first family enumeration with a shared incremental echelon basis."
+
+[[rejections]]
+case = "reducible modulus"
+error = "irreducible"
+
+[[rejections]]
+case = "wrong field size"
+error = "q must equal"
+
+[[rejections]]
+case = "transform over a prime field"
+error = "defined on"
+
+[[rejections]]
+case = "nonsquare inverse"
+error = "square"
+
+[[rejections]]
+case = "Grassmannian solve"
+error = "explicit families only"

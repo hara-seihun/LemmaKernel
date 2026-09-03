@@ -30,8 +30,9 @@ using Entry = uint32_t;
  * interchange kind "lk.naturals"). Members of natural-number families use these. */
 constexpr uint64_t NATURALS = UINT64_MAX;
 
-/* A batch of count rows x cols matrices. p is the prime, 0 for a batch of permutations
- * (rows == 1, each entry a point index < cols; interchange kind "orbits.perms"), or NATURALS. */
+/* A batch of count rows x cols matrices. p is the field-size tag and entries are labels below p;
+ * a module decides whether p denotes a prime field or an explicitly presented extension field.
+ * p is 0 for permutations (rows == 1) and NATURALS for natural-number matrices. */
 struct Matrix {
     uint64_t p = 0, count = 0, rows = 0, cols = 0;
     std::vector<Entry> entries;

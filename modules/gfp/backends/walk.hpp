@@ -18,6 +18,7 @@
  *   Target pack(const Entry *row) const;
  *   void reduce_by_last(Target &t) const;     reduce t by the row the last add() appended
  *   bool is_zero(const Target &t) const;
+ *   Entry negate(Entry a) const;               additive inverse in the basis field
  *   void rref(std::vector<Entry> &out, std::vector<uint32_t> &pivots) const;
  *                                             rows sorted by pivot, other pivot columns cleared,
  *                                             leading entries 1, unpacked as rank*cols entries
@@ -147,7 +148,7 @@ template <class Basis> struct Walker : Family::Visitor {
                 v[c] = 1;
                 for (uint64_t i = 0; i < r; ++i) {
                     Entry e = rref_buf[i * cols + c];
-                    v[piv_buf[i]] = e ? (Entry)(p - e) : 0;
+                    v[piv_buf[i]] = basis.negate(e);
                 }
                 vecs.insert(vecs.end(), v.begin(), v.end());
             }

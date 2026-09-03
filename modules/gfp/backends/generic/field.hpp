@@ -57,6 +57,7 @@ struct EchelonBasis {
 
     EchelonBasis(uint64_t p, uint64_t c) : f(p), cols(c), scratch(c) {}
     uint64_t rank() const { return pivots.size(); }
+    Entry negate(Entry a) const { return a ? (Entry)(f.p - a) : 0; }
     void clear() { rows.clear(); pivots.clear(); }
     Entry *row(uint64_t i) { return rows.data() + i * cols; }
     const Entry *row(uint64_t i) const { return rows.data() + i * cols; }
