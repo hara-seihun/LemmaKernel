@@ -136,6 +136,12 @@ struct CurveGroups {
     std::vector<uint64_t> orders;
 };
 
+struct Coefficients {
+    uint64_t count = 0, length = 0;
+    std::vector<int64_t> values;
+};
+
+
 struct Integers {
     std::vector<uint64_t> values;
 };
@@ -189,6 +195,7 @@ struct Object {
     std::shared_ptr<Characters> characters;
     std::shared_ptr<RskPairs> rsk_pairs;
     std::shared_ptr<CurveGroups> curve_groups;
+    std::shared_ptr<Coefficients> coefficients;
     std::shared_ptr<Integers> integers;
     std::shared_ptr<Count> count;
     std::shared_ptr<Histogram> histogram;

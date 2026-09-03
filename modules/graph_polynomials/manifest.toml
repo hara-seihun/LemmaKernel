@@ -1,0 +1,68 @@
+# graph_polynomials: exact polynomial invariants of finite simple graphs.
+
+[module]
+name = "graph_polynomials"
+version = 1
+summary = "Chromatic, Tutte, adjacency characteristic, and matching polynomials of finite simple labelled graphs. A graph family is `subsets` of a canonical edge dictionary whose rows are `[u,v]` with `u < v < vertices`."
+lean = "lean"
+contract = "lean/Graph_polynomials/Contract.lean"
+reference = "lean/Graph_polynomials/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "graph_polynomials.coefficients"
+params = ["count", "length"]
+payload = "count*length signed i64 coefficients in little-endian two's-complement"
+lean = "coefficients"
+summary = "One fixed-length signed coefficient vector per graph. Univariate vectors are in ascending powers. A Tutte vector for a graph with m edges stores [x^i y^j] at i*(m+1)+j for 0 <= i <= vertices and 0 <= j <= m."
+
+[[operations]]
+name = "chromatic"
+value = "graph_polynomials.coefficients"
+args = { vertices = "int" }
+families = ["subsets"]
+summary = "Chromatic polynomial P_G(x), coefficients [x^0,...,x^vertices]. Graphs are simple and labelled 0..vertices-1; isolated vertices are included."
+
+[[operations]]
+name = "tutte"
+value = "graph_polynomials.coefficients"
+args = { vertices = "int" }
+families = ["subsets"]
+summary = "Tutte polynomial T_G(x,y), flattened x-major as coefficient x^i*y^j at i*(m+1)+j, with 0 <= i <= vertices and 0 <= j <= m for the family's fixed member edge count m."
+
+[[operations]]
+name = "characteristic"
+value = "graph_polynomials.coefficients"
+args = { vertices = "int" }
+families = ["subsets"]
+summary = "Characteristic polynomial det(xI-A_G) of the zero-diagonal 0/1 adjacency matrix, coefficients [x^0,...,x^vertices]."
+
+[[operations]]
+name = "matching"
+value = "graph_polynomials.coefficients"
+args = { vertices = "int" }
+families = ["subsets"]
+summary = "Matching polynomial mu_G(x) = sum_k (-1)^k m_k x^(vertices-2k), coefficients [x^0,...,x^vertices], where m_k is the number of k-edge matchings."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/graph_polynomials_generic.cpp"]
+accepts = "subsets of canonical two-column edge dictionaries; vertices <= 20 and at most 32 edges per member; coefficients must fit signed i64"
+summary = "Portable C++: depth-first family enumeration. Memoized deletion-contraction shares chromatic, Tutte, and matching subproblems across common edge prefixes; characteristic polynomials use subset determinant DP."
+
+[[rejections]]
+case = "reversed edge"
+error = "u < v < vertices"
+
+[[rejections]]
+case = "duplicate edge"
+error = "duplicate"
+
+[[rejections]]
+case = "endpoint outside graph"
+error = "u < v < vertices"
+
+[[rejections]]
+case = "not an edge-subset family"
+error = "families only"

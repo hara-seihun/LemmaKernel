@@ -509,6 +509,23 @@ class CurveGroups:
 
 
 @dataclass
+class Coefficients:
+    count: int
+    length: int
+    values: list[int]
+
+    def member(self, i: int):
+        return [int(x) for x in self.values[i * self.length:(i + 1) * self.length]]
+
+    def tolist(self):
+        return [self.member(i) for i in range(self.count)]
+
+    def encode(self) -> bytes:
+        return encode("graph_polynomials.coefficients", {"count": self.count, "length": self.length},
+                      struct.pack(f"<{len(self.values)}q", *self.values))
+
+
+@dataclass
 class Integers:
     values: list[int]
 
@@ -611,8 +628,9 @@ KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphG
          "automorphisms.generators": PermutationGenerators, "posets.mobius": MobiusMatrices,
          "young.characters": Characters,
          "young.rsk_pairs": RskPairs, "elliptic_curves_fp.group": CurveGroups,
-         "polynomials_fq.elements": Elements, "polynomials_fq.degrees": Degrees, "integers": Integers,
-         "count": Count, "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
+         "polynomials_fq.elements": Elements, "polynomials_fq.degrees": Degrees,
+         "graph_polynomials.coefficients": Coefficients, "integers": Integers, "count": Count,
+         "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
 
 
 def kind_of(obj) -> str:
@@ -731,6 +749,9 @@ def decode_at(buf: bytes, offset: int):
     if k == "elliptic_curves_fp.group":
         words = struct.unpack_from(f"<{2 * q['count']}Q", pl, 0)
         return CurveGroups([(words[2 * i], words[2 * i + 1]) for i in range(q["count"])]), end
+    if k == "graph_polynomials.coefficients":
+        values = list(struct.unpack_from(f"<{q['count'] * q['length']}q", pl, 0))
+        return Coefficients(q["count"], q["length"], values), end
     if k == "integers":
         return Integers(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "count":

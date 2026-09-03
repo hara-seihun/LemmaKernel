@@ -20,6 +20,11 @@ add_library(lemmakernel SHARED
   runtime/src/object.cpp
   runtime/src/family.cpp
   runtime/generated/manifest.cpp)
+if(CMAKE_GENERATOR MATCHES "Ninja")
+  set_property(GLOBAL PROPERTY JOB_POOLS compile_pool=4 link_pool=1)
+  set_property(TARGET lemmakernel PROPERTY JOB_POOL_COMPILE compile_pool)
+  set_property(TARGET lemmakernel PROPERTY JOB_POOL_LINK link_pool)
+endif()
 target_include_directories(lemmakernel PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/runtime/include>
   $<INSTALL_INTERFACE:include>)

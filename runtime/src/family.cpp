@@ -341,7 +341,7 @@ Result<uint64_t> Family::top_count() const {
     case Kind::Explicit:
     case Kind::GroupTables: return Result<uint64_t>::success(data->count);
     case Kind::Subsets:
-    case Kind::SubsetsOf: return Result<uint64_t>::success(data->count - k + 1);
+    case Kind::SubsetsOf: return Result<uint64_t>::success(k == 0 ? 1 : data->count - k + 1);
     case Kind::Grassmannian: return binom(n, h);
     case Kind::AllMatrices:
     case Kind::Words:
@@ -715,6 +715,10 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
     }
     case Kind::Subsets:
     case Kind::SubsetsOf: {
+        if (k == 0) {
+            if (top_begin == 0 && top_end != 0) v.leaf(0);
+            return ok();
+        }
         uint64_t D = data->count, cols = data->cols;
         std::vector<std::vector<uint64_t>> tail(k + 1); /* tail[j][c] = C(D-1-c, k-1-j) */
         for (uint64_t j = 0; j < k; ++j) {
@@ -1072,8 +1076,8 @@ Result<std::shared_ptr<Family>> make_subsets(std::shared_ptr<Matrix> dictionary,
     }
     if (dictionary->rows != 1)
         return Result<std::shared_ptr<Family>>::failure(INVALID, "subsets: the dictionary must be one rows x cols matrix or a batch of 1 x cols vectors");
-    if (k == 0 || k > dictionary->count)
-        return Result<std::shared_ptr<Family>>::failure(INVALID, "subsets: k must satisfy 1 <= k <= dictionary size");
+    if (k > dictionary->count)
+        return Result<std::shared_ptr<Family>>::failure(INVALID, "subsets: k must satisfy 0 <= k <= dictionary size");
     auto f = std::make_shared<Family>();
     f->kind = Family::Kind::Subsets;
     f->data = std::move(dictionary);
@@ -1144,7 +1148,7 @@ Result<std::shared_ptr<Family>> make_subsets_of(std::shared_ptr<Family> inner, u
     auto sz = inner->size();
     if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
     if (sz.value > (1ULL << 22)) return R::failure(INVALID, "subsets_of: the inner family has more than 2^22 members");
-    if (k == 0 || k > sz.value) return R::failure(INVALID, "subsets_of: k must satisfy 1 <= k <= inner family size");
+    if (k > sz.value) return R::failure(INVALID, "subsets_of: k must satisfy 0 <= k <= inner family size");
     auto dict = std::make_shared<Matrix>();
     dict->p = inner->prime();
     dict->count = sz.value;

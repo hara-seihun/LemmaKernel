@@ -398,6 +398,19 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->cycle_index = index;
         return R::success(o);
     }
+    if (h.kind == "graph_polynomials.coefficients") {
+        auto count = need(h, "count"), length = need(h, "length");
+        for (auto *r : {&count, &length}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        unsigned __int128 words = (unsigned __int128)count.value * length.value;
+        if (words * 8 != h.payload_len) return R::failure(INVALID, "graph_polynomials.coefficients payload length mismatch");
+        auto coefficients = std::make_shared<Coefficients>();
+        coefficients->count = count.value;
+        coefficients->length = length.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i < (uint64_t)words; ++i) coefficients->values.push_back(r.i64());
+        o->coefficients = coefficients;
+        return R::success(o);
+    }
     if (h.kind == "histogram") {
         auto vis = need(h, "visited"), fs = need(h, "family_size"), bins = need(h, "bins");
         for (auto *r : {&vis, &fs, &bins}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -740,6 +753,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (characters) return {{"count", characters->values.size()}};
     if (rsk_pairs) return {{"count", rsk_pairs->count}, {"length", rsk_pairs->length}};
     if (curve_groups) return {{"count", curve_groups->count}};
+    if (coefficients) return {{"count", coefficients->count}, {"length", coefficients->length}};
     if (integers) return {{"count", integers->values.size()}};
     if (count) return {{"value", count->value}, {"visited", count->visited}, {"family_size", count->family_size}};
     if (histogram) return {{"visited", histogram->visited}, {"family_size", histogram->family_size}, {"bins", histogram->bins.size()}};
@@ -837,6 +851,9 @@ std::vector<uint8_t> encode(const Object &o) {
     } else if (o.curve_groups) {
         w.u64s(o.curve_groups->orders);
         write_header(out, "elliptic_curves_fp.group", o.params(), w.out);
+    } else if (o.coefficients) {
+        w.i64s(o.coefficients->values);
+        write_header(out, "graph_polynomials.coefficients", o.params(), w.out);
     } else if (o.integers) {
         w.u64s(o.integers->values);
         write_header(out, o.kind == "burnside.counts" ? "burnside.counts" : "integers", o.params(), w.out);

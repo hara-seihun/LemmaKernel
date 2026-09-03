@@ -724,6 +724,59 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'rectangular adjacency', 'error': 'square'},
                  {'case': 'directed adjacency', 'error': 'symmetric'},
                  {'case': 'all matrices family', 'error': 'families only'}]},
+ {'backends': [{'accepts': 'subsets of canonical two-column edge dictionaries; vertices <= 20 and at most 32 '
+                           'edges per member; coefficients must fit signed i64',
+                'name': 'generic',
+                'sources': ['backends/generic/graph_polynomials_generic.cpp'],
+                'summary': 'Portable C++: depth-first family enumeration. Memoized deletion-contraction '
+                           'shares chromatic, Tutte, and matching subproblems across common edge prefixes; '
+                           'characteristic polynomials use subset determinant DP.'}],
+  'kinds': [{'lean': 'coefficients',
+             'name': 'graph_polynomials.coefficients',
+             'params': ['count', 'length'],
+             'payload': "count*length signed i64 coefficients in little-endian two's-complement",
+             'summary': 'One fixed-length signed coefficient vector per graph. Univariate vectors are in '
+                        'ascending powers. A Tutte vector for a graph with m edges stores [x^i y^j] at '
+                        'i*(m+1)+j for 0 <= i <= vertices and 0 <= j <= m.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Graph_polynomials/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'graph_polynomials',
+             'reference': 'lean/Graph_polynomials/Reference.lean',
+             'summary': 'Chromatic, Tutte, adjacency characteristic, and matching polynomials of finite '
+                        'simple labelled graphs. A graph family is `subsets` of a canonical edge dictionary '
+                        'whose rows are `[u,v]` with `u < v < vertices`.',
+             'version': 1},
+  'operations': [{'args': {'vertices': 'int'},
+                  'families': ['subsets'],
+                  'name': 'chromatic',
+                  'summary': 'Chromatic polynomial P_G(x), coefficients [x^0,...,x^vertices]. Graphs are '
+                             'simple and labelled 0..vertices-1; isolated vertices are included.',
+                  'value': 'graph_polynomials.coefficients'},
+                 {'args': {'vertices': 'int'},
+                  'families': ['subsets'],
+                  'name': 'tutte',
+                  'summary': 'Tutte polynomial T_G(x,y), flattened x-major as coefficient x^i*y^j at '
+                             "i*(m+1)+j, with 0 <= i <= vertices and 0 <= j <= m for the family's fixed "
+                             'member edge count m.',
+                  'value': 'graph_polynomials.coefficients'},
+                 {'args': {'vertices': 'int'},
+                  'families': ['subsets'],
+                  'name': 'characteristic',
+                  'summary': 'Characteristic polynomial det(xI-A_G) of the zero-diagonal 0/1 adjacency '
+                             'matrix, coefficients [x^0,...,x^vertices].',
+                  'value': 'graph_polynomials.coefficients'},
+                 {'args': {'vertices': 'int'},
+                  'families': ['subsets'],
+                  'name': 'matching',
+                  'summary': 'Matching polynomial mu_G(x) = sum_k (-1)^k m_k x^(vertices-2k), coefficients '
+                             '[x^0,...,x^vertices], where m_k is the number of k-edge matchings.',
+                  'value': 'graph_polynomials.coefficients'}],
+  'rejections': [{'case': 'reversed edge', 'error': 'u < v < vertices'},
+                 {'case': 'duplicate edge', 'error': 'duplicate'},
+                 {'case': 'endpoint outside graph', 'error': 'u < v < vertices'},
+                 {'case': 'not an edge-subset family', 'error': 'families only'}]},
  {'backends': [{'accepts': 'any F_2 matrix family; canonical_form enumerates row permutations and chooses '
                            'the best column order',
                 'name': 'generic',
