@@ -1,13 +1,15 @@
 # gfp: linear algebra over prime fields, on families of matrices.
 # This file is the only declaration of the module. tools/manifest.py generates the C registry,
-# the runtime description, the CMake source list and the Python wrappers from it.
+# the runtime description, the CMake source list, the Lake libraries and the Python manifest from it.
+# `lean` is the Lake source directory; its root module is the capitalised module name.
 
 [module]
 name = "gfp"
 version = 1
 summary = "Linear algebra over F_p (p prime) on families of matrices: rref, rank, nullspace, solve, inverse, span membership."
-contract = "contract/Gfp.lean"
-reference = "contract/Reference.lean"
+lean = "lean"
+contract = "lean/Gfp/Contract.lean"
+reference = "lean/Gfp/Reference.lean"
 naive = "naive/naive.py"
 bench = "bench/bench.py"
 tests = "tests/test_gfp.py"

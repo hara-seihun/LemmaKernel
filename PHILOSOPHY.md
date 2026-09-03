@@ -72,9 +72,11 @@ a theorem-side reader needs.
 A test enforces that every module has one. Consistency is worth more than deciding case by case
 which modules "need" it.
 
-Alongside the contract, each module has an executable reference in Lean of the same operations,
-used to differential-test native backends on random inputs. For small primitives that reference
-can be proved correct; for large ones it is at least stated against Mathlib.
+Alongside the contract, each module has an executable reference in Lean of the same operations.
+It is the oracle: tests state the kernel's answers as Lean examples and `decide` evaluates the
+reference to accept or reject them. No test stores an expected answer; the only place an answer
+is defined is the reference. For small primitives that reference can be proved to match the
+contract; for large ones it is at least stated against Mathlib.
 
 ## Existence has a witness, non-existence has a count
 
@@ -87,8 +89,9 @@ enumeration exhaustive, and it is part of every non-existence answer.
 ## Every module has a naive implementation
 
 The naive implementation does the same job the obvious way: materialise every member, compute from
-scratch. It exists to check the fast implementation against something a reader can verify by eye,
-and to measure how much faster the fast one is. Benchmarks report both numbers.
+scratch. It is the benchmark baseline, so benchmarks report both numbers, and it is a second
+opinion a reader can follow by eye. It is held to the same Lean oracle as the kernel; it is not
+the oracle.
 
 ## One source of truth
 

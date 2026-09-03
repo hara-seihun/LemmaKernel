@@ -1,6 +1,11 @@
-"""gfp: every backend must reproduce the naive implementation byte for byte.
+"""gfp: every backend's answer must be accepted by Lean's `decide +kernel` against the reference.
 
-Run from the repository root with `pytest modules/gfp` after building (see README).
+No expected answers live in this file. Each test builds inputs, runs the kernel, and states the
+kernel's answer as a Lean `example` over `Gfp.run` (lean/Gfp/Reference.lean); Lean evaluates the
+reference and accepts or rejects. The naive Python implementation is checked the same way, so the
+benchmark baseline is also verified.
+
+Run from the repository root after building: `pytest -n auto modules/gfp`.
 """
 from __future__ import annotations
 
@@ -13,178 +18,238 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "python"))
+sys.path.insert(0, str(ROOT))
 import lemmakernel as lk  # noqa: E402
+from lemmakernel import interchange as ic  # noqa: E402
+from tools.leancheck import LeanCheck  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("gfp_naive", ROOT / "modules" / "gfp" / "naive" / "naive.py")
 naive = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(naive)
 
 BACKENDS = [b for b in lk.describe()["available_backends"] if b.startswith("gfp.")]
-PRIMES = [2, 3, 5, 7, 251, 257, 65521, 65537, 4294967291]
 
+
+# ---- interchange objects as Lean terms ----------------------------------------------------------
+
+def L(x) -> str:
+    """Lean literal for nested lists of ints / Options / tuples."""
+    if x is None:
+        return "none"
+    if isinstance(x, tuple):
+        return "(" + ", ".join(L(v) for v in x) + ")"
+    if isinstance(x, (list,)):
+        return "[" + ", ".join(L(v) for v in x) + "]"
+    if hasattr(x, "tolist"):
+        return L(x.tolist()) if not isinstance(x, ic.Matrix) else L(x.tolist())
+    return str(int(x))
+
+
+def lean_family(f: ic.Family) -> str:
+    q = f.params
+    if f.kind == "explicit":
+        (b,) = f.children
+        return f"(.explicit {b.p} {L(b.tolist())})"
+    if f.kind == "subsets":
+        (d,) = f.children
+        vecs = [m[0] for m in d.tolist()] if d.rows == 1 else d.member(0)
+        return f"(.subsets {d.p} {L(vecs)} {q['k']})"
+    if f.kind == "grassmannian":
+        return f"(.grassmannian {q['p']} {q['n']} {q['h']})"
+    if f.kind == "all_matrices":
+        return f"(.allMatrices {q['p']} {q['rows']} {q['cols']})"
+    if f.kind == "transform":
+        inner, c = f.children
+        return f"(.transform {lean_family(inner)} {L(c.member(0))})"
+    if f.kind == "stack":
+        inner, rows = f.children
+        return f"(.stack {lean_family(inner)} {L(rows.member(0))})"
+    raise ValueError(f.kind)
+
+
+def lean_op(op: str, args: dict) -> str:
+    name = op.removeprefix("gfp.")
+    if name == "in_span":
+        return f"(.inSpan {L(args['target'].member(0)[0])})"
+    if name == "solve":
+        return f"(.solve {L([m[0] for m in args['rhs'].tolist()])})"
+    return {"rank": ".rank", "nullity": ".nullity", "full_row_rank": ".fullRowRank", "full_col_rank": ".fullColRank",
+            "rref": ".rref", "nullspace": ".nullspace", "inverse": ".inverse", "rref_witness": ".rrefWitness"}[name]
+
+
+def lean_red(red: str, args: dict) -> str:
+    return f"(.hits {args['limit']})" if red == "hits" else "." + red
+
+
+def lean_result(r) -> str:
+    if isinstance(r, ic.Integers):
+        return f".integers {L(r.values)}"
+    if isinstance(r, ic.Count):
+        assert r.visited == r.family_size, "incomplete enumeration reported"
+        return f".count {r.value} {r.family_size}"
+    if isinstance(r, ic.Histogram):
+        assert r.visited == r.family_size, "incomplete enumeration reported"
+        return f".histogram {r.family_size} {L(r.bins)}"
+    if isinstance(r, ic.Hits):
+        assert r.visited == r.family_size and r.total == len(r.indices)
+        return f".hits {r.family_size} {L(r.indices)} {L(r.members.tolist())}"
+    if isinstance(r, ic.Matrix):
+        return f".matrices {L(r.tolist())}"
+    if isinstance(r, ic.Basis):
+        return f".bases {L([r.member(i) for i in range(r.count)])}"
+    if isinstance(r, ic.Solutions):
+        return f".solutions {L([r.member(i) for i in range(r.count)])}"
+    if isinstance(r, ic.Inverses):
+        return f".inverses {L([r.member(i) for i in range(r.count)])}"
+    if isinstance(r, ic.Witness):
+        return f".witnesses {L([r.member(i) for i in range(r.count)])}"
+    raise TypeError(type(r))
+
+
+def run_claim(op, family_desc, red, args):
+    return f"run {lean_op(op, args)} {lean_family(family_desc)} {lean_red(red, args)}"
+
+
+# ---- inputs -------------------------------------------------------------------------------------
 
 def random_batch(rng, p, count, rows, cols):
     """Batches with a mix of generic, singular and structured members."""
     mats = []
     for i in range(count):
         m = [[rng.randrange(p) for _ in range(cols)] for _ in range(rows)]
-        if i % 4 == 1 and rows > 1:  # duplicate a row
+        if i % 4 == 1 and rows > 1:
             m[-1] = list(m[0])
-        if i % 4 == 2:  # a zero row and a zero column
+        if i % 4 == 2:
             m[0] = [0] * cols
             for r in m:
                 r[-1] = 0
-        if i % 4 == 3:  # sparse
+        if i % 4 == 3:
             m = [[rng.randrange(p) if rng.random() < 0.3 else 0 for _ in range(cols)] for _ in range(rows)]
         mats.append(m)
     return lk.matrix(p, mats)
 
 
-def families(ctx, rng, p):
-    """(name, handle, naive Family) triples covering every family kind, small enough to enumerate."""
-    out = []
-    batch = random_batch(rng, p, 12, 3, 4)
-    out.append(("explicit", ctx.explicit(batch)))
-    dictionary = random_batch(rng, p, 7, 1, 4)
-    out.append(("subsets", ctx.subsets(dictionary, 3)))
-    # Sizes stay under ~10^5 so the naive side finishes; the shapes shrink as p grows.
-    if p <= 3:
-        out.append(("grassmannian", ctx.grassmannian(p, 5, 2)))
-        out.append(("all_matrices", ctx.all_matrices(p, 2, 3)))
-        G = ctx.grassmannian(p, 4, 2)
-    elif p <= 7:
-        out.append(("grassmannian", ctx.grassmannian(p, 4, 2)))
-        out.append(("all_matrices", ctx.all_matrices(p, 2, 2)))
-        G = ctx.grassmannian(p, 4, 2)
-    elif p < 1 << 12:
-        out.append(("grassmannian", ctx.grassmannian(p, 2, 1)))
-        out.append(("all_matrices", ctx.all_matrices(p, 1, 1)))
-        G = ctx.subsets(random_batch(rng, p, 8, 1, 4), 2)
+PRIMES = [2, 3, 5, 7, 251, 257, 65521, 65537, 4294967291]
+
+
+def small_families(ctx, rng, p):
+    """Every family kind at a size Lean evaluates in seconds. Returns (name, handle) pairs."""
+    out = [("explicit", ctx.explicit(random_batch(rng, p, 8, 3, 4))),
+           ("subsets", ctx.subsets(random_batch(rng, p, 6, 1, 4), 3))]
+    if p == 2:
+        out += [("grassmannian", ctx.grassmannian(2, 4, 2)), ("all_matrices", ctx.all_matrices(2, 2, 2))]
+        G = ctx.grassmannian(2, 4, 2)
+    elif p == 3:
+        out += [("grassmannian", ctx.grassmannian(3, 3, 1)), ("all_matrices", ctx.all_matrices(3, 1, 2))]
+        G = ctx.subsets(random_batch(rng, p, 5, 1, 4), 2)
+    elif p < 20:
+        out += [("grassmannian", ctx.grassmannian(p, 2, 1)), ("all_matrices", ctx.all_matrices(p, 1, 1))]
+        G = ctx.subsets(random_batch(rng, p, 5, 1, 4), 2)
     else:
-        G = ctx.subsets(random_batch(rng, p, 8, 1, 4), 2)
-    C = random_batch(rng, p, 1, 4, 3)
-    out.append(("transform", ctx.transform(G, C)))
-    extra = random_batch(rng, p, 1, 2, 4)
-    out.append(("stack", ctx.stack(G, extra)))
-    out.append(("stack(transform)", ctx.stack(ctx.transform(G, C), random_batch(rng, p, 1, 1, 3))))
-    return [(name, h, h.value()) for name, h in out]
+        G = ctx.subsets(random_batch(rng, p, 5, 1, 4), 2)
+    out += [("transform", ctx.transform(G, random_batch(rng, p, 1, 4, 3))),
+            ("stack", ctx.stack(G, random_batch(rng, p, 1, 2, 4))),
+            ("stack(transform)", ctx.stack(ctx.transform(G, random_batch(rng, p, 1, 4, 2)), random_batch(rng, p, 1, 1, 2)))]
+    return out
 
 
-def check_same(kernel: lk.Handle, expected) -> None:
-    got = kernel.export()
-    want = expected.encode()
-    if got != want:
-        pytest.fail(f"kernel {kernel.value()!r}\n!= naive {expected!r}")
+WALK_OPS = [("gfp.rank", ["all", "histogram"]), ("gfp.nullity", ["all", "histogram"]),
+            ("gfp.full_row_rank", ["all", "count", "hits"]), ("gfp.full_col_rank", ["all", "count", "hits"]),
+            ("gfp.in_span", ["all", "count", "hits"]), ("gfp.rref", ["all"]), ("gfp.nullspace", ["all"])]
 
+
+def walk_args(rng, op, red, p, cols):
+    args = {}
+    if op == "gfp.in_span":
+        args["target"] = random_batch(rng, p, 1, 1, cols)
+    if red == "hits":
+        args["limit"] = 3
+    return args
+
+
+# ---- tests --------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("backend", BACKENDS)
 @pytest.mark.parametrize("p", PRIMES)
-def test_family_operations_match_naive(backend, p):
+def test_walk_operations(backend, p):
     rng = random.Random(p)
     ctx = lk.Context(backend)
-    for name, fam, desc in families(ctx, rng, p):
+    lc = LeanCheck(f"gfp_walk_{backend}_{p}", ["Gfp.Reference"], ["Gfp"])
+    for name, fam in small_families(ctx, rng, p):
+        desc = fam.value()
         cols = fam.param("cols")
-        target = random_batch(rng, p, 1, 1, cols)
-        for op, reductions, args in [
-            ("gfp.rank", ["all", "histogram"], {}),
-            ("gfp.nullity", ["all", "histogram"], {}),
-            ("gfp.full_row_rank", ["all", "count", "hits"], {}),
-            ("gfp.full_col_rank", ["all", "count", "hits"], {}),
-            ("gfp.in_span", ["all", "count", "hits"], {"target": target}),
-            ("gfp.rref", ["all"], {}),
-            ("gfp.nullspace", ["all"], {}),
-        ]:
+        for op, reductions in WALK_OPS:
             for red in reductions:
-                extra = {"limit": 3} if red == "hits" else {}
-                got = ctx.run(op, fam, red, **args, **extra)
-                want = naive.run(op, desc, red, **args, **extra)
-                assert got.export() == want.encode(), f"{backend} {name} {op}/{red} p={p}: {got.value()!r} != {want!r}"
+                args = walk_args(rng, op, red, p, cols)
+                got = ctx.run(op, fam, red, **args).value()
+                lc.claim(run_claim(op, desc, red, args), lean_result(got), f"{name} {op}/{red}")
+    lc.verify()
 
 
 @pytest.mark.parametrize("backend", BACKENDS)
 @pytest.mark.parametrize("p", PRIMES)
-def test_explicit_operations_match_naive(backend, p):
+def test_explicit_operations(backend, p):
     rng = random.Random(p * 7)
     ctx = lk.Context(backend)
+    lc = LeanCheck(f"gfp_explicit_{backend}_{p}", ["Gfp.Reference"], ["Gfp"])
     for rows, cols in [(1, 1), (2, 3), (3, 3), (4, 2), (5, 5)]:
-        batch = random_batch(rng, p, 16, rows, cols)
+        batch = random_batch(rng, p, 8, rows, cols)
         fam = ctx.explicit(batch)
         desc = fam.value()
-        check_same(ctx.run("gfp.rref_witness", fam), naive.run("gfp.rref_witness", desc))
+        lc.claim(run_claim("gfp.rref_witness", desc, "all", {}), lean_result(ctx.run("gfp.rref_witness", fam).value()), f"{rows}x{cols} witness")
         if rows == cols:
-            check_same(ctx.run("gfp.inverse", fam), naive.run("gfp.inverse", desc))
-        rhs = random_batch(rng, p, 16, 1, rows)
-        check_same(ctx.run("gfp.solve", fam, rhs=rhs), naive.run("gfp.solve", desc, rhs=rhs))
+            lc.claim(run_claim("gfp.inverse", desc, "all", {}), lean_result(ctx.run("gfp.inverse", fam).value()), f"{rows}x{cols} inverse")
+        rhs = random_batch(rng, p, 8, 1, rows)
+        lc.claim(run_claim("gfp.solve", desc, "all", {"rhs": rhs}), lean_result(ctx.run("gfp.solve", fam, rhs=rhs).value()), f"{rows}x{cols} solve")
+    lc.verify()
 
 
-@pytest.mark.parametrize("p", [2, 3, 7])
-def test_member_order_matches_naive(p):
-    """lk_family_member(i) is the i-th member of the naive enumeration."""
-    ctx = lk.Context()
+@pytest.mark.parametrize("p", [2, 3, 7, 251])
+def test_naive_matches_lean(p):
+    """The benchmark baseline is held to the same oracle."""
     rng = random.Random(p)
-    for name, fam, desc in families(ctx, rng, p):
-        ms, _ = naive.members(desc)
-        assert ctx.size(fam) == len(ms), name
-        for i in range(len(ms)):
-            assert ctx.member(fam, i).value().member(0) == ms[i], f"{name} member {i}"
-
-
-def test_witness_and_inverse_are_verified_by_multiplication():
-    p = 7
-    rng = random.Random(1)
     ctx = lk.Context()
-    batch = random_batch(rng, p, 20, 4, 4)
-    fam = ctx.explicit(batch)
-    w = ctx.value("gfp.rref_witness", fam)
-    inv = ctx.value("gfp.inverse", fam)
-    for i in range(20):
-        A = batch.member(i)
-        R, T = w.member(i)
-        assert naive.matmul(T, A, p) == R
-        assert naive.inverse(T, p) is not None
-        B = inv.member(i)
-        if B is not None:
-            assert naive.matmul(A, B, p) == [[int(a == b) for b in range(4)] for a in range(4)]
+    lc = LeanCheck(f"gfp_naive_{p}", ["Gfp.Reference"], ["Gfp"])
+    for name, fam in small_families(ctx, rng, p):
+        desc = fam.value()
+        cols = fam.param("cols")
+        for op, reductions in WALK_OPS:
+            for red in reductions:
+                args = walk_args(rng, op, red, p, cols)
+                lc.claim(run_claim(op, desc, red, args), lean_result(naive.run(op, desc, red, **args)), f"naive {name} {op}/{red}")
+    batch = random_batch(rng, p, 6, 3, 3)
+    desc = ctx.explicit(batch).value()
+    rhs = random_batch(rng, p, 6, 1, 3)
+    for op, args in [("gfp.rref_witness", {}), ("gfp.inverse", {}), ("gfp.solve", {"rhs": rhs})]:
+        lc.claim(run_claim(op, desc, "all", args), lean_result(naive.run(op, desc, "all", **args)), f"naive {op}")
+    lc.verify()
 
 
-def test_solutions_satisfy_the_system():
-    p = 5
-    rng = random.Random(2)
+@pytest.mark.parametrize("p", [2, 3, 5])
+def test_member_order(p):
+    """lk_family_member enumerates in the order the reference defines."""
+    rng = random.Random(p)
     ctx = lk.Context()
-    batch = random_batch(rng, p, 30, 3, 4)
-    rhs = random_batch(rng, p, 30, 1, 3)
-    sol = ctx.value("gfp.solve", ctx.explicit(batch), rhs=rhs)
-    for i in range(30):
-        x = sol.member(i)
-        if x is not None:
-            A = batch.member(i)
-            assert [sum(a * b for a, b in zip(r, x)) % p for r in A] == rhs.member(i)[0]
+    lc = LeanCheck(f"gfp_members_{p}", ["Gfp.Reference"], ["Gfp"])
+    for name, fam in small_families(ctx, rng, p):
+        members = [ctx.member(fam, i).value().member(0) for i in range(ctx.size(fam))]
+        lc.claim(f"Family.members {lean_family(fam.value())}", L(members), f"members of {name}")
+    lc.verify()
 
 
-def test_completeness_fields():
+def test_rejections_agree_with_reference():
+    """What the runtime refuses, the reference calls invalid, and vice versa."""
     ctx = lk.Context()
-    G = ctx.grassmannian(2, 7, 3)
-    c = ctx.value("gfp.full_col_rank", G, "count")
-    assert c.value == 0 and c.visited == c.family_size == 11811
-    h = ctx.value("gfp.rank", G, "histogram")
-    assert h.bins == [0, 0, 0, 11811]
-    hits = ctx.value("gfp.in_span", G, "hits", target=lk.matrix(2, [[1, 1, 1, 1, 1, 1, 1]]), limit=2)
-    assert hits.total == 651 and hits.visited == 11811 and hits.members.count == 2
-    for k, i in enumerate(hits.indices[:2]):
-        assert hits.members.member(k) == ctx.member(G, i).value().member(0)
-
-
-def test_roundtrip_of_families_and_results():
-    ctx = lk.Context()
-    G = ctx.grassmannian(3, 4, 2)
-    F = ctx.stack(ctx.transform(G, lk.matrix(3, [[1, 0], [0, 1], [1, 1], [2, 1]])), lk.matrix(3, [[1, 2]]))
-    again = ctx.load(F.export())
-    assert again.export() == F.export()
-    assert ctx.run("gfp.rank", again, "histogram").export() == ctx.run("gfp.rank", F, "histogram").export()
-    r = ctx.run("gfp.rref", F)
-    assert ctx.load(r.export()).export() == r.export()
-    # a result batch is a valid explicit family
-    assert ctx.value("gfp.rank", ctx.explicit(r), "histogram").bins == ctx.value("gfp.rank", F, "histogram").bins
+    G = ctx.grassmannian(2, 4, 2)
+    desc = G.value()
+    lc = LeanCheck("gfp_rejections", ["Gfp.Reference"], ["Gfp"])
+    cases = [("gfp.rank", "count", {}), ("gfp.rref", "histogram", {}), ("gfp.inverse", "all", {}),
+             ("gfp.rref_witness", "all", {}), ("gfp.nullspace", "count", {})]
+    for op, red, args in cases:
+        with pytest.raises(lk.Error):
+            ctx.run(op, G, red, **args)
+        lc.claim(run_claim(op, desc, red, args), ".invalid", f"{op}/{red} rejected")
+    lc.verify()
 
 
 def test_errors_are_specific():
@@ -204,6 +269,32 @@ def test_errors_are_specific():
         ctx.matrix(4, [[1, 2]])
     with pytest.raises(lk.Error):
         lk.Context("gfp.nonexistent")
+
+
+def test_roundtrip_and_composition():
+    ctx = lk.Context()
+    G = ctx.grassmannian(3, 4, 2)
+    F = ctx.stack(ctx.transform(G, lk.matrix(3, [[1, 0], [0, 1], [1, 1], [2, 1]])), lk.matrix(3, [[1, 2]]))
+    again = ctx.load(F.export())
+    assert again.export() == F.export()
+    assert ctx.run("gfp.rank", again, "histogram").export() == ctx.run("gfp.rank", F, "histogram").export()
+    r = ctx.run("gfp.rref", F)
+    assert ctx.load(r.export()).export() == r.export()
+    # a result batch is a valid explicit family, and rref is idempotent on ranks
+    assert ctx.value("gfp.rank", ctx.explicit(r), "histogram").bins == ctx.value("gfp.rank", F, "histogram").bins
+
+
+def test_threads_do_not_change_answers():
+    ctx = lk.Context()
+    F = ctx.transform(ctx.grassmannian(2, 8, 3), lk.matrix(2, [[1, 0, 1, 1, 0], [0, 1, 1, 0, 0], [1, 1, 0, 0, 1], [0, 0, 1, 1, 1],
+                                                              [1, 0, 0, 0, 1], [0, 1, 0, 1, 0], [1, 1, 1, 0, 0], [0, 0, 0, 1, 1]]))
+    target = lk.matrix(2, [[1, 1, 0, 1, 0]])
+    answers = set()
+    for threads in (1, 3, 32):
+        ctx.threads = threads
+        answers.add(ctx.run("gfp.in_span", F, "hits", target=target, limit=5).export())
+        answers.add(ctx.run("gfp.rank", F, "all").export())
+    assert len(answers) == 2
 
 
 def test_describe_lists_this_module():
