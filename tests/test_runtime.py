@@ -48,8 +48,8 @@ def test_natural_number_families_enumerate_like_the_naive_layer():
     `explicit`, `subsets` and `subsets_of` carry naturals onwards to sum_free_and_additive."""
     from lemmakernel import naive as rt
     ctx = lk.Context()
-    families = [ctx.range(10, 15), ctx.words(3, 3), ctx.range(0, 1), ctx.partitions(7),
-                ctx.partitions(9, distinct=True, odd=True), ctx.compositions(6),
+    families = [ctx.range(10, 15), ctx.words(3, 3), ctx.range(0, 1), ctx.latin_squares(3),
+                ctx.partitions(7), ctx.partitions(9, distinct=True, odd=True), ctx.compositions(6),
                 ctx.compositions(8, parts=3, max_part=4),
                 ctx.explicit(lk.naturals([[[3], [5]], [[4], [9]]])),
                 ctx.subsets(lk.naturals([[2], [3], [5]]), 2),
@@ -67,6 +67,8 @@ def test_natural_number_families_enumerate_like_the_naive_layer():
         ctx.range(5, 5)
     with pytest.raises(lk.Error, match="alphabet"):
         ctx.words(1, 3)
+    with pytest.raises(lk.Error, match="1 <= n <= 5"):
+        ctx.latin_squares(6)
     with pytest.raises(lk.Error, match="no partition"):
         ctx.partitions(3, max_part=2, max_parts=1)
     with pytest.raises(lk.Error, match="no composition"):

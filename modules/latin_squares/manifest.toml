@@ -1,0 +1,49 @@
+[module]
+name = "latin_squares"
+version = 1
+summary = "Latin squares of order at most 5: recognition, orthogonal mates, transversals, group tables, and isotopy canonical forms. Canonical forms are the row-major lexicographic minimum under independent row, column, and symbol permutations."
+lean = "lean"
+contract = "lean/Latin_squares/Contract.lean"
+reference = "lean/Latin_squares/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "is_latin"
+value = "boolean"
+families = ["explicit", "latin_squares"]
+summary = "Whether every row and column is a permutation of 0..n-1."
+
+[[operations]]
+name = "has_orthogonal_mate"
+value = "boolean"
+families = ["explicit", "latin_squares"]
+summary = "Whether a Latin square B exists for which the n^2 ordered pairs (A[i,j], B[i,j]) are distinct."
+
+[[operations]]
+name = "transversal_count"
+value = "integer"
+families = ["explicit", "latin_squares"]
+summary = "Number of column permutations c for which A[i,c[i]] contains every symbol exactly once."
+
+[[operations]]
+name = "is_group_table"
+value = "boolean"
+families = ["explicit", "latin_squares"]
+summary = "Whether the square, with row, column, and symbol labels all 0..n-1, is associative and has a two-sided identity."
+
+[[operations]]
+name = "isotopy_canonical_form"
+value = "lk.naturals"
+families = ["explicit", "latin_squares"]
+summary = "The row-major lexicographic minimum under independent permutations of rows, columns, and symbols; symbol relabelling is normalised by first occurrence."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/latin_squares_generic.cpp"]
+accepts = "square arrays of order 1 through 5"
+summary = "Portable C++: pruned row-permutation generation for Latin squares and orthogonal mates, permutation search for transversals and isotopy."
+
+[[rejections]]
+case = "non-square array"
+error = "no available backend accepts"

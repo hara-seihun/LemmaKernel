@@ -1,0 +1,2 @@
+import Latin_squares.Reference
+import Latin_squares.Contract

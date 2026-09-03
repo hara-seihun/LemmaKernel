@@ -43,6 +43,46 @@ Result<uint64_t> pow_checked(uint64_t p, uint64_t e) {
     return Result<uint64_t>::success(r);
 }
 
+std::vector<std::vector<Entry>> permutation_rows(uint64_t n) {
+    std::vector<Entry> row(n);
+    for (uint64_t i = 0; i < n; ++i) row[i] = (Entry)i;
+    std::vector<std::vector<Entry>> rows;
+    do rows.push_back(row); while (std::next_permutation(row.begin(), row.end()));
+    return rows;
+}
+
+uint64_t latin_state_key(const std::vector<uint32_t> &columns, uint64_t n) {
+    uint64_t key = 0;
+    for (uint32_t column : columns) key = (key << n) | column;
+    return key;
+}
+
+uint64_t latin_completion_count(const std::vector<std::vector<Entry>> &rows, std::vector<uint32_t> &columns,
+                                uint64_t depth, std::unordered_map<uint64_t, uint64_t> &memo) {
+    if (depth == columns.size()) return 1;
+    uint64_t key = latin_state_key(columns, columns.size());
+    if (auto it = memo.find(key); it != memo.end()) return it->second;
+    uint64_t total = 0;
+    for (const auto &row : rows) {
+        bool fits = true;
+        for (uint64_t c = 0; c < columns.size(); ++c)
+            if (columns[c] & (1u << row[c])) { fits = false; break; }
+        if (!fits) continue;
+        for (uint64_t c = 0; c < columns.size(); ++c) columns[c] |= 1u << row[c];
+        total += latin_completion_count(rows, columns, depth + 1, memo);
+        for (uint64_t c = 0; c < columns.size(); ++c) columns[c] &= ~(1u << row[c]);
+    }
+    memo.emplace(key, total);
+    return total;
+}
+
+uint64_t latin_square_count(uint64_t n) {
+    auto rows = permutation_rows(n);
+    std::vector<uint32_t> columns(n, 0);
+    std::unordered_map<uint64_t, uint64_t> memo;
+    return latin_completion_count(rows, columns, 0, memo);
+}
+
 struct Triple {
     uint64_t x, y, z;
     bool operator==(const Triple &) const = default;
@@ -348,6 +388,7 @@ const char *family_kind_name(Family::Kind k) {
     case Family::Kind::SymmetricMatrices: return "symmetric_matrices";
     case Family::Kind::Range: return "range";
     case Family::Kind::Words: return "words";
+    case Family::Kind::LatinSquares: return "latin_squares";
     case Family::Kind::Partitions: return "partitions";
     case Family::Kind::Compositions: return "compositions";
     case Family::Kind::StandardTableaux: return "standard_tableaux";
@@ -360,8 +401,8 @@ const char *family_kind_name(Family::Kind k) {
 }
 
 uint64_t Family::prime() const {
-    if (kind == Kind::Range || kind == Kind::Words || kind == Kind::Partitions ||
-        kind == Kind::Compositions || kind == Kind::StandardTableaux)
+    if (kind == Kind::Range || kind == Kind::Words || kind == Kind::LatinSquares ||
+        kind == Kind::Partitions || kind == Kind::Compositions || kind == Kind::StandardTableaux)
         return NATURALS;
     if (kind == Kind::AllGraphs || kind == Kind::EdgeSubgraphs || kind == Kind::CayleyGraphs) return 2;
     return child ? child->prime() : p;
@@ -381,6 +422,7 @@ uint64_t Family::rows() const {
     case Kind::SymmetricMatrices: return n;
     case Kind::Range: return 1;
     case Kind::Words: return 1;
+    case Kind::LatinSquares: return n;
     case Kind::Partitions: return 1;
     case Kind::Compositions: return 1;
     case Kind::StandardTableaux: return data->cols;
@@ -406,6 +448,7 @@ uint64_t Family::cols() const {
     case Kind::SymmetricMatrices: return n;
     case Kind::Range: return 1;
     case Kind::Words: return n;
+    case Kind::LatinSquares: return n;
     case Kind::Partitions: return n;
     case Kind::Compositions: return n;
     case Kind::StandardTableaux: return data->entries[0];
@@ -437,6 +480,7 @@ Result<uint64_t> Family::size() const {
     case Kind::Words: return pow_checked(p, m * n);
     case Kind::SymmetricMatrices: return pow_checked(p, n * (n + 1) / 2);
     case Kind::Range: return Result<uint64_t>::success(b - a);
+    case Kind::LatinSquares: return Result<uint64_t>::success(latin_square_count(n));
     case Kind::Partitions: {
         uint64_t largest = effective_bound(m, n), slots = effective_bound(k, n);
         PartitionCounter counter(n, h, a != 0, b != 0);
@@ -490,6 +534,11 @@ Result<uint64_t> Family::top_count() const {
     case Kind::Words:
     case Kind::SymmetricMatrices: return pow_checked(p, n);
     case Kind::Range: return size();
+    case Kind::LatinSquares: {
+        uint64_t factorial = 1;
+        for (uint64_t i = 2; i <= n; ++i) factorial *= i;
+        return Result<uint64_t>::success(factorial);
+    }
     case Kind::Partitions: return Result<uint64_t>::success(effective_bound(m, n));
     case Kind::Compositions: return Result<uint64_t>::success(k ? 1 : n);
     case Kind::StandardTableaux: return size();
@@ -572,6 +621,34 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         for (int64_t q = (int64_t)(m * n) - 1; q >= 0; --q) {
             out.entries[q] = (Entry)(rem % p);
             rem /= p;
+        }
+        break;
+    }
+    case Kind::LatinSquares: {
+        auto candidates = permutation_rows(n);
+        std::vector<uint32_t> columns(n, 0);
+        std::unordered_map<uint64_t, uint64_t> memo;
+        out.entries.clear();
+        out.entries.reserve(n * n);
+        uint64_t remaining = index;
+        for (uint64_t depth = 0; depth < n; ++depth) {
+            bool found = false;
+            for (const auto &row : candidates) {
+                bool fits = true;
+                for (uint64_t c = 0; c < n; ++c)
+                    if (columns[c] & (1u << row[c])) { fits = false; break; }
+                if (!fits) continue;
+                for (uint64_t c = 0; c < n; ++c) columns[c] |= 1u << row[c];
+                uint64_t below = latin_completion_count(candidates, columns, depth + 1, memo);
+                if (remaining < below) {
+                    out.entries.insert(out.entries.end(), row.begin(), row.end());
+                    found = true;
+                    break;
+                }
+                remaining -= below;
+                for (uint64_t c = 0; c < n; ++c) columns[c] &= ~(1u << row[c]);
+            }
+            if (!found) return fail(INTERNAL, "latin_squares: unranking failed");
         }
         break;
     }
@@ -898,6 +975,29 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
         }
         return R::success(index);
     }
+    case Kind::LatinSquares: {
+        auto candidates = permutation_rows(n);
+        std::vector<uint32_t> columns(n, 0);
+        std::unordered_map<uint64_t, uint64_t> memo;
+        uint64_t index = 0;
+        for (uint64_t depth = 0; depth < n; ++depth) {
+            const Entry *wanted = mem.entries.data() + depth * n;
+            bool found = false;
+            for (const auto &row : candidates) {
+                bool fits = true;
+                for (uint64_t c = 0; c < n; ++c)
+                    if (columns[c] & (1u << row[c])) { fits = false; break; }
+                if (!fits) continue;
+                for (uint64_t c = 0; c < n; ++c) columns[c] |= 1u << row[c];
+                uint64_t below = latin_completion_count(candidates, columns, depth + 1, memo);
+                if (std::equal(row.begin(), row.end(), wanted)) { found = true; break; }
+                index += below;
+                for (uint64_t c = 0; c < n; ++c) columns[c] &= ~(1u << row[c]);
+            }
+            if (!found) return R::failure(INVALID, "index_of: matrix is not a Latin square");
+        }
+        return R::success(index);
+    }
     case Kind::SymmetricMatrices: {
         uint64_t index = 0;
         for (uint64_t i = 0; i < n; ++i)
@@ -1195,6 +1295,38 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
         descend(descend, 0, top_begin * below[0], top_begin, top_end);
         return ok();
     }
+    case Kind::LatinSquares: {
+        auto candidates = permutation_rows(n);
+        std::vector<uint32_t> columns(n, 0);
+        std::unordered_map<uint64_t, uint64_t> memo;
+        uint64_t branch_size = latin_square_count(n) / candidates.size();
+        auto descend = [&](auto &self, uint64_t depth, uint64_t index,
+                           uint64_t begin, uint64_t end) -> void {
+            for (uint64_t r = begin; r < end; ++r) {
+                const auto &row = candidates[r];
+                bool fits = true;
+                for (uint64_t c = 0; c < n; ++c)
+                    if (columns[c] & (1u << row[c])) { fits = false; break; }
+                if (!fits) continue;
+                for (uint64_t c = 0; c < n; ++c) columns[c] |= 1u << row[c];
+                uint64_t below = depth == 0 ? branch_size : latin_completion_count(candidates, columns, depth + 1, memo);
+                Step step = v.push(row.data(), index, below);
+                if (step == Step::Descend) {
+                    if (depth + 1 == n) v.leaf(index);
+                    else self(self, depth + 1, index, 0, candidates.size());
+                } else if (step == Step::TakeAll) {
+                    v.take_all(index, below);
+                } else {
+                    v.skip_all(index, below);
+                }
+                v.pop();
+                for (uint64_t c = 0; c < n; ++c) columns[c] &= ~(1u << row[c]);
+                index += below;
+            }
+        };
+        descend(descend, 0, top_begin * branch_size, top_begin, top_end);
+        return ok();
+    }
     case Kind::Transform: {
         TransformVisitor tv(v, *data, prime(), child->cols());
         return child->enumerate(tv, top_begin, top_end);
@@ -1489,6 +1621,15 @@ Result<std::shared_ptr<Family>> make_words(uint64_t alphabet, uint64_t length) {
     f->n = length;
     auto sz = f->size();
     if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
+    return R::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_latin_squares(uint64_t n) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (n == 0 || n > 5) return R::failure(INVALID, "latin_squares: generic enumeration needs 1 <= n <= 5");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::LatinSquares;
+    f->n = n;
     return R::success(f);
 }
 

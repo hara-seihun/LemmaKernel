@@ -141,6 +141,30 @@ def composition_members(total, parts, max_part):
         yield from exact(total, length, [])
 
 
+def latin_square_members(n: int):
+    """Order-n Latin squares in row-major lexicographic order."""
+    rows = list(itertools.permutations(range(n)))
+    columns = [set() for _ in range(n)]
+    square = []
+
+    def visit():
+        if len(square) == n:
+            yield [list(row) for row in square]
+            return
+        for row in rows:
+            if any(row[c] in columns[c] for c in range(n)):
+                continue
+            square.append(row)
+            for c in range(n):
+                columns[c].add(row[c])
+            yield from visit()
+            for c in range(n):
+                columns[c].remove(row[c])
+            square.pop()
+
+    yield from visit()
+
+
 def standard_tableaux(shape):
     """Standard tableaux ordered by the row of each removable corner, top row first."""
     shape = list(shape)
@@ -293,7 +317,8 @@ def sublattice_members(base, index: int):
 
 
 def prime(f: Family) -> int:
-    if f.kind in ("group_tables", "range", "words", "partitions", "compositions", "standard_tableaux"):
+    if f.kind in ("group_tables", "range", "words", "latin_squares", "partitions", "compositions",
+                  "standard_tableaux"):
         return NATURALS
     if f.kind == "group_elements":
         return f.children[0].p if isinstance(f.children[0], Matrix) else 0
@@ -357,6 +382,8 @@ def iter_members(f: Family):
     elif f.kind == "words":
         for w in itertools.product(range(f.params["alphabet"]), repeat=f.params["length"]):
             yield [list(w)]
+    elif f.kind == "latin_squares":
+        yield from latin_square_members(f.params["n"])
     elif f.kind == "partitions":
         yield from partition_members(f.params["total"], f.params["max_part"], f.params["max_parts"],
                                      f.params["max_multiplicity"], f.params["distinct"], f.params["odd"])

@@ -87,6 +87,7 @@ _lib.lk_family_subsets_of.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H
 _lib.lk_family_symmetric_matrices.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_range.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_words.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
+_lib.lk_family_latin_squares.argtypes = [_P, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_partitions.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64,
                                       ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_compositions.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
@@ -333,6 +334,12 @@ class Context:
         """Every word of `length` letters over 0..alphabet-1 as a 1 x length natural-number matrix."""
         out = _H()
         self._check(_lib.lk_family_words(self._ptr, alphabet, length, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def latin_squares(self, n: int) -> Handle:
+        """Every order-n Latin square, in row-major lexicographic order."""
+        out = _H()
+        self._check(_lib.lk_family_latin_squares(self._ptr, n, ctypes.byref(out)))
         return self._wrap(out)
 
     def partitions(self, total: int, *, max_part: int = 0, max_parts: int = 0,

@@ -32,8 +32,8 @@ Vocabulary, in the order a request is built:
   `symmetric_matrices`, `sublattices` of a fixed integral lattice, the `transform`/`stack`
   wrappers, `group_elements` of a permutation or matrix group, `group_tables` from stored Cayley
   tables or permutation generators, graph families (`all_graphs`, `edge_subgraphs`,
-  `cayley_graphs`), `range`/`words` of natural numbers, constrained `partitions`, `compositions`,
-  and `standard_tableaux`). Family sizes in the hundreds of millions are normal.
+  `cayley_graphs`), `range`/`words` of natural numbers, `latin_squares`, constrained `partitions`,
+  `compositions`, and `standard_tableaux`). Family sizes in the hundreds of millions are normal.
 - **operation**: what to compute per member (`gfp.rank`, `gfp.in_span`, `gfp.rref`, ...).
 - **reduction**: what to bring back. For booleans: `count`, `hits`, `first` (the least hit,
   stopping early), `all`. For integers: `histogram`, `sum`, `max`, `min` (with the member
@@ -53,13 +53,16 @@ tools/bench.py                                      # kernel vs naive; reruns on
 
 The Lean side (`lake build`) needs Mathlib. In the canonical checkout `.lake/packages` is a
 hardlink copy of `~/projects/LemmaLib/.lake/packages`, which pins the same Lean and Mathlib
-versions. A task checkout (under `~/work/clones`) should share it rather than fetch its own:
+versions. A task checkout under `~/work/clones` should make another hardlink copy rather than
+fetch its own:
 
 ```
-mkdir -p .lake && ln -s /home/kenan/projects/LemmaKernel/.lake/packages .lake/packages
+mkdir -p .lake && cp -al /home/kenan/projects/LemmaKernel/.lake/packages .lake/packages
 ```
 
-after which `lake build` finishes in seconds. Tests only need `Lk.Reference` and the module's
+Do not symlink this directory. `lake clean` follows package symlinks and deletes the shared build.
+With the hardlink copy, cleanup removes only the checkout's directory entries. `lake build` then
+finishes in seconds. Tests only need `Lk.Reference` and the module's
 `Reference` (no Mathlib import) and take a few seconds each; on a shared machine use
 `pytest -n 8 tests` rather than `auto`.
 No test or bench script is written per module: a module ships `cases.py` and the manifest, and
@@ -109,6 +112,7 @@ and committed; the build refuses to configure if they are stale.
 | [hadamard](modules/hadamard/manifest.toml) | Hadamard, skew, regular and conference predicates for F_2 matrices read as signs, plus signed-equivalence canonical forms | `generic` (portable C++) |
 | [hypergraphs](modules/hypergraphs/manifest.toml) | uniform hypergraphs: linearity, weak colouring number, Berge cycles and girth, finite Turan searches, and two-colour Ramsey searches | `generic` (bit sets and backtracking, portable C++) |
 | [integer_partitions](modules/integer_partitions/manifest.toml) | constrained partitions and compositions: number of parts, largest part, and rank/crank distributions | `generic` (portable C++ enumeration) |
+| [latin_squares](modules/latin_squares/manifest.toml) | Latin-square recognition, orthogonal mates, transversals, group tables, and isotopy canonical forms | `generic` (orders 1 through 5, portable C++) |
 | [lattice_of_subspaces](modules/lattice_of_subspaces/manifest.toml) | Gaussian binomials, flag counts, counts above and below a row space, and subspace incidence predicates | `generic` (checked formulas and row reduction, portable C++) |
 | [lattices_small](modules/lattices_small/manifest.toml) | positive-definite integral lattices via signed Gram matrices: minimum, kissing number, theta-series prefixes, parity, unimodularity, short vectors, and index-n sublattices | `generic` (Fincke-Pohst enumeration, exact norm and determinant checks, portable C++) |
 | [linear_codes](modules/linear_codes/manifest.toml) | q-ary linear codes from generator matrices: minimum distance, weight enumerator, dual, self-duality, covering radius, MDS test, and coordinate-permutation automorphism order | `generic` (q-ary Gray-code word enumeration, portable C++) |

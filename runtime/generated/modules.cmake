@@ -36,6 +36,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/hypergraphs/backe
 # module hypergraphs: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/integer_partitions/backends/generic/integer_partitions_generic.cpp)
 # module integer_partitions: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/latin_squares/backends/generic/latin_squares_generic.cpp)
+# module latin_squares: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/lattice_of_subspaces/backends/generic/lattice_of_subspaces_generic.cpp)
 # module lattice_of_subspaces: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/lattices_small/backends/generic/lattices_small_generic.cpp)

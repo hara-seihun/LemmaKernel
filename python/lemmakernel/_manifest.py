@@ -62,6 +62,12 @@ RUNTIME = {'families': [{'lean': 'explicit',
                'name': 'words',
                'summary': 'Every word of the given length over the alphabet 0..alphabet-1 as a 1 x length '
                           'natural-number matrix; index is the base-alphabet number of the word.'},
+              {'lean': 'latinSquares',
+               'member': 'lk.naturals',
+               'name': 'latin_squares',
+               'summary': 'Every Latin square of order n on symbols 0..n-1, lexicographic by row-major '
+                          'entries. Rows are generated as permutations and column collisions are pruned. The '
+                          'generic family enumerator supports 1 <= n <= 5.'},
               {'lean': 'partitions',
                'member': 'lk.naturals',
                'name': 'partitions',
@@ -1215,6 +1221,46 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'value': 'integer'}],
   'rejections': [{'case': 'compositions of 6', 'error': 'partitions families only', 'op': 'rank'},
                  {'case': 'compositions of 6', 'error': 'partitions families only', 'op': 'crank'}]},
+ {'backends': [{'accepts': 'square arrays of order 1 through 5',
+                'name': 'generic',
+                'sources': ['backends/generic/latin_squares_generic.cpp'],
+                'summary': 'Portable C++: pruned row-permutation generation for Latin squares and orthogonal '
+                           'mates, permutation search for transversals and isotopy.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Latin_squares/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'latin_squares',
+             'reference': 'lean/Latin_squares/Reference.lean',
+             'summary': 'Latin squares of order at most 5: recognition, orthogonal mates, transversals, '
+                        'group tables, and isotopy canonical forms. Canonical forms are the row-major '
+                        'lexicographic minimum under independent row, column, and symbol permutations.',
+             'version': 1},
+  'operations': [{'families': ['explicit', 'latin_squares'],
+                  'name': 'is_latin',
+                  'summary': 'Whether every row and column is a permutation of 0..n-1.',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'latin_squares'],
+                  'name': 'has_orthogonal_mate',
+                  'summary': 'Whether a Latin square B exists for which the n^2 ordered pairs (A[i,j], '
+                             'B[i,j]) are distinct.',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'latin_squares'],
+                  'name': 'transversal_count',
+                  'summary': 'Number of column permutations c for which A[i,c[i]] contains every symbol '
+                             'exactly once.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'latin_squares'],
+                  'name': 'is_group_table',
+                  'summary': 'Whether the square, with row, column, and symbol labels all 0..n-1, is '
+                             'associative and has a two-sided identity.',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'latin_squares'],
+                  'name': 'isotopy_canonical_form',
+                  'summary': 'The row-major lexicographic minimum under independent permutations of rows, '
+                             'columns, and symbols; symbol relabelling is normalised by first occurrence.',
+                  'value': 'lk.naturals'}],
+  'rejections': [{'case': 'non-square array', 'error': 'no available backend accepts'}]},
  {'backends': [{'accepts': 'q >= 2 for formula operations; any matrix family over p < 2^32 for row-space '
                            'operations; integer answers must fit in u64',
                 'name': 'generic',

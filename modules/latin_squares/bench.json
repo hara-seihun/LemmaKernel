@@ -1,0 +1,34 @@
+{
+ "module": "latin_squares",
+ "fingerprint": {
+  "module": "732674c59d5f98afc157600a02df0ead0580dcfcfe48c09dd416e073cfae4cc0",
+  "runtime": "4d2ac9664baf398a5a5ccdd6c33dbc98b314d443074de64f7afb519ea4584932",
+  "dependencies": [],
+  "combined": "6c1651cc997541ade8450eaef8bb5c4840754160a63a3f8064989c26aaa38bb5"
+ },
+ "measured_at": "2026-09-03T05:34:05+00:00",
+ "commit": "06676d671cccf753f1348f145c9073297570b450",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "order5_transversals",
+   "what": "transversal-count distribution over all 161,280 Latin squares of order 5",
+   "op": "latin_squares.transversal_count",
+   "reduction": "histogram",
+   "members": 161280,
+   "naive_s": 12.62340812087059,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.19653806509450078,
+   "kernel_all_threads_s": 0.03946671588346362,
+   "threads": 32,
+   "speedup_1_thread": 64.22882058394599,
+   "speedup_all_threads": 319.84946906007303,
+   "answer": "Histogram(visited=161280, family_size=161280, bins=[0, 0, 0, 144000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17280])"
+  }
+ ]
+}

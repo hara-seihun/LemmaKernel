@@ -294,6 +294,11 @@ lk_status lk_family_words(lk_context *ctx, uint64_t alphabet, uint64_t length, l
     FAMILY_RESULT(make_words(alphabet, length));
 }
 
+lk_status lk_family_latin_squares(lk_context *ctx, uint64_t n, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    FAMILY_RESULT(make_latin_squares(n));
+}
+
 lk_status lk_family_partitions(lk_context *ctx, uint64_t total, uint64_t max_part, uint64_t max_parts,
                                uint64_t max_multiplicity, uint64_t distinct, uint64_t odd, lk_handle *out) {
     if (!ctx || !out) return LK_INVALID_ARGUMENT;

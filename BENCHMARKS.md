@@ -28,7 +28,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | set_systems | antichains_64_choose_5 | 7,624,512 | 16.6 s~ | 0.0204 s | 815× | 4,420× |
 | posets | divisor_heights_100000 | 100,000 | 123 s~ | 0.17 s | 725× | 11,326× |
 | graphs | random_graph_chromatic | 120 | 0.0713 s | 0.000214 s | 334× | 199× |
-| quantum_codes | distance census of three-spaces | 97,155 | 8.15 s | 0.03 s | 272× | 2,099× |
+| quantum_codes | distance census of three-spaces | 97,155 | 8.25 s | 0.0277 s | 298× | 2,686× |
 | gfq | gf4_subset_ranks | 8,568 | 1.58 s | 0.00965 s | 163× | 593× |
 | linear_codes | grassmannian_3_7_binary | 11,811 | 0.418 s | 0.00267 s | 157× | 723× |
 | lattice_of_subspaces | g84_contains_line | 200,787 | 2.25 s | 0.0163 s | 138× | 638× |
@@ -40,6 +40,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | designs | complete 6-subsets of 12 | 924 | 0.0451 s | 0.000587 s | 77× | 79× |
 | strongly_regular | six-vertex graph census | 2,097,152 | 16.8 s~ | 0.229 s | 73× | 302× |
 | subspace_orbits | PG(4,2) line orbits | 155 | 0.958 s | 0.0148 s | 65× | 312× |
+| latin_squares | order5_transversals | 161,280 | 12.6 s~ | 0.197 s | 64× | 320× |
 | young | ternary_rsk_length7 | 2,187 | 0.0427 s | 0.000693 s | 62× | 29× |
 | hadamard | all_4x4_hadamard | 65,536 | 0.17 s | 0.00292 s | 58× | 267× |
 | matchings_and_flows | all_unit_networks_4 | 65,536 | 0.338 s | 0.00618 s | 55× | 359× |
@@ -86,6 +87,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | hadamard | all_4x4_hadamard | count all 4x4 Hadamard sign matrices among the 65,536 binary matrices | 65,536 | 0.17 s | 0.00292 s | 0.000636 s | 58× | 267× |
 | hypergraphs | ramsey_R33_on_six_vertices | balanced red-blue colourings of K_6 avoiding a monochromatic triangle; R(3,3)=6 makes the hit set empty | 6,435 | 0.0577 s | 0.00154 s | 0.000478 s | 37× | 121× |
 | integer_partitions | partition_rank_50 | Dyson rank distribution of all 204,226 partitions of 50 | 204,226 | 1.11 s | 0.0107 s | 0.00211 s | 104× | 529× |
+| latin_squares | order5_transversals | transversal-count distribution over all 161,280 Latin squares of order 5 | 161,280 | 12.6 s~ | 0.197 s | 0.0395 s | 64× | 320× |
 | lattice_of_subspaces | g84_contains_line | 4-subspaces of F_2^8 containing a fixed line, among all 200787 members of G_2(8,4) | 200,787 | 2.25 s | 0.0163 s | 0.00353 s | 138× | 638× |
 | lattices_small | Z4 theta through 12 | theta coefficients through q^12 for the standard rank-four lattice | 1 | 0.00552 s | 0.000192 s | 0.000171 s | 29× | 32× |
 | lattices_small | A4 vectors through norm 12 | all nonzero A4 coordinate vectors of squared norm at most 12 | 1 | 0.00405 s | 4.05e-05 s | 3.48e-05 s | 100× | 117× |
@@ -117,7 +119,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | posets | eight_of_sixteen_subsets | linear-extension distribution for all 8-element induced subposets of the Boolean lattice B_4 | 12,870 | 1.74 s | 0.0108 s | 0.00242 s | 161× | 718× |
 | posets | divisor_heights_100000 | height distribution of the divisor posets of the first 100000 positive integers | 100,000 | 123 s~ | 0.17 s | 0.0108 s | 725× | 11,326× |
 | projective_sets | pg32_six_sets | maximum line intersection for every 6-point subset of the 15 points of PG(3,2) | 5,005 | 2.95 s | 0.00176 s | 0.00052 s | 1,673× | 5,674× |
-| quantum_codes | distance census of three-spaces | distance distribution of all binary symplectic 3-spaces in F_2^8 | 97,155 | 8.15 s | 0.03 s | 0.00388 s | 272× | 2,099× |
+| quantum_codes | distance census of three-spaces | distance distribution of all binary symplectic 3-spaces in F_2^8 | 97,155 | 8.25 s | 0.0277 s | 0.00307 s | 298× | 2,686× |
 | residues | orders_mod_10007 | the multiplicative order of every unit modulo 10007 | 10,006 | 3.13 s | 0.000907 s | 0.000549 s | 3,446× | 5,692× |
 | residues | primitive_roots_mod_10007 | how many units modulo 10007 generate the whole unit group | 10,006 | 23.5 s~ | 0.000824 s | 0.000483 s | 28,580× | 48,774× |
 | residues | discrete_logs_mod_10007 | the largest discrete logarithm to base 5 modulo 10007, over every unit | 10,006 | 2.22 s | 0.00321 s | 0.000518 s | 691× | 4,282× |

@@ -31,6 +31,7 @@ def familyCols : Family → Nat
   | .symmetricMatrices _ n => n
   | .range _ _ => 1
   | .words _ length => length
+  | .latinSquares n => n
   | .partitions total _ _ _ _ _ => total
   | .compositions total _ _ => total
   | .standardTableaux shape => shape.headD 0
@@ -50,6 +51,7 @@ where
     | .symmetricMatrices _ n => n
     | .range _ _ => 1
     | .words _ _ => 1
+    | .latinSquares n => n
     | .partitions _ _ _ _ _ _ => 1
     | .compositions _ _ _ => 1
     | .standardTableaux shape => shape.length
@@ -61,7 +63,7 @@ def matrixFamily : Family → Bool
   | .explicit _ _ | .subsets _ _ _ | .grassmannian _ _ _ | .allMatrices _ _ _ |
     .symmetricMatrices _ _ => true
   | .transform inner _ | .stack inner _ | .subsetsOf inner _ => matrixFamily inner
-  | .groupElements _ _ | .groupTables _ | .range _ _ | .words _ _ |
+  | .groupElements _ _ | .groupTables _ | .range _ _ | .words _ _ | .latinSquares _ |
     .partitions _ _ _ _ _ _ | .compositions _ _ _ | .standardTableaux _ |
     .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ | .sublattices _ _ => false
 

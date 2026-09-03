@@ -92,6 +92,12 @@ lean = "words"
 summary = "Every word of the given length over the alphabet 0..alphabet-1 as a 1 x length natural-number matrix; index is the base-alphabet number of the word."
 
 [[families]]
+name = "latin_squares"
+member = "lk.naturals"
+lean = "latinSquares"
+summary = "Every Latin square of order n on symbols 0..n-1, lexicographic by row-major entries. Rows are generated as permutations and column collisions are pruned. The generic family enumerator supports 1 <= n <= 5."
+
+[[families]]
 name = "partitions"
 member = "lk.naturals"
 lean = "partitions"

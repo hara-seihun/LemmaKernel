@@ -16,14 +16,16 @@ struct PartitionTable;
 
 struct Family {
     enum class Kind { Explicit, Subsets, Grassmannian, AllMatrices, Transform, Stack, GroupElements,
-                      GroupTables, SubsetsOf, SymmetricMatrices, Range, Words, Partitions, Compositions,
-                      StandardTableaux, AllGraphs, EdgeSubgraphs, CayleyGraphs, Sublattices };
+                      GroupTables, SubsetsOf, SymmetricMatrices, Range, Words, LatinSquares,
+                      Partitions, Compositions, StandardTableaux, AllGraphs, EdgeSubgraphs,
+                      CayleyGraphs, Sublattices };
     Kind kind;
     /* Batch, group tables, dictionary (Subsets, and the materialised inner family for SubsetsOf),
      * C, stacked rows, group generators, or the shape of a StandardTableaux family. */
     std::shared_ptr<Matrix> data;
     std::shared_ptr<Family> child;
-    uint64_t p = 0, k = 0, n = 0, h = 0, m = 0; /* Words: p is the alphabet size, n the length */
+    uint64_t p = 0, k = 0, n = 0, h = 0, m = 0; /* Words: p is the alphabet size, n the length;
+                                                  LatinSquares: n is the order */
     uint64_t a = 0, b = 0;                     /* Range: [a, b). Partitions: flags distinct, odd. */
     /* Expensive cardinalities are fixed when their family is constructed. */
     bool size_cached = false;
@@ -49,7 +51,8 @@ struct Family {
     /* member() into caller-owned storage; `out.entries` is reused when already large enough. */
     Status member_into(uint64_t index, Matrix &out) const;
     /* Inverse of member(): the canonical index of a member given as its rows. Only kinds with a
-     * closed-form order support it (subsets, grassmannian, all_matrices, group_elements). */
+     * rank implementation support it (subsets, grassmannian, all_matrices, latin_squares,
+     * group_elements). */
     Result<uint64_t> index_of(const Matrix &member) const;
     /* Group elements (GroupElements only); computes the closure. */
     Result<const std::vector<Entry> *> group_elements() const;
@@ -86,6 +89,7 @@ Result<std::shared_ptr<Family>> make_subsets_of(std::shared_ptr<Family> inner, u
 Result<std::shared_ptr<Family>> make_symmetric_matrices(uint64_t p, uint64_t n);
 Result<std::shared_ptr<Family>> make_range(uint64_t a, uint64_t b);
 Result<std::shared_ptr<Family>> make_words(uint64_t alphabet, uint64_t length);
+Result<std::shared_ptr<Family>> make_latin_squares(uint64_t n);
 /* Partitions of total, padded with trailing zeros to total entries. A zero bound means
  * unrestricted. `distinct` and `odd` are Boolean flags. */
 Result<std::shared_ptr<Family>> make_partitions(uint64_t total, uint64_t max_part, uint64_t max_parts,

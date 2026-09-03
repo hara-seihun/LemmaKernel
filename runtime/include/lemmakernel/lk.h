@@ -63,6 +63,7 @@ lk_status lk_family_subsets_of(lk_context *ctx, lk_handle family, uint64_t k, lk
 lk_status lk_family_symmetric_matrices(lk_context *ctx, uint64_t p, uint64_t n, lk_handle *out);
 lk_status lk_family_range(lk_context *ctx, uint64_t a, uint64_t b, lk_handle *out);
 lk_status lk_family_words(lk_context *ctx, uint64_t alphabet, uint64_t length, lk_handle *out);
+lk_status lk_family_latin_squares(lk_context *ctx, uint64_t n, lk_handle *out);
 lk_status lk_family_partitions(lk_context *ctx, uint64_t total, uint64_t max_part, uint64_t max_parts,
                                uint64_t max_multiplicity, uint64_t distinct, uint64_t odd, lk_handle *out);
 lk_status lk_family_compositions(lk_context *ctx, uint64_t total, uint64_t parts, uint64_t max_part, lk_handle *out);

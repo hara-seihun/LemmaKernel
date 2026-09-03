@@ -130,6 +130,25 @@ def symmetricMembers (p n : Nat) : List Mat :=
     (List.range n).map fun i => (List.range n).map fun j =>
       if i ≤ j then digits.getD (pos i j) 0 else digits.getD (pos j i) 0
 
+def noDuplicates : List Nat → Bool
+  | [] => true
+  | x :: xs => if x ∈ xs then false else noDuplicates xs
+
+/-- The permutations of `0..n-1`, in lexicographic order. -/
+def permutationRows (n : Nat) : List Vec := (tuples n n).filter noDuplicates
+
+def columnCompatible (rows : Mat) (row : Vec) : Bool :=
+  (List.range row.length).all fun c => !(rows.map (fun r => r.getD c 0)).contains (row.getD c 0)
+
+/-- Complete a row prefix using permutation rows, pruning a branch as soon as a column repeats. -/
+def latinCompletions (n : Nat) : Nat → Mat → List Mat
+  | 0, rows => [rows]
+  | fuel + 1, rows => (permutationRows n).flatMap fun row =>
+      if columnCompatible rows row then latinCompletions n fuel (rows ++ [row]) else []
+
+/-- Every order-`n` Latin square, lexicographic by row-major entries. -/
+def latinSquaresMembers (n : Nat) : List Mat := latinCompletions n n []
+
 /-- The positive integers at most `n`, largest first. -/
 def descending (n : Nat) : List Nat := (List.range n).reverse.map (· + 1)
 
@@ -305,6 +324,7 @@ inductive Family
   | symmetricMatrices (p n : Nat)
   | range (a b : Nat)
   | words (alphabet length : Nat)
+  | latinSquares (n : Nat)
   | partitions (total maxPart maxParts maxMultiplicity distinct odd : Nat)
   | compositions (total parts maxPart : Nat)
   | standardTableaux (shape : Vec)
@@ -326,15 +346,15 @@ def Family.p : Family → Nat
   | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ => 2
   | .groupElements p _ => p
   | .sublattices _ _ => gramTag
-  | .groupTables _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ |
-    .compositions _ _ _ | .standardTableaux _ => 0
+  | .groupTables _ | .range _ _ | .words _ _ | .latinSquares _ |
+    .partitions _ _ _ _ _ _ | .compositions _ _ _ | .standardTableaux _ => 0
 
 /-- Whether members are natural numbers rather than residues of a prime. -/
 def Family.naturals : Family → Bool
   | .explicit p _ | .subsets p _ _ => p == Lk.naturals
   | .stack f _ | .subsetsOf f _ => f.naturals
-  | .groupTables _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ |
-    .compositions _ _ _ | .standardTableaux _ => true
+  | .groupTables _ | .range _ _ | .words _ _ | .latinSquares _ |
+    .partitions _ _ _ _ _ _ | .compositions _ _ _ | .standardTableaux _ => true
   | .transform _ _ | .grassmannian _ _ _ | .allMatrices _ _ _ | .symmetricMatrices _ _ |
     .groupElements _ _ | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ | .sublattices _ _ => false
 
@@ -354,6 +374,7 @@ def Family.members : Family → List Mat
   | .symmetricMatrices p n => symmetricMembers p n
   | .range a b => (List.range (b - a)).map fun i => [[a + i]]
   | .words q len => (tuples q len).map ([·])
+  | .latinSquares n => latinSquaresMembers n
   | .partitions total maxPart maxParts maxMultiplicity distinct odd =>
     (constrainedPartitions total maxPart maxParts maxMultiplicity distinct odd).map fun xs =>
       [((xs ++ List.replicate total 0).take total)]

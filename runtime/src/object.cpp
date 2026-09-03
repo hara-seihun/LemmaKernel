@@ -268,6 +268,11 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         for (auto *r : {&q, &len}) if (!r->ok) return R::failure(r->error.status, r->error.message);
         return make_words(q.value, len.value);
     }
+    if (sub == "latin_squares") {
+        auto n = need(h, "n");
+        if (!n.ok) return R::failure(n.error.status, n.error.message);
+        return make_latin_squares(n.value);
+    }
     if (sub == "partitions") {
         auto total = need(h, "total"), max_part = need(h, "max_part"), max_parts = need(h, "max_parts"),
              max_multiplicity = need(h, "max_multiplicity"), distinct = need(h, "distinct"), odd = need(h, "odd");
@@ -352,6 +357,9 @@ std::vector<uint8_t> encode_family(const Family &f) {
         break;
     case Family::Kind::Words:
         params = {{"alphabet", f.p}, {"length", f.n}};
+        break;
+    case Family::Kind::LatinSquares:
+        params = {{"n", f.n}};
         break;
     case Family::Kind::Partitions:
         params = {{"total", f.n}, {"max_part", f.m}, {"max_parts", f.k}, {"max_multiplicity", f.h},
