@@ -1,0 +1,397 @@
+"""Runs a module's cases: the tests and the benchmark, for every module, without per-module scripts.
+
+A module ships `cases.py` with
+
+    def cases(ctx, rng) -> list[Case]      # inputs: families, arguments, which ops and reductions
+    def invariants(ctx) -> None            # optional: cross-operation identities on larger inputs
+
+and its manifest declares typed arguments, Lean value constructors, and `[[rejections]]`.
+From those this file derives everything the old per-module test and bench scripts did:
+
+- every case × every backend × every allowed reduction, stated as a Lean claim over the
+  module's reference and checked by `decide +kernel` (`tools/leancheck.py`);
+- the naive implementation on the same cases, against the same oracle;
+- every `[[rejections]]` entry refused by the runtime with the declared message, and called
+  `.invalid` by the reference where the request can be rendered;
+- thread invariance and interchange roundtrips on every case;
+- coverage: every (operation, reduction) pair the manifest allows must have an oracle case;
+- the benchmark: kernel (one thread, every core) against naive on cases that carry `bench`.
+
+`tests/test_cases.py` is the pytest entry; `tools/bench.py` the benchmark entry.
+"""
+from __future__ import annotations
+
+import importlib.util
+import itertools
+import re
+import sys
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "python"))
+import lemmakernel as lk  # noqa: E402
+from lemmakernel import interchange as ic  # noqa: E402
+from lemmakernel._manifest import MODULES, RUNTIME  # noqa: E402
+
+RUNTIME_FAMILIES = {f["name"]: f for f in RUNTIME["families"]}
+REDUCTIONS = {r["name"]: r for r in RUNTIME["reductions"]}
+KIND_LEAN = {k["name"]: k.get("lean") for m in MODULES for k in m.get("kinds", [])}
+
+
+@dataclass
+class Case:
+    """One request shape. `op` may omit the module prefix. `reductions` defaults to every
+    reduction the manifest allows for the op. `bench` names the reduction to benchmark, or None.
+    `oracle` is False for inputs too large for the Lean kernel (they still get every other check).
+    Several cases may share a name (the same inputs under different operations); the harness
+    checks them in one Lean file. A large family may be given as a zero-argument callable so
+    that tests which never touch it do not pay to build it."""
+    name: str
+    family: object
+    op: str
+    args: dict = field(default_factory=dict)
+    reductions: list[str] | None = None
+    what: str = ""
+    bench: str | None = None
+    oracle: bool = True
+
+    @property
+    def fam(self) -> lk.Handle:
+        if callable(self.family):
+            self.family = self.family()
+        return self.family
+
+
+@dataclass
+class Module:
+    manifest: dict
+    dir: Path
+
+    @property
+    def name(self) -> str:
+        return self.manifest["module"]["name"]
+
+    @property
+    def lean(self) -> str:
+        n = self.name
+        return n[:1].upper() + n[1:]
+
+    @property
+    def backends(self) -> list[str]:
+        return [b for b in lk.describe()["available_backends"] if b.startswith(self.name + ".")]
+
+    def operation(self, op: str) -> dict:
+        bare = op.removeprefix(self.name + ".")
+        for o in self.manifest["operations"]:
+            if o["name"] == bare:
+                return o
+        raise KeyError(f"{self.name} has no operation {bare}")
+
+    def allowed_reductions(self, op: str) -> list[str]:
+        value = self.operation(op)["value"]
+        return [r["name"] for r in RUNTIME["reductions"] if value in r["accepts"] or "*" in r["accepts"]]
+
+    def _load(self, key: str, attr: str):
+        path = self.dir / self.manifest["module"][key]
+        spec = importlib.util.spec_from_file_location(f"{self.name}_{attr}", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def naive(self):
+        return self._load("naive", "naive")
+
+    def cases(self, ctx, rng) -> list[Case]:
+        out = self._load("cases", "cases").cases(ctx, rng)
+        for c in out:
+            c.op = self.name + "." + c.op.removeprefix(self.name + ".")
+        return out
+
+    def invariants(self):
+        return getattr(self._load("cases", "invariants"), "invariants", None)
+
+
+def modules() -> list[Module]:
+    return [Module(m, ROOT / "modules" / m["module"]["name"]) for m in MODULES]
+
+
+def module(name: str) -> Module:
+    return next(m for m in modules() if m.name == name)
+
+
+# ---- Lean terms ---------------------------------------------------------------------------------
+
+def L(x) -> str:
+    """Lean literal for nested lists of ints, Options and tuples."""
+    if x is None:
+        return "none"
+    if isinstance(x, tuple):
+        return "(" + ", ".join(L(v) for v in x) + ")"
+    if isinstance(x, list):
+        return "[" + ", ".join(L(v) for v in x) + "]"
+    if hasattr(x, "tolist"):
+        return L(x.tolist())
+    return str(int(x))
+
+
+def vectors_of(m: ic.Matrix) -> list:
+    """A batch of 1 x n rows, or one k x n matrix, as a list of vectors."""
+    return [r[0] for r in m.tolist()] if m.rows == 1 else m.member(0)
+
+
+def lean_family(f: ic.Family) -> str:
+    q, ctor = f.params, RUNTIME_FAMILIES[f.kind]["lean"]
+    if f.kind == "explicit":
+        (b,) = f.children
+        return f"(.{ctor} {b.p} {L(b.tolist())})"
+    if f.kind == "subsets":
+        (d,) = f.children
+        return f"(.{ctor} {d.p} {L(vectors_of(d))} {q['k']})"
+    if f.kind == "grassmannian":
+        return f"(.{ctor} {q['p']} {q['n']} {q['h']})"
+    if f.kind == "all_matrices":
+        return f"(.{ctor} {q['p']} {q['rows']} {q['cols']})"
+    if f.kind == "transform":
+        inner, c = f.children
+        return f"(.{ctor} {lean_family(inner)} {L(c.member(0))})"
+    if f.kind == "stack":
+        inner, rows = f.children
+        return f"(.{ctor} {lean_family(inner)} {L(rows.member(0))})"
+    if f.kind == "group_elements":
+        (gens,) = f.children
+        return f"(.{ctor} {L(gens.tolist())})"
+    raise ValueError(f.kind)
+
+
+def lean_arg(typ: str, v) -> str:
+    v = v.value() if isinstance(v, lk.Handle) else v
+    if typ == "int":
+        return str(int(v))
+    if typ == "vector":
+        return L(v.member(0)[0])
+    if typ == "vectors":
+        return L(vectors_of(v))
+    if typ == "perms":
+        return L(v.tolist())
+    if typ == "group":
+        return f"(.perms {L(v.tolist())})" if isinstance(v, ic.Perms) else f"(.mats {v.p} {L(v.tolist())})"
+    if typ == "family":
+        return lean_family(v)
+    raise ValueError(typ)
+
+
+def camel(name: str) -> str:
+    head, *rest = name.split("_")
+    return head + "".join(w[:1].upper() + w[1:] for w in rest)
+
+
+def lean_op(mod: Module, op: str, args: dict) -> str:
+    decl = mod.operation(op)
+    parts = [f".{camel(decl['name'])}"] + [lean_arg(t, args[a]) for a, t in decl.get("args", {}).items()]
+    return parts[0] if len(parts) == 1 else "(" + " ".join(parts) + ")"
+
+
+def lean_red(red: str, args: dict) -> str:
+    parts = [f".{red}"] + [lean_arg(t, args[a]) for a, t in REDUCTIONS[red].get("args", {}).items()]
+    return parts[0] if len(parts) == 1 else "(" + " ".join(parts) + ")"
+
+
+def lean_result(r) -> str:
+    if isinstance(r, ic.Integers):
+        return f".integers {L(r.values)}"
+    if isinstance(r, ic.Count):
+        assert r.visited == r.family_size, "incomplete enumeration reported"
+        return f".count {r.value} {r.family_size}"
+    if isinstance(r, ic.Histogram):
+        assert r.visited == r.family_size, "incomplete enumeration reported"
+        return f".histogram {r.family_size} {L(r.bins)}"
+    if isinstance(r, ic.Hits):
+        assert r.visited == r.family_size and r.total == len(r.indices)
+        return f".hits {r.family_size} {L(r.indices)} {L(r.members.tolist())}"
+    ctor = KIND_LEAN.get(ic.kind_of(r))
+    if ctor is None:
+        raise TypeError(f"{ic.kind_of(r)} declares no Lean value constructor")
+    return f".values [{', '.join(f'.{ctor} {L(r.member(i))}' for i in range(r.count))}]"
+
+
+def claim(mod: Module, op: str, family: ic.Family, red: str, args: dict) -> str:
+    return f"run {lean_op(mod, op, args)} {lean_family(family)} {lean_red(red, args)}"
+
+
+def renderable(mod: Module, op: str, red: str, args: dict) -> bool:
+    decl = mod.operation(op)
+    needed = list(decl.get("args", {})) + list(REDUCTIONS[red].get("args", {}))
+    return all(a in args for a in needed)
+
+
+# ---- running cases ------------------------------------------------------------------------------
+
+def request_args(mod: Module, op: str, red: str, args: dict) -> dict:
+    """The case's arguments that this op and reduction declare; a case may carry more (e.g. a
+    `limit` that only `hits` uses)."""
+    wanted = set(mod.operation(op).get("args", {})) | set(REDUCTIONS[red].get("args", {}))
+    return {k: v for k, v in args.items() if k in wanted}
+
+
+def naive_args(args: dict) -> dict:
+    return {k: (v.value() if isinstance(v, lk.Handle) else v) for k, v in args.items()}
+
+
+def reductions_of(mod: Module, case: Case) -> list[str]:
+    return case.reductions if case.reductions is not None else mod.allowed_reductions(case.op)
+
+
+def safe_name(s: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "_", s).strip("_")
+
+
+def coverage_gaps(mod: Module, cases: list[Case]) -> list[str]:
+    """(op, reduction) pairs the manifest allows that no oracle case exercises."""
+    covered = {(c.op, r) for c in cases if c.oracle for r in reductions_of(mod, c)}
+    gaps = []
+    for o in mod.manifest["operations"]:
+        op = f"{mod.name}.{o['name']}"
+        for r in mod.allowed_reductions(op):
+            if (op, r) not in covered:
+                gaps.append(f"{op}/{r}")
+    return gaps
+
+
+def claims_for_case(mod: Module, ctx, case: Case, lc, naive=None) -> None:
+    """Add the kernel's answers (and the naive implementation's, if given) as claims."""
+    desc = case.fam.value()
+    for red in reductions_of(mod, case):
+        args = request_args(mod, case.op, red, case.args)
+        got = ctx.run(case.op, case.fam, red, **args).value()
+        lc.claim(claim(mod, case.op, desc, red, args), lean_result(got), f"{case.name} {case.op}/{red}")
+        if naive is not None:
+            n = naive.run(case.op, desc, red, **naive_args(args))
+            lc.claim(claim(mod, case.op, desc, red, args), lean_result(n), f"naive {case.name} {case.op}/{red}")
+
+
+def rejection_requests(mod: Module, cases: list[Case]):
+    """(rejection, case, op, reduction) for each manifest rejection."""
+    for rej in mod.manifest.get("rejections", []):
+        named = [c for c in cases if c.name == rej["case"]]
+        if not named:
+            raise KeyError(f"{mod.name}: rejection names unknown case {rej['case']!r}")
+        if "op" in rej:
+            op = mod.name + "." + rej["op"].removeprefix(mod.name + ".")
+            case = next((c for c in named if c.op == op), named[0])
+        else:
+            if len(named) > 1:
+                raise KeyError(f"{mod.name}: rejection for {rej['case']!r} must name `op`; the case covers {[c.op for c in named]}")
+            case, op = named[0], named[0].op
+        red = rej.get("reduction", (case.reductions or ["all"])[0])
+        yield rej, case, op, red
+
+
+def bench_case(mod: Module, ctx, case: Case, naive, naive_limit: float, threads: int) -> dict:
+    """Time naive (full or extrapolated from a prefix) and the kernel at 1 and `threads` threads."""
+    red = case.bench
+    size = ctx.size(case.fam)
+    desc = case.fam.value()
+    nargs = naive_args(request_args(mod, case.op, red, case.args))
+    prefix = min(size, 200)
+    t = time.perf_counter()
+    naive.run(case.op, desc, red, prefix=prefix, **nargs)
+    per = (time.perf_counter() - t) / max(prefix, 1)
+    if per * size <= naive_limit:
+        t = time.perf_counter()
+        naive_result = naive.run(case.op, desc, red, **nargs)
+        naive_s, extrapolated = time.perf_counter() - t, False
+    else:
+        naive_result, naive_s, extrapolated = None, per * size, True
+    times = {}
+    exports = set()
+    answer = None
+    for n in (1, threads):
+        ctx.threads = n
+        best = None
+        for _ in range(3):  # best of three: sub-millisecond runs are otherwise noise
+            t = time.perf_counter()
+            h = ctx.run(case.op, case.fam, red, **request_args(mod, case.op, red, case.args))
+            best = min(best or 1e9, time.perf_counter() - t)
+            exports.add(h.export())
+        times[n] = best
+        answer = h
+    assert len(exports) == 1, f"{case.name}: thread count changed the answer"
+    if naive_result is not None:
+        assert naive_result.encode() == answer.export(), f"{case.name}: kernel disagrees with naive"
+    return {"case": case.name, "what": case.what, "op": case.op, "reduction": red, "members": size,
+            "naive_s": naive_s, "naive_extrapolated": extrapolated,
+            "kernel_1_thread_s": times[1], f"kernel_{threads}_threads_s": times[threads],
+            "speedup_1_thread": naive_s / times[1], "speedup_all_threads": naive_s / times[threads],
+            "answer": repr(answer.value())[:120]}
+
+
+def format_bench_row(r: dict, threads: int) -> str:
+    return (f"{r['case']:32s} {r['members']:>12,d} members  naive {r['naive_s']:9.2f}s{'~' if r['naive_extrapolated'] else ' '}  "
+            f"kernel x1 {r['kernel_1_thread_s']:8.3f}s  x{threads} {r[f'kernel_{threads}_threads_s']:8.3f}s  "
+            f"speedup {r['speedup_1_thread']:9.0f}x / {r['speedup_all_threads']:9.0f}x\n    {r['what']}\n    {r['answer']}")
+
+
+# ---- input builders shared by cases.py files ----------------------------------------------------
+
+def random_batch(rng, p, count, rows, cols) -> ic.Matrix:
+    """Batches with a mix of generic, singular and structured members."""
+    mats = []
+    for i in range(count):
+        m = [[rng.randrange(p) for _ in range(cols)] for _ in range(rows)]
+        if i % 4 == 1 and rows > 1:
+            m[-1] = list(m[0])
+        if i % 4 == 2:
+            m[0] = [0] * cols
+            for r in m:
+                r[-1] = 0
+        if i % 4 == 3:
+            m = [[rng.randrange(p) if rng.random() < 0.3 else 0 for _ in range(cols)] for _ in range(rows)]
+        mats.append(m)
+    return lk.matrix(p, mats)
+
+
+def unit_vectors(p, n) -> ic.Matrix:
+    return lk.matrix(p, [[int(i == j) for j in range(n)] for i in range(n)])
+
+
+def cyclic(n):
+    return [[(i + 1) % n for i in range(n)]]
+
+
+def dihedral(n):
+    return [[(i + 1) % n for i in range(n)], [(-i) % n for i in range(n)]]
+
+
+def symmetric(n):
+    return [[(i + 1) % n for i in range(n)], [1, 0] + list(range(2, n))]
+
+
+def companion(coeffs, p):
+    """Companion matrix of the monic polynomial x^n + c_{n-1} x^{n-1} + ... + c_0, acting on rows:
+    multiplication by x in the basis 1, x, ..., x^{n-1} of F_p[x]/(f)."""
+    n = len(coeffs)
+    m = [[0] * n for _ in range(n)]
+    for i in range(n - 1):
+        m[i][i + 1] = 1
+    m[n - 1] = [(-c) % p for c in coeffs]
+    return m
+
+
+def frobenius(coeffs, p):
+    """v -> v^p on F_p[x]/(f) in the same basis; with `companion` it generates the normaliser of
+    the Singer cycle, of order n (p^n - 1) when f is primitive."""
+    n = len(coeffs)
+    x = companion(coeffs, p)
+    rows, power = [], [1] + [0] * (n - 1)
+    for _ in range(n):
+        rows.append(power)
+        for _ in range(p):
+            power = [sum(power[i] * x[i][j] for i in range(n)) % p for j in range(n)]
+    return rows
+
+
+def projective_points(ctx, p, n) -> ic.Matrix:
+    """The points of PG(n-1, p) as normalised rows, in Grassmannian order."""
+    return lk.matrix(p, [m[0] for m in ctx.value("gfp.rref", ctx.grassmannian(p, n, 1)).tolist()])

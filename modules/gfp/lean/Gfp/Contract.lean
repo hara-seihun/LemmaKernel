@@ -1,5 +1,6 @@
 import Mathlib
 import Gfp.Reference
+import Lk.Contract
 
 /-!
 # gfp: contract
@@ -10,42 +11,12 @@ against `Reference.lean` by `decide`, and `Reference.lean` is related to Mathlib
 below with `sorry` is an obligation that has been written down and not yet discharged; there is
 no other tooling that would make the native code "verified", and we do not claim it is.
 
-Conventions: a `Mat` is well formed for `(p, rows, cols)` when it has `rows` rows of `cols`
-entries each below `p`. `toMatrix` reads it as a Mathlib matrix over `ZMod p`.
+Well-formedness, `toMatrix`, `rowSpace` and `IsRREF` come from `Lk.Contract`.
 -/
 
 namespace Gfp.Contract
 
-open Matrix
-
-def WellFormed (p rows cols : ℕ) (m : Mat) : Prop :=
-  m.length = rows ∧ ∀ r ∈ m, r.length = cols ∧ ∀ x ∈ r, x < p
-
-def WellFormedVec (p cols : ℕ) (v : Vec) : Prop := v.length = cols ∧ ∀ x ∈ v, x < p
-
-def toMatrix (p rows cols : ℕ) (m : Mat) : Matrix (Fin rows) (Fin cols) (ZMod p) :=
-  fun i j => ((m.getD i []).getD j 0 : ZMod p)
-
-def toVec (p cols : ℕ) (v : Vec) : Fin cols → ZMod p := fun j => (v.getD j 0 : ZMod p)
-
-/-- The row space of a matrix. -/
-def rowSpace (p rows cols : ℕ) (m : Mat) : Submodule (ZMod p) (Fin cols → ZMod p) :=
-  Submodule.span (ZMod p) (Set.range (toMatrix p rows cols m))
-
-/-- Reduced row echelon form, spelled out: nonzero rows come first; each nonzero row has leading
-entry 1 at a column strictly right of the previous row's; and every leading column is zero in
-every other row. -/
-def IsRREF (p rows cols : ℕ) (m : Mat) : Prop :=
-  let R := toMatrix p rows cols m
-  let piv := pivots p m
-  piv.Pairwise (· < ·) ∧ (∀ c ∈ piv, c < cols) ∧
-  (∀ i : Fin rows, (i : ℕ) < piv.length ↔ R i ≠ 0) ∧
-  (∀ i : Fin rows, ∀ hi : (i : ℕ) < piv.length,
-      ∀ j : Fin cols, (j : ℕ) < piv[i] → R i j = 0) ∧
-  (∀ i : Fin rows, ∀ hi : (i : ℕ) < piv.length,
-      ∀ j : Fin cols, (j : ℕ) = piv[i] → R i j = 1) ∧
-  (∀ i k : Fin rows, ∀ hi : (i : ℕ) < piv.length, k ≠ i →
-      ∀ j : Fin cols, (j : ℕ) = piv[i] → R k j = 0)
+open Matrix Lk Lk.Contract
 
 variable {p rows cols : ℕ} [Fact p.Prime] {m : Mat}
 
@@ -60,7 +31,7 @@ theorem nullity_spec (h : WellFormed p rows cols m) :
   sorry
 
 theorem rref_spec (h : WellFormed p rows cols m) :
-    WellFormed p rows cols (rref p m) ∧ IsRREF p rows cols (rref p m) ∧
+    WellFormed p rows cols (rref p m) ∧ IsRREF p rows cols (rref p m) (pivots p m) ∧
     rowSpace p rows cols (rref p m) = rowSpace p rows cols m := by
   sorry
 
@@ -96,36 +67,5 @@ theorem witness_spec (h : WellFormed p rows cols m) :
     r = rref p m ∧ IsUnit (toMatrix p rows rows t) ∧
     toMatrix p rows rows t * toMatrix p rows cols m = toMatrix p rows cols r := by
   sorry
-
-/-! ## Families
-
-Each family's member list is what the manifest says, in the order the reference defines. -/
-
-theorem allMatrices_spec (p rows cols : ℕ) :
-    let ms := (Family.allMatrices p rows cols).members
-    ms.Nodup ∧ ms.length = p ^ (rows * cols) ∧ ∀ m, WellFormed p rows cols m → m ∈ ms := by
-  sorry
-
-/-- Every `k`-subset of the dictionary once (in the order `combos` defines: lexicographic by
-chosen positions). -/
-theorem subsets_spec (d : List Vec) (k : ℕ) :
-    (Family.subsets p d k).members.Perm (List.sublistsLen k d) := by
-  sorry
-
-/-- The Grassmannian lists every `h`-dimensional subspace of `F_p^n` exactly once, as its rref. -/
-theorem grassmannian_spec (n h : ℕ) :
-    let ms := (Family.grassmannian p n h).members
-    ms.Nodup ∧ (∀ m ∈ ms, WellFormed p h n m ∧ IsRREF p h n m ∧ rank p m = h) ∧
-    ∀ W : Submodule (ZMod p) (Fin n → ZMod p), Module.finrank (ZMod p) W = h →
-      ∃ m ∈ ms, rowSpace p h n m = W := by
-  sorry
-
-theorem transform_spec (f : Family) (c : Mat) :
-    (Family.transform f c).members = f.members.map fun m => matmul f.p m c := by
-  rfl
-
-theorem stack_spec (f : Family) (rows : Mat) :
-    (Family.stack f rows).members = f.members.map (· ++ rows) := by
-  rfl
 
 end Gfp.Contract

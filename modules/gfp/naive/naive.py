@@ -172,9 +172,10 @@ def _flat(mats):
     return [x for m in mats for r in m for x in r]
 
 
-def run(op: str, family: Family, reduction: str = "all", **args):
+def run(op: str, family: Family, reduction: str = "all", prefix: int | None = None, **args):
+    """`prefix`: answer for the first `prefix` members only (the benchmark's timing sample)."""
     op = op.removeprefix("gfp.")
-    ms, p = members(family)
+    ms, p = list(itertools.islice(iter_members(family), prefix)), prime(family)
     size = len(ms)
     rows = len(ms[0]) if ms else family.params.get("rows", 0)
     cols = len(ms[0][0]) if ms else family.params.get("cols", 0)

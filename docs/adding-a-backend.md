@@ -68,11 +68,11 @@ device. The only things fixed are the request in, the object out, and the bytes 
 1. Read `PHILOSOPHY.md`, the module's `manifest.toml`, and its `Reference.lean`. Ten minutes.
 2. Copy the generic backend's shape into `backends/<name>/`, change what you are changing, add
    the `[[backends]]` entry, run `tools/manifest.py generate`, rebuild.
-3. `pytest -n auto modules/<module>`. The tests parametrise over every available backend, so
+3. `pytest -n auto tests`. The tests parametrise over every available backend, so
    yours is covered the moment `describe()` lists it. Force it in a session with
    `lk.Context("<module>.<name>")` when you want to poke at it by hand.
-4. `modules/<module>/bench/bench.py --backend <module>.<name>` for the numbers. Add a case to the
-   bench if your backend's sweet spot is not represented; the bench asserts kernel and naive
+4. `tools/bench.py --module <module> --backend <module>.<name>` for the numbers. Add a case with
+   `bench=` to `cases.py` if your backend's sweet spot is not represented; the bench asserts kernel and naive
    agree, so a new case is also a test.
 5. Commit with the numbers in the message, before and after.
 

@@ -137,7 +137,8 @@ def _reduce_bool(flags, reduction, members, p, rows, cols, **args):
     raise ValueError(f"reduction {reduction} does not accept boolean values")
 
 
-def run(op: str, family: Family, reduction: str = "all", **args):
+def run(op: str, family: Family, reduction: str = "all", prefix: int | None = None, **args):
+    """`prefix`: answer for the first `prefix` members only (the benchmark's timing sample)."""
     op = op.removeprefix("orbits.")
     if op == "projective_action":
         if family.kind != "explicit":
@@ -152,7 +153,7 @@ def run(op: str, family: Family, reduction: str = "all", **args):
             inv = pow(lead, p - 2, p)
             return [(x * inv) % p for x in v]
         out = []
-        for a in batch.tolist():
+        for a in batch.tolist()[:prefix]:
             out.append([points.index(normalise(gfp.matmul([v], a, p)[0])) for v in points])
         return Perms(len(points), len(out), [x for g in out for x in g])
 
@@ -160,7 +161,7 @@ def run(op: str, family: Family, reduction: str = "all", **args):
         if family.kind != "group_elements":
             raise ValueError("fixed_points is defined on group_elements families only")
         (gens,) = family.children
-        elements = perm_closure(gens.tolist())
+        elements = perm_closure(gens.tolist())[:prefix]
         on: Family = args["on"]
         members, p = gfp.members(on)
         ks = keys(on, members)
@@ -178,6 +179,8 @@ def run(op: str, family: Family, reduction: str = "all", **args):
     cols = len(members[0][0]) if members else 0
     ks = keys(family, members)
     rank = ranking(ks)
+    if prefix is not None:
+        members = members[:prefix]
     orbits = [orbit(family, gens, ks, rank, i, p) for i in range(len(members))]
     if op == "is_canonical":
         flags = [min(o) == i for i, o in enumerate(orbits)]

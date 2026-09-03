@@ -317,6 +317,21 @@ class Family:
         return encode("family." + self.kind, self.params, b"".join(c.encode() for c in self.children))
 
 
+KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "gfp.basis": Basis, "gfp.solutions": Solutions,
+         "gfp.inverses": Inverses, "gfp.witness": Witness, "integers": Integers, "count": Count,
+         "histogram": Histogram, "hits": Hits}
+
+
+def kind_of(obj) -> str:
+    """The interchange kind of a decoded object (`family.<name>` for families)."""
+    if isinstance(obj, Family):
+        return "family." + obj.kind
+    for kind, cls in KINDS.items():
+        if isinstance(obj, cls):
+            return kind
+    raise TypeError(type(obj))
+
+
 def decode(buf: bytes):
     obj, end = decode_at(buf, 0)
     if end != len(buf):

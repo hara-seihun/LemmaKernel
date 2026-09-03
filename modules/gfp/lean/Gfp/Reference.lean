@@ -1,44 +1,21 @@
+import Lk.Reference
+
 /-!
 # gfp: executable reference
 
-The meaning of every gfp operation, family, and reduction, written as plain structural recursion
-so that Lean's kernel can evaluate it. This is the oracle: a kernel answer is correct when
-`example : run op family red = answer := by decide` is accepted. The canonical order of every
-family and the canonical choice in every output (which nullspace basis, which pivots) are
-*defined* here; backends reproduce them bit for bit.
+The meaning of every gfp operation, written as plain structural recursion so that Lean's kernel
+can evaluate it. Families, reductions and the result shape come from `Lk.Reference`. This is the
+oracle: a kernel answer is correct when `example : run op family red = answer := by decide` is
+accepted. The canonical choice in every output (which nullspace basis, which pivots) is *defined*
+here; backends reproduce it bit for bit.
 
 Matrices are lists of rows of naturals, every entry already reduced modulo the prime `p`.
-Nothing here imports Mathlib; `Contract.lean` relates these definitions to Mathlib's.
 -/
 
 namespace Gfp
 
-abbrev Vec := List Nat
-abbrev Mat := List Vec
+open Lk
 
-/-- `a ^ e % p` by repeated squaring; `fuel` bounds the recursion (64 covers any `e < 2^64`). -/
-def powMod (p a : Nat) : Nat → Nat → Nat
-  | 0, _ => 1 % p
-  | fuel + 1, e =>
-    if e = 0 then 1 % p
-    else
-      let h := powMod p (a * a % p) fuel (e / 2)
-      if e % 2 = 1 then h * a % p else h
-
-/-- Fermat inverse; only used on nonzero entries below a prime. -/
-def inv (p a : Nat) : Nat := powMod p a 64 (p - 2)
-
-/-- `row - c * other` entrywise, modulo `p`. -/
-def subMul (p : Nat) (row other : Vec) (c : Nat) : Vec :=
-  List.zipWith (fun a b => (a + (p - c) * b) % p) row other
-
-def scale (p : Nat) (row : Vec) (c : Nat) : Vec := row.map (fun a => a * c % p)
-
-def matmul (p : Nat) (a b : Mat) : Mat :=
-  let cols := (b.headD []).length
-  a.map fun row =>
-    (List.range cols).map fun j =>
-      (List.zipWith (fun x brow => x * brow.getD j 0) row b).foldl (· + ·) 0 % p
 
 /-! ## Gauss-Jordan elimination
 
@@ -51,8 +28,6 @@ structure GJ where
   t : Mat
   r : Nat
   pivots : List Nat
-
-def identity (n : Nat) : Mat := (List.range n).map fun i => (List.range n).map fun j => if i = j then 1 else 0
 
 /-- Index of the first row `i ≥ r` with a nonzero entry in column `c`. -/
 def findPivot (rows : Mat) (c r : Nat) : Option Nat :=
@@ -120,64 +95,7 @@ def inverse (p : Nat) (m : Mat) : Option Mat :=
 /-- `(R, T)` with `T * m = R`. -/
 def witness (p : Nat) (m : Mat) : Mat × Mat := let g := gaussJordan p m; (g.rows, g.t)
 
-/-! ## Families and their canonical order -/
-
-/-- All `k`-element sublists, in lexicographic order of the chosen positions. -/
-def combos : List α → Nat → List (List α)
-  | _, 0 => [[]]
-  | [], _ + 1 => []
-  | x :: xs, k + 1 => (combos xs k).map (x :: ·) ++ combos xs (k + 1)
-
-/-- All lists of length `m` over `0..p-1`, lexicographic (first digit slowest). -/
-def tuples (p : Nat) : Nat → List (List Nat)
-  | 0 => [[]]
-  | m + 1 => (List.range p).flatMap fun d => (tuples p m).map (d :: ·)
-
-/-- Split `rows * cols` entries into `rows` rows. -/
-def chunk (cols : Nat) : Nat → List Nat → Mat
-  | 0, _ => []
-  | r + 1, xs => xs.take cols :: chunk cols r (xs.drop cols)
-
-/-- Free positions of the rref shape with pivot columns `piv` (row-major). -/
-def freePositions (piv : List Nat) (n : Nat) : List (Nat × Nat) :=
-  (List.range piv.length).flatMap fun i =>
-    ((List.range n).filter fun c => piv.getD i 0 < c ∧ c ∉ piv).map fun c => (i, c)
-
-def rrefShape (piv : List Nat) (n : Nat) (free : List (Nat × Nat)) (digits : List Nat) : Mat :=
-  (List.range piv.length).map fun i => (List.range n).map fun c =>
-    if piv.getD i 0 = c then 1
-    else match (List.zip free digits).find? fun ((i', c'), _) => i' = i ∧ c' = c with
-      | some (_, d) => d
-      | none => 0
-
-/-- Every `h`-dimensional subspace of `F_p^n` as its rref basis: pivot sets in lexicographic
-order, then free entries in row-major lexicographic order. -/
-def grassmannianMembers (p n h : Nat) : List Mat :=
-  (combos (List.range n) h).flatMap fun piv =>
-    let free := freePositions piv n
-    (tuples p free.length).map (rrefShape piv n free)
-
-inductive Family
-  | explicit (p : Nat) (batch : List Mat)
-  | subsets (p : Nat) (dictionary : List Vec) (k : Nat)
-  | grassmannian (p n h : Nat)
-  | allMatrices (p rows cols : Nat)
-  | transform (inner : Family) (c : Mat)
-  | stack (inner : Family) (rows : Mat)
-
-def Family.p : Family → Nat
-  | .explicit p _ | .subsets p _ _ | .grassmannian p _ _ | .allMatrices p _ _ => p
-  | .transform f _ | .stack f _ => f.p
-
-def Family.members : Family → List Mat
-  | .explicit _ batch => batch
-  | .subsets _ d k => combos d k
-  | .grassmannian p n h => grassmannianMembers p n h
-  | .allMatrices p rows cols => (tuples p (rows * cols)).map (chunk cols rows)
-  | .transform f c => f.members.map fun m => matmul f.p m c
-  | .stack f rows => f.members.map (· ++ rows)
-
-/-! ## Operations, reductions, results -/
+/-! ## Operations and values -/
 
 inductive Op
   | rank | nullity | fullRowRank | fullColRank
@@ -185,41 +103,16 @@ inductive Op
   | rref | nullspace
   | solve (rhs : List Vec) | inverse | rrefWitness
 
-inductive Red
-  | all | count | histogram | hits (limit : Nat)
-
-inductive Result
-  | integers (xs : List Nat)
-  | count (value size : Nat)
-  | histogram (size : Nat) (bins : List Nat)
-  | hits (size : Nat) (indices : List Nat) (members : List Mat)
-  | matrices (ms : List Mat)
-  | bases (bs : List (List Vec))
-  | solutions (xs : List (Option Vec))
-  | inverses (xs : List (Option Mat))
-  | witnesses (xs : List (Mat × Mat))
-  | invalid
+/-- One materialised output per member. -/
+inductive Value
+  | matrix (m : Mat)
+  | basis (b : List Vec)
+  | solution (x : Option Vec)
+  | inverse (m : Option Mat)
+  | witness (w : Mat × Mat)
   deriving DecidableEq, Repr
 
-def histogramOf (xs : List Nat) : List Nat :=
-  (List.range (xs.foldl max 0 + 1)).map fun v => (xs.filter (· = v)).length
-
-def reduceInt (red : Red) (xs : List Nat) : Result :=
-  match red with
-  | .all => .integers xs
-  | .histogram => .histogram xs.length (histogramOf xs)
-  | _ => .invalid
-
-def reduceBool (red : Red) (ms : List Mat) (flags : List Bool) : Result :=
-  match red with
-  | .all => .integers (flags.map fun b => if b then 1 else 0)
-  | .count => .count (flags.filter id).length flags.length
-  | .hits limit =>
-    let idx := ((List.range flags.length).zip flags).filterMap fun (i, b) => if b then some i else none
-    .hits flags.length idx ((idx.take limit).map fun i => ms.getD i [])
-  | .histogram => .invalid
-
-def run (op : Op) (f : Family) (red : Red) : Result :=
+def run (op : Op) (f : Family) (red : Red) : Result Value :=
   let p := f.p
   let ms := f.members
   let rows := (ms.headD []).length
@@ -230,17 +123,16 @@ def run (op : Op) (f : Family) (red : Red) : Result :=
   | .fullRowRank, _ => reduceBool red ms (ms.map fun m => rank p m = rows)
   | .fullColRank, _ => reduceBool red ms (ms.map fun m => rank p m = cols)
   | .inSpan t, _ => reduceBool red ms (ms.map fun m => inSpan p m t)
-  | .rref, .all => .matrices (ms.map (rref p))
-  | .nullspace, .all => .bases (ms.map (nullspace p))
-  | .solve rhs, .all => match f with
-    | .explicit _ _ => .solutions (List.zipWith (solve p) ms rhs)
+  | .rref, _ => reduceValues red (ms.map fun m => .matrix (rref p m))
+  | .nullspace, _ => reduceValues red (ms.map fun m => .basis (nullspace p m))
+  | .solve rhs, _ => match f with
+    | .explicit _ _ => reduceValues red (List.zipWith (fun m b => .solution (solve p m b)) ms rhs)
     | _ => .invalid
-  | .inverse, .all => match f with
-    | .explicit _ _ => .inverses (ms.map (inverse p))
+  | .inverse, _ => match f with
+    | .explicit _ _ => reduceValues red (ms.map fun m => .inverse (inverse p m))
     | _ => .invalid
-  | .rrefWitness, .all => match f with
-    | .explicit _ _ => .witnesses (ms.map (witness p))
+  | .rrefWitness, _ => match f with
+    | .explicit _ _ => reduceValues red (ms.map fun m => .witness (witness p m))
     | _ => .invalid
-  | _, _ => .invalid
 
 end Gfp

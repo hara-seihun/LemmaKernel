@@ -40,21 +40,25 @@ the call fails. That is the completeness check for a non-existence answer.
 
 ```
 cmake -S . -B build -G Ninja && ninja -C build      # liblemmakernel.so
-pytest -n auto modules                              # every module's tests
-modules/*/bench/bench.py                            # kernel vs naive, with headline speed-ups
+pytest -n auto tests                                # every module's cases against every backend, naive, and Lean
+tools/bench.py                                      # kernel vs naive on each module's bench cases
 ```
 
 The Lean side (`lake build`) needs Mathlib; `.lake/packages` is a hardlink copy of
 `~/projects/LemmaLib/.lake/packages`, which pins the same Lean and Mathlib versions. Tests only
-need the module's `Reference` (no Mathlib import) and take a few seconds each.
+need `Lk.Reference` and the module's `Reference` (no Mathlib import) and take a few seconds each.
+No test or bench script is written per module: a module ships `cases.py` and the manifest, and
+`tools/harness.py` derives the rest.
 
 ## Layout
 
 ```
-runtime/        the C ABI, object encoding, family enumeration, backend registry
-modules/NAME/   one module: manifest, Lean contract and reference, backends, naive, tests, bench
+runtime/        the C ABI, object encoding, family enumeration, backend registry, reductions;
+                runtime/lean/Lk is the Lean reference and contract for families and reductions
+modules/NAME/   one module: manifest, Lean contract and reference, backends, naive, cases
 python/         the binding; python/lemmakernel/_manifest.py is generated
-tools/          manifest.py (generator and checker), leancheck.py (the test oracle)
+tools/          manifest.py (generator and checker), harness.py (runs cases), bench.py, leancheck.py
+tests/          the pytest entry points: every module's cases, runtime checks, manifest and Lean build
 docs/           how to add a module or a backend
 ```
 
@@ -70,10 +74,11 @@ and committed; the build refuses to configure if they are stale.
 
 An orbit is a permutation of member indices; the representative is the least index. Permutation
 groups act on `subsets` families, matrix groups on `grassmannian` and `all_matrices` families
-(on the right, `M ↦ M A`). Speed-ups over the naive Python implementation, from
-`modules/orbits/bench/bench.py` on this machine, run from about 60× (Grassmannian orbits, where
-each step is an elimination) to 4800× single-threaded (bracelets) and beyond 10^5× for Burnside
-counts, which the backend computes from cycle types instead of by enumeration.
+(on the right, `M ↦ M A`). `tools/bench.py` compares each module's generic backend with the
+naive Python implementation on inputs small enough for naive to finish, so every row is a
+byte-for-byte agreement; single-threaded ratios on this machine run from about 40× (Grassmannian
+orbits, where each step is an elimination) to about 1700× (independence of subsets), and higher
+where the backend changes the algorithm (Burnside counts from cycle types).
 
 To add to this table, read [docs/adding-a-module.md](docs/adding-a-module.md). To make an
 existing module faster, read [docs/adding-a-backend.md](docs/adding-a-backend.md).

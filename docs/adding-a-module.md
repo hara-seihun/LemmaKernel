@@ -9,21 +9,35 @@ operation is a much smaller change than a new module.
 
 `modules/<name>/`, containing:
 
-- `manifest.toml`: the one declaration of the module. Kinds, families, reductions, operations,
-  backends, and the paths below. `tools/manifest.py generate` derives the C++ registry data, the
-  runtime `describe()` JSON, the CMake source list, the Lake libraries, and the Python-side
-  manifest from it; `tools/manifest.py check` (run at CMake configure) refuses stale output.
+- `manifest.toml`: the one declaration of the module. Kinds (each with the Lean `Value`
+  constructor that carries it), operations with typed arguments (`args = { target = "vector" }`;
+  types are `int`, `vector`, `vectors`, `perms`, `group`, `family`), backends, `[[rejections]]`
+  (requests the runtime must refuse, by case name and error text), and the paths below.
+  Families and reductions are runtime-level and live in `runtime/manifest.toml`.
+  `tools/manifest.py generate` derives the C++ registry data, the runtime `describe()` JSON, the
+  CMake source list, the Lake libraries, and the Python-side manifest from it;
+  `tools/manifest.py check` (run at CMake configure) refuses stale output.
 - `lean/<Name>.lean`, `lean/<Name>/Reference.lean`, `lean/<Name>/Contract.lean`. The reference
-  is the executable definition of every operation, family order, and reduction, written as
-  structural recursion so `decide +kernel` can evaluate it; it is the oracle for every test. The
-  contract states, against Mathlib, what the reference means. Unproved statements carry `sorry`
-  and say so; that is honest and expected.
+  imports `Lk.Reference` (families, reductions, `Result α`) and defines the module's `Op`, its
+  `Value` type, and `run : Op → Family → Red → Result Value`, as structural recursion so
+  `decide +kernel` can evaluate it; it is the oracle for every test. The contract states, against
+  Mathlib, what the reference means. Unproved statements carry `sorry` and say so; that is honest
+  and expected.
 - `backends/`: at least a portable one. See [adding-a-backend.md](adding-a-backend.md).
-- `naive/naive.py`: the obvious Python implementation. It is the benchmark baseline, and the
-  tests hold it to the same oracle as the kernel, so it is also a readable second opinion.
-- `tests/`: builds inputs, runs every available backend, states each answer as a Lean claim via
-  `tools/leancheck.py`, and lets Lean decide. No expected answers in the file.
-- `bench/bench.py`: kernel against naive on requests that look like real use, with speed-ups.
+- `naive/naive.py`: the obvious Python implementation, `run(op, family, reduction, prefix=None,
+  **args)`. It is the benchmark baseline, and the tests hold it to the same oracle as the
+  kernel, so it is also a readable second opinion. `prefix` answers for the first members only;
+  the bench uses it to sample.
+- `cases.py`: `cases(ctx, rng)` returning `tools.harness.Case` objects (family, operation,
+  arguments, which reductions, whether the Lean kernel can afford it, whether and how to bench
+  it), and optionally `invariants(ctx)` for cross-operation identities on inputs beyond the
+  oracle (Burnside for orbits, `T·A = R` for gfp witnesses).
+
+There is no per-module test or bench script. `tests/test_cases.py` runs every case against every
+backend, the naive implementation and the reference, checks every rejection, thread invariance
+and roundtrips, and fails if some (operation, reduction) pair the manifest allows has no oracle
+case. `tools/bench.py` times the cases that carry `bench`. Both are driven by the manifest
+through `tools/harness.py`.
 
 gfp is the worked example of all of this; copy its shape.
 
@@ -57,9 +71,10 @@ Write `Reference.lean` for the kernel evaluator, not for elegance:
   `.invalid` for combinations the manifest does not allow, so tests can check that the runtime's
   rejections and the reference's agree.
 
-Budget: the kernel evaluates roughly a hundred small matrix eliminations per second. Test
-families of a few dozen members cost a few seconds per claim file; keep it there. Larger checks
-belong in the bench, where kernel and naive are compared byte for byte.
+Budget: the kernel evaluates roughly a hundred small matrix eliminations per second, and a
+million or so plain reduction steps. Oracle cases of a few dozen members cost a few seconds per
+claim file; keep it there. Larger inputs go in cases with `oracle=False` (still checked for
+thread invariance and, when benched, byte-for-byte against naive) and in `invariants`.
 
 ## Doing it
 
@@ -67,9 +82,9 @@ belong in the bench, where kernel and naive are compared byte for byte.
    basis, an order, a representative), the reference makes the choice and the manifest's
    `summary` says what it is. Until you can state the canonical answer, the operation is not
    ready.
-2. Write the naive implementation and the tests, and make the naive implementation pass the
-   oracle. Now you have a correct, slow module.
-3. Write the portable backend. Make it pass. Bench it.
+2. Write the naive implementation and `cases.py`, and make the naive implementation pass the
+   oracle (`pytest -n auto tests -k naive`). Now you have a correct, slow module.
+3. Write the portable backend. Make it pass. `tools/bench.py --module <name>`.
 4. Write the contract. Statements first; proofs when a small primitive admits one.
 5. Add the module to the table in `README.md`, run `tools/manifest.py generate`, commit.
 

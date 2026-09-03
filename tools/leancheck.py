@@ -7,7 +7,7 @@ the example fails and the test fails. The expected output therefore lives nowher
 reference definition itself.
 
     from tools.leancheck import LeanCheck
-    lc = LeanCheck("gfp_small", imports=["Gfp.Reference"], opens=["Gfp"])
+    lc = LeanCheck("gfp_small", imports=["Gfp.Reference"], opens=["Gfp", "Lk"])
     lc.claim("run .rank (.grassmannian 2 4 2) .histogram", ".histogram 35 [0, 0, 35]", label="G(2,4,2) rank")
     lc.verify()          # raises AssertionError listing the failed claims
 
