@@ -1,0 +1,66 @@
+# designs: finite block designs and Kramer-Mesner incidence matrices.
+
+[module]
+name = "designs"
+version = 1
+summary = "Finite block designs represented by families of canonical point-subset matrices: t-design tests and lambda vectors, resolutions, dual 2-designs, block-intersection distributions, and canonical Kramer-Mesner matrices."
+lean = "lean"
+contract = "lean/Designs/Contract.lean"
+reference = "lean/Designs/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "designs.matrix"
+params = ["count", "rows", "cols"]
+payload = "count*rows*cols u64 entries, row-major, little-endian"
+lean = "matrix"
+summary = "A batch of fixed-shape natural-number matrices with 64-bit entries. Design operations return one matrix."
+
+[[operations]]
+name = "is_design"
+value = "designs.matrix"
+args = { t = "int" }
+summary = "For the whole block family, return [[flag, lambda_0]], where flag says every t-subset occurs equally often and lambda_0 is the multiplicity of the lexicographically first t-subset. Blocks are k x v matrices whose rows are distinct standard basis vectors in increasing point order."
+
+[[operations]]
+name = "lambda_vector"
+value = "designs.matrix"
+args = { t = "int" }
+summary = "For the whole block family, return one row containing the multiplicity of every t-subset of {0,...,v-1}, in lexicographic subset order."
+
+[[operations]]
+name = "is_resolvable"
+value = "designs.matrix"
+summary = "Return the lexicographically least resolution witness as a matrix of block indices, one parallel class per row and indices increasing within each row; return the unique empty 0 x 0 matrix when no resolution exists."
+
+[[operations]]
+name = "dual_is_design"
+value = "designs.matrix"
+summary = "Return [[flag, lambda_0]] for whether the dual incidence structure is a 2-design; lambda_0 is the intersection size of the first two indexed blocks."
+
+[[operations]]
+name = "intersection_numbers"
+value = "designs.matrix"
+summary = "Return one row h[0..k], where h[j] is the number of unordered pairs of distinct indexed blocks with intersection size j."
+
+[[operations]]
+name = "kramer_mesner_matrix"
+value = "designs.matrix"
+args = { t = "int", group = "group" }
+families = ["subsets"]
+summary = "For a group on the dictionary positions of the k-subsets family, return the Kramer-Mesner matrix. Rows and columns are t-subset and k-subset orbits ordered by their least lexicographic member; entry (i,j) counts blocks in column orbit j containing the least member of row orbit i."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/designs_generic.cpp"]
+accepts = "block families with canonical standard-basis block members; permutation groups for Kramer-Mesner matrices"
+summary = "Portable C++: one pass for incidence counts and intersections, canonical exact-cover search for resolutions, and subset-orbit closure for Kramer-Mesner matrices."
+
+[[rejections]]
+case = "malformed repeated point"
+error = "distinct standard basis"
+
+[[rejections]]
+case = "Kramer-Mesner with a matrix group"
+error = "permutation"

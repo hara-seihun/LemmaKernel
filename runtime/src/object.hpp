@@ -68,6 +68,11 @@ struct CycleIndex {
     std::vector<uint64_t> cycles;
 };
 
+struct U64Matrices {
+    uint64_t count = 0, rows = 0, cols = 0;
+    std::vector<uint64_t> entries;
+};
+
 struct Integers {
     std::vector<uint64_t> values;
 };
@@ -110,6 +115,7 @@ struct Object {
     std::shared_ptr<Inverses> inverses;
     std::shared_ptr<Witness> witness;
     std::shared_ptr<CycleIndex> cycle_index;
+    std::shared_ptr<U64Matrices> u64_matrices;
     std::shared_ptr<Integers> integers;
     std::shared_ptr<Count> count;
     std::shared_ptr<Histogram> histogram;

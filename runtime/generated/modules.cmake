@@ -4,6 +4,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/burnside/backends
 # module burnside: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/cayley/backends/generic/cayley_generic.cpp)
 # module cayley: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/designs/backends/generic/designs_generic.cpp)
+# module designs: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/gfp/backends/generic/gfp_generic.cpp)
 # module gfp: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/orbits/backends/generic/orbits_generic.cpp)

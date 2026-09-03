@@ -204,6 +204,64 @@ MODULES = [{'backends': [{'accepts': 'permutation groups on subsets, subsets_of,
                   'error': 'does not accept integer',
                   'op': 'girth',
                   'reduction': 'count'}]},
+ {'backends': [{'accepts': 'block families with canonical standard-basis block members; permutation groups '
+                           'for Kramer-Mesner matrices',
+                'name': 'generic',
+                'sources': ['backends/generic/designs_generic.cpp'],
+                'summary': 'Portable C++: one pass for incidence counts and intersections, canonical '
+                           'exact-cover search for resolutions, and subset-orbit closure for Kramer-Mesner '
+                           'matrices.'}],
+  'kinds': [{'lean': 'matrix',
+             'name': 'designs.matrix',
+             'params': ['count', 'rows', 'cols'],
+             'payload': 'count*rows*cols u64 entries, row-major, little-endian',
+             'summary': 'A batch of fixed-shape natural-number matrices with 64-bit entries. Design '
+                        'operations return one matrix.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Designs/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'designs',
+             'reference': 'lean/Designs/Reference.lean',
+             'summary': 'Finite block designs represented by families of canonical point-subset matrices: '
+                        't-design tests and lambda vectors, resolutions, dual 2-designs, block-intersection '
+                        'distributions, and canonical Kramer-Mesner matrices.',
+             'version': 1},
+  'operations': [{'args': {'t': 'int'},
+                  'name': 'is_design',
+                  'summary': 'For the whole block family, return [[flag, lambda_0]], where flag says every '
+                             't-subset occurs equally often and lambda_0 is the multiplicity of the '
+                             'lexicographically first t-subset. Blocks are k x v matrices whose rows are '
+                             'distinct standard basis vectors in increasing point order.',
+                  'value': 'designs.matrix'},
+                 {'args': {'t': 'int'},
+                  'name': 'lambda_vector',
+                  'summary': 'For the whole block family, return one row containing the multiplicity of '
+                             'every t-subset of {0,...,v-1}, in lexicographic subset order.',
+                  'value': 'designs.matrix'},
+                 {'name': 'is_resolvable',
+                  'summary': 'Return the lexicographically least resolution witness as a matrix of block '
+                             'indices, one parallel class per row and indices increasing within each row; '
+                             'return the unique empty 0 x 0 matrix when no resolution exists.',
+                  'value': 'designs.matrix'},
+                 {'name': 'dual_is_design',
+                  'summary': 'Return [[flag, lambda_0]] for whether the dual incidence structure is a '
+                             '2-design; lambda_0 is the intersection size of the first two indexed blocks.',
+                  'value': 'designs.matrix'},
+                 {'name': 'intersection_numbers',
+                  'summary': 'Return one row h[0..k], where h[j] is the number of unordered pairs of '
+                             'distinct indexed blocks with intersection size j.',
+                  'value': 'designs.matrix'},
+                 {'args': {'group': 'group', 't': 'int'},
+                  'families': ['subsets'],
+                  'name': 'kramer_mesner_matrix',
+                  'summary': 'For a group on the dictionary positions of the k-subsets family, return the '
+                             'Kramer-Mesner matrix. Rows and columns are t-subset and k-subset orbits '
+                             'ordered by their least lexicographic member; entry (i,j) counts blocks in '
+                             'column orbit j containing the least member of row orbit i.',
+                  'value': 'designs.matrix'}],
+  'rejections': [{'case': 'malformed repeated point', 'error': 'distinct standard basis'},
+                 {'case': 'Kramer-Mesner with a matrix group', 'error': 'permutation'}]},
  {'backends': [{'accepts': 'any p < 2^32; any family; any operation',
                 'name': 'generic',
                 'sources': ['backends/generic/gfp_generic.cpp'],

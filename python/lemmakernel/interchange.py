@@ -305,6 +305,27 @@ class CycleIndex:
 
 
 @dataclass
+class U64Matrices:
+    """A batch of fixed-shape natural-number matrices with 64-bit entries."""
+    count: int
+    rows: int
+    cols: int
+    entries: object
+
+    def member(self, i: int):
+        n = self.rows * self.cols
+        flat = self.entries[i * n:(i + 1) * n]
+        return [[int(flat[r * self.cols + c]) for c in range(self.cols)] for r in range(self.rows)]
+
+    def tolist(self):
+        return [self.member(i) for i in range(self.count)]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.entries)}Q", *map(int, self.entries))
+        return encode("designs.matrix", {"count": self.count, "rows": self.rows, "cols": self.cols}, payload)
+
+
+@dataclass
 class Integers:
     values: list[int]
 
@@ -401,8 +422,8 @@ class Family:
 
 KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "gfp.basis": Basis, "gfp.solutions": Solutions,
          "gfp.inverses": Inverses, "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
-         "burnside.cycle_index": CycleIndex, "integers": Integers, "count": Count, "histogram": Histogram,
-         "hits": Hits, "first": First, "extremum": Extremum}
+         "burnside.cycle_index": CycleIndex, "designs.matrix": U64Matrices, "integers": Integers,
+         "count": Count, "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
 
 
 def kind_of(obj) -> str:
@@ -463,6 +484,11 @@ def decode_at(buf: bytes, offset: int):
         words = struct.unpack_from(f"<{q['count'] * width}Q", pl, 0)
         terms = [(words[i * width], list(words[i * width + 1:(i + 1) * width])) for i in range(q["count"])]
         return CycleIndex(q["degree"], q["denominator"], terms), end
+    if k == "designs.matrix":
+        n = q["count"] * q["rows"] * q["cols"]
+        if len(pl) != n * 8:
+            raise ValueError("designs.matrix payload length mismatch")
+        return U64Matrices(q["count"], q["rows"], q["cols"], list(struct.unpack_from(f"<{n}Q", pl, 0))), end
     if k == "integers":
         return Integers(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "count":

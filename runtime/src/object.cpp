@@ -440,6 +440,20 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->witness = w;
         return R::success(o);
     }
+    if (h.kind == "designs.matrix") {
+        auto count = need(h, "count"), rows = need(h, "rows"), cols = need(h, "cols");
+        for (auto *r : {&count, &rows, &cols}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        unsigned __int128 total = (unsigned __int128)count.value * rows.value * cols.value;
+        if (total * 8 != h.payload_len) return R::failure(INVALID, "designs.matrix payload length does not match count*rows*cols");
+        auto m = std::make_shared<U64Matrices>();
+        m->count = count.value; m->rows = rows.value; m->cols = cols.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        m->entries.reserve((size_t)total);
+        for (uint64_t i = 0; i < (uint64_t)total; ++i) m->entries.push_back(r.u64());
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "designs.matrix payload length mismatch");
+        o->u64_matrices = m;
+        return R::success(o);
+    }
     return R::failure(INVALID, "unknown object kind " + h.kind);
 }
 
@@ -491,6 +505,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (witness) return {{"p", witness->p}, {"count", witness->count}, {"rows", witness->rows}, {"cols", witness->cols}};
     if (cycle_index) return {{"degree", cycle_index->degree}, {"count", cycle_index->multiplicities.size()},
                              {"denominator", cycle_index->denominator}};
+    if (u64_matrices) return {{"count", u64_matrices->count}, {"rows", u64_matrices->rows}, {"cols", u64_matrices->cols}};
     if (integers) return {{"count", integers->values.size()}};
     if (count) return {{"value", count->value}, {"visited", count->visited}, {"family_size", count->family_size}};
     if (histogram) return {{"visited", histogram->visited}, {"family_size", histogram->family_size}, {"bins", histogram->bins.size()}};
@@ -545,6 +560,9 @@ std::vector<uint8_t> encode(const Object &o) {
                 w.u64(o.cycle_index->cycles[i * o.cycle_index->degree + j]);
         }
         write_header(out, "burnside.cycle_index", o.params(), w.out);
+    } else if (o.u64_matrices) {
+        w.u64s(o.u64_matrices->entries);
+        write_header(out, "designs.matrix", o.params(), w.out);
     } else if (o.integers) {
         w.u64s(o.integers->values);
         write_header(out, o.kind == "burnside.counts" ? "burnside.counts" : "integers", o.params(), w.out);
