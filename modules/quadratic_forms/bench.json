@@ -1,0 +1,36 @@
+{
+ "module": "quadratic_forms",
+ "fingerprint": {
+  "module": "30b8ca6947698285aec52bcde45e508dcc36ae6645c3d4b3149a4dfbb783842b",
+  "runtime": "0963ac559b5fcc5926e5251a4d5e7e9fd2d04f7fc3c2af8dc1f85f43a03c87b2",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "79f4a47117583381bcee9e4ee31f1c27c8b0b979a7dc5f5ff408fdc3adbdce40"
+ },
+ "measured_at": "2026-09-03T06:11:52+00:00",
+ "commit": "edaf32229b90fd14d8945d7b8c5e8af5cc0ceb94",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "symmetric_4x4_F3",
+   "what": "type distribution of all 59,049 symmetric 4x4 matrices over F_3",
+   "op": "quadratic_forms.form_type",
+   "reduction": "histogram",
+   "members": 59049,
+   "naive_s": 0.40128133492544293,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.006022623972967267,
+   "kernel_all_threads_s": 0.0007205891888588667,
+   "threads": 32,
+   "speedup_1_thread": 66.62898708712457,
+   "speedup_all_threads": 556.8794829699244,
+   "answer": "Histogram(visited=59049, family_size=59049, bins=[22621, 17628, 18800])"
+  }
+ ]
+}

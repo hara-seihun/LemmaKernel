@@ -68,6 +68,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/posets/backends/g
 # module posets: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/projective_sets/backends/generic/projective_sets_generic.cpp)
 # module projective_sets: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/quadratic_forms/backends/generic/quadratic_forms_generic.cpp)
+# module quadratic_forms: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/quantum_codes/backends/generic/quantum_codes_generic.cpp)
 # module quantum_codes: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/residues/backends/generic/residues_generic.cpp)

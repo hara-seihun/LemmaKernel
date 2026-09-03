@@ -41,6 +41,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | cayley | C8 automorphisms | 7 | 0.15 s | 0.00173 s | 87× | 124× |
 | designs | complete 6-subsets of 12 | 924 | 0.0451 s | 0.000587 s | 77× | 79× |
 | strongly_regular | six-vertex graph census | 2,097,152 | 16.8 s~ | 0.229 s | 73× | 302× |
+| quadratic_forms | symmetric_4x4_F3 | 59,049 | 0.401 s | 0.00602 s | 67× | 557× |
 | subspace_orbits | PG(4,2) line orbits | 155 | 0.958 s | 0.0148 s | 65× | 312× |
 | latin_squares | order5_transversals | 161,280 | 12.6 s~ | 0.197 s | 64× | 320× |
 | young | ternary_rsk_length7 | 2,187 | 0.0427 s | 0.000693 s | 62× | 29× |
@@ -129,6 +130,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | posets | eight_of_sixteen_subsets | linear-extension distribution for all 8-element induced subposets of the Boolean lattice B_4 | 12,870 | 1.74 s | 0.0108 s | 0.00242 s | 161× | 718× |
 | posets | divisor_heights_100000 | height distribution of the divisor posets of the first 100000 positive integers | 100,000 | 123 s~ | 0.17 s | 0.0108 s | 725× | 11,326× |
 | projective_sets | pg32_six_sets | maximum line intersection for every 6-point subset of the 15 points of PG(3,2) | 5,005 | 2.95 s | 0.00176 s | 0.00052 s | 1,673× | 5,674× |
+| quadratic_forms | symmetric_4x4_F3 | type distribution of all 59,049 symmetric 4x4 matrices over F_3 | 59,049 | 0.401 s | 0.00602 s | 0.000721 s | 67× | 557× |
 | quantum_codes | distance census of three-spaces | distance distribution of all binary symplectic 3-spaces in F_2^8 | 97,155 | 8.16 s | 0.0274 s | 0.00299 s | 297× | 2,732× |
 | residues | orders_mod_10007 | the multiplicative order of every unit modulo 10007 | 10,006 | 3.13 s | 0.000907 s | 0.000549 s | 3,446× | 5,692× |
 | residues | primitive_roots_mod_10007 | how many units modulo 10007 generate the whole unit group | 10,006 | 23.5 s~ | 0.000824 s | 0.000483 s | 28,580× | 48,774× |

@@ -2340,6 +2340,65 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'zero projective point', 'error': 'contains zero'},
                  {'case': 'unnormalised projective point', 'error': 'not normalised'},
                  {'case': 'duplicate projective point', 'error': 'contains a duplicate'}]},
+ {'backends': [{'accepts': 'explicit batches of symmetric square matrices and symmetric_matrices families '
+                           'over odd primes p < 2^32; integer answers must fit u64',
+                'name': 'generic',
+                'sources': ['backends/generic/quadratic_forms_generic.cpp'],
+                'summary': 'Portable C++: symmetric congruence elimination classifies each form; radicals '
+                           'use canonical finite-field row reduction. Members run in parallel.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Quadratic_forms/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'quadratic_forms',
+             'reference': 'lean/Quadratic_forms/Reference.lean',
+             'summary': 'Symmetric bilinear forms and Q(x)=x^T A x over odd prime fields. Type codes are 0 '
+                        'hyperbolic, 1 elliptic, and 2 parabolic; for a degenerate form the type and Witt '
+                        'index refer to its nonsingular quotient. Characteristic 2 is rejected because '
+                        'quadratic forms there are not represented by symmetric matrices. Hermitian forms '
+                        'are not included because the runtime has no finite-field involution in its matrix '
+                        'encoding.',
+             'version': 1},
+  'operations': [{'families': ['explicit', 'symmetric_matrices'],
+                  'name': 'form_type',
+                  'summary': 'Type of the nonsingular quotient: 0 for hyperbolic (including rank zero), 1 '
+                             'for elliptic, and 2 for parabolic. Even rank 2m is hyperbolic exactly when '
+                             '(-1)^m times its discriminant is a square; odd rank is parabolic.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'symmetric_matrices'],
+                  'name': 'rank',
+                  'summary': 'Rank of the symmetric Gram matrix, equivalently the rank of the associated '
+                             'bilinear form.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'symmetric_matrices'],
+                  'name': 'radical',
+                  'summary': 'Canonical basis of the radical ker(A): one vector per free column f of '
+                             'rref(A), in increasing f, with x_f=1 and x_pivot_i=-R[i,f].',
+                  'value': 'gfp.basis'},
+                 {'families': ['explicit', 'symmetric_matrices'],
+                  'name': 'witt_index',
+                  'summary': 'Number of hyperbolic planes in the nonsingular quotient. It does not include '
+                             'the radical dimension.',
+                  'value': 'integer'},
+                 {'args': {'other': 'vectors'},
+                  'families': ['explicit', 'symmetric_matrices'],
+                  'name': 'is_isometric',
+                  'summary': 'Whether the member and the fixed symmetric matrix `other` are isometric over '
+                             'F_p. `other` is one n x n matrix. Exact isometry is used, so odd-rank forms '
+                             'with different discriminant square classes are not isometric even though both '
+                             'have parabolic type.',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'symmetric_matrices'],
+                  'name': 'isotropic_point_count',
+                  'summary': 'Number of projective points [x] with x nonzero and x^T A x=0, including points '
+                             'in the radical.',
+                  'value': 'integer'}],
+  'rejections': [{'case': 'characteristic two', 'error': 'odd prime'},
+                 {'case': 'nonsymmetric explicit form', 'error': 'symmetric'},
+                 {'case': 'nonsquare explicit form', 'error': 'square'},
+                 {'case': 'wrong-sized comparison form', 'error': 'same n x n'},
+                 {'case': 'Grassmannian restrictions not shipped',
+                  'error': 'defined on explicit, symmetric_matrices'}]},
  {'backends': [{'accepts': 'matrix families over F_2 with an even number 2n of columns',
                 'name': 'generic',
                 'sources': ['backends/generic/quantum_codes_generic.cpp'],
