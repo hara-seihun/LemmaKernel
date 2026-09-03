@@ -11,6 +11,7 @@ namespace lk {
  * consumer may refuse to descend (Skip) or accept every leaf below without visiting it (TakeAll).
  * Leaves below one node have contiguous indices, and every push names that range. */
 struct PivotTable;
+struct PartitionTable;
 
 struct Family {
     enum class Kind { Explicit, Subsets, Grassmannian, AllMatrices, Transform, Stack, GroupElements,
@@ -23,6 +24,9 @@ struct Family {
     std::shared_ptr<Family> child;
     uint64_t p = 0, k = 0, n = 0, h = 0, m = 0; /* Words: p is the alphabet size, n the length */
     uint64_t a = 0, b = 0;                     /* Range: [a, b). Partitions: flags distinct, odd. */
+    /* Expensive cardinalities are fixed when their family is constructed. */
+    bool size_cached = false;
+    uint64_t cached_size = 0;
     /* GroupElements: every element of the generated permutation or matrix group, sorted
      * lexicographically by flat entries and computed on first use. Read through the atomic
      * pointer so that the per-member fast path takes no lock. */
@@ -31,6 +35,8 @@ struct Family {
     /* Grassmannian: pivot sets and offsets, computed on first use. */
     mutable std::shared_ptr<const PivotTable> pivots;
     mutable std::atomic<const PivotTable *> pivots_ready{nullptr};
+    /* Partitions: the immutable sparse counting table used to unrank every member. */
+    std::shared_ptr<const PartitionTable> partition_counts;
     uint64_t prime() const; /* 0 for permutation members, NATURALS for integer members */
     uint64_t rows() const; /* rows of one member */
     uint64_t cols() const;

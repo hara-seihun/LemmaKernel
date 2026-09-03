@@ -88,6 +88,15 @@ struct PartitionCounter {
         return total;
     }
 
+    bool cached_count(uint64_t rem, uint64_t part, uint64_t slots, uint64_t &out) const {
+        if (rem == 0) { out = 1; return true; }
+        if (part == 0 || slots == 0) { out = 0; return true; }
+        auto it = memo.find(Triple{rem, part, slots});
+        if (it == memo.end()) return false;
+        out = it->second;
+        return true;
+    }
+
     uint64_t largest_branch(uint64_t total, uint64_t largest, uint64_t slots) {
         if ((odd && largest % 2 == 0) || largest > total || slots == 0) return 0;
         uint64_t answer = 0;
@@ -132,6 +141,12 @@ struct PivotTable {
     std::vector<std::vector<uint32_t>> sets;
     std::vector<uint64_t> offsets; /* size sets.size()+1 */
     std::vector<std::vector<uint32_t>> free_counts; /* per set, per row */
+};
+
+struct PartitionTable {
+    PartitionCounter counter;
+    PartitionTable(uint64_t total, uint64_t max_multiplicity, bool distinct, bool odd)
+        : counter(total, max_multiplicity, distinct, odd) {}
 };
 
 namespace {
@@ -288,6 +303,7 @@ bool Family::is_explicit() const {
 }
 
 Result<uint64_t> Family::size() const {
+    if (size_cached) return Result<uint64_t>::success(cached_size);
     switch (kind) {
     case Kind::Explicit:
     case Kind::GroupTables: return Result<uint64_t>::success(data->count);
@@ -445,8 +461,9 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         out.entries.assign(1, (Entry)(a + index));
         break;
     case Kind::Partitions: {
+        if (!partition_counts) return fail(INTERNAL, "partitions counting table is missing");
         uint64_t rem = n, slots = effective_bound(k, n), largest = effective_bound(m, n), pos = 0;
-        PartitionCounter counter(n, h, a != 0, b != 0);
+        const PartitionCounter &counter = partition_counts->counter;
         out.entries.assign(n, 0);
         for (uint64_t part = largest; part > 0 && rem > 0; --part) {
             if (b && part % 2 == 0) continue;
@@ -454,7 +471,9 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
             uint64_t max_count = std::min({cap, slots, rem / part});
             bool selected = false;
             for (uint64_t c = max_count + 1; c-- > 0;) {
-                uint64_t below = counter.count(rem - c * part, part - 1, slots - c);
+                uint64_t below;
+                if (!counter.cached_count(rem - c * part, part - 1, slots - c, below))
+                    return fail(INTERNAL, "partitions counting table is incomplete");
                 if (index < below) {
                     for (uint64_t j = 0; j < c; ++j) out.entries[pos++] = (Entry)part;
                     rem -= c * part;
@@ -1226,9 +1245,14 @@ Result<std::shared_ptr<Family>> make_partitions(uint64_t total, uint64_t max_par
     f->h = max_multiplicity;
     f->a = distinct;
     f->b = odd;
-    auto sz = f->size();
-    if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
-    if (sz.value == 0) return R::failure(INVALID, "partitions: constraints admit no partition");
+    auto table = std::make_shared<PartitionTable>(total, max_multiplicity, distinct != 0, odd != 0);
+    uint64_t largest = effective_bound(max_part, total), slots = effective_bound(max_parts, total);
+    uint64_t size = table->counter.count(total, largest, slots);
+    if (table->counter.overflow) return R::failure(INVALID, "family size does not fit in 64 bits");
+    if (size == 0) return R::failure(INVALID, "partitions: constraints admit no partition");
+    f->partition_counts = std::move(table);
+    f->cached_size = size;
+    f->size_cached = true;
     return R::success(f);
 }
 
@@ -1245,6 +1269,8 @@ Result<std::shared_ptr<Family>> make_compositions(uint64_t total, uint64_t parts
     auto sz = f->size();
     if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
     if (sz.value == 0) return R::failure(INVALID, "compositions: constraints admit no composition");
+    f->cached_size = sz.value;
+    f->size_cached = true;
     return R::success(f);
 }
 
@@ -1266,6 +1292,8 @@ Result<std::shared_ptr<Family>> make_standard_tableaux(std::shared_ptr<Matrix> s
     f->data = std::move(shape);
     auto sz = f->size();
     if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
+    f->cached_size = sz.value;
+    f->size_cached = true;
     return R::success(f);
 }
 
