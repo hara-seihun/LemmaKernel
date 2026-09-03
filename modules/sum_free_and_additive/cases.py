@@ -131,8 +131,9 @@ def cases(ctx, rng):
     ]
 
     # Benchmarks. The hereditary predicates are searches with pruning, and the three frontier
-    # shapes are here: an optimal Golomb ruler proof (no 12-mark ruler shorter than 85), the
-    # extremal count behind r_3(n), and sum-free sets in a huge family. Sumset sizes are not
+    # shapes are here: the 12-mark Golomb rulers near the optimum (a nonexistence proof would be
+    # answered from the span table alone), the extremal count behind r_3(n), and sum-free sets
+    # in a huge family. Sumset sizes are not
     # hereditary, so that case is the honest per-member cost.
     out += [
         Case("sum_free_10_subsets_of_30",
@@ -143,9 +144,9 @@ def cases(ctx, rng):
              lambda: ctx.subsets_of(ctx.range(0, 64), 24), "is_sum_free", {"modulus": 0},
              what="sum-free 24-subsets of [0,63], among 2.5e17 subsets",
              bench="count", oracle=False),
-        Case("golomb_12_marks_length_84",
-             lambda: ctx.subsets_of(ctx.range(0, 85), 12), "is_sidon", {"modulus": 0},
-             what="no 12-mark Golomb ruler of length 84 exists (OGR-12 is 85): 1.3e14 subsets",
+        Case("golomb_12_marks_up_to_92",
+             lambda: ctx.subsets_of(ctx.range(0, 93), 12), "is_sidon", {"modulus": 0},
+             what="12-mark Golomb rulers of length at most 92, with their reflections: 60 among 3e14 subsets",
              bench="count", oracle=False),
         Case("three_ap_free_16_subsets_of_60",
              lambda: ctx.subsets_of(ctx.range(0, 60), 16), "is_ap_free", {"modulus": 0, "length": 3},

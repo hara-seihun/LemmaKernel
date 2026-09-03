@@ -516,13 +516,16 @@ struct Walker {
         uint64_t *P1 = level(j + 1, P), *R1 = level(j + 1, PREV), *D1 = level(j + 1, D), *F1 = level(j + 1, F);
         uint64_t L = amb.L;
         if (op == Op::IsSumFree) {
-            std::memcpy(P1, P0, W * 8);
-            set(P1, x);
             if constexpr (WT == 0) {
+                std::memcpy(P1, P0, W * 8);
+                set(P1, x);
                 std::memcpy(F1, F0, W * 8);
                 amb.place(F1, P1, (int64_t)x);
             } else {
                 uint64_t a[WT];
+                Words<WT>::load(a, P0);
+                Words<WT>::set(a, x);
+                Words<WT>::store(P1, a, amb);
                 Words<WT>::load(a, F0);
                 Words<WT>::place(a, P1, (int64_t)x, amb);
                 Words<WT>::store(F1, a, amb);
@@ -530,13 +533,16 @@ struct Walker {
             return;
         }
         if (op == Op::IsSidon) { /* F waits for finish_forbidden(): the gap bound only needs D+ */
-            std::memcpy(R1, R0, W * 8);
-            set(R1, L - x);
             if constexpr (WT == 0) {
+                std::memcpy(R1, R0, W * 8);
+                set(R1, L - x);
                 std::memcpy(D1, D0, W * 8);
                 amb.place(D1, R0, (int64_t)x - (int64_t)L); /* x - P0 as values */
             } else {
                 uint64_t d[WT];
+                Words<WT>::load(d, R0);
+                Words<WT>::set(d, L - x);
+                Words<WT>::store(R1, d, amb);
                 Words<WT>::load(d, D0);
                 Words<WT>::place(d, R0, (int64_t)x - (int64_t)L, amb);
                 Words<WT>::store(D1, d, amb);
@@ -544,23 +550,30 @@ struct Walker {
             (void)F0; (void)F1; (void)P0; (void)P1;
             return;
         }
-        /* AP-free */
-        std::memcpy(P1, P0, W * 8);
-        set(P1, x);
-        std::memcpy(R1, R0, W * 8);
-        set(R1, L - x);
+        /* AP-free. Three terms need only the reversal: the new forbidden values are 2x - P0,
+         * a shift of R0, and nothing below reads P. */
         if (length == 3) {
             if constexpr (WT == 0) {
+                std::memcpy(R1, R0, W * 8);
+                set(R1, L - x);
                 std::memcpy(F1, F0, W * 8);
                 amb.place(F1, R0, 2 * (int64_t)x - (int64_t)L); /* 2x - P0 */
             } else {
                 uint64_t a[WT];
+                Words<WT>::load(a, R0);
+                Words<WT>::set(a, L - x);
+                Words<WT>::store(R1, a, amb);
                 Words<WT>::load(a, F0);
                 Words<WT>::place(a, R0, 2 * (int64_t)x - (int64_t)L, amb);
                 Words<WT>::store(F1, a, amb);
             }
+            (void)P0; (void)P1;
             return;
         }
+        std::memcpy(P1, P0, W * 8);
+        set(P1, x);
+        std::memcpy(R1, R0, W * 8);
+        set(R1, L - x);
         std::memcpy(F1, F0, W * 8);
         if (length == 2) { std::fill(F1, F1 + W, ~0ULL); F1[W - 1] &= amb.mask; return; }
         uint64_t step = length - 2;

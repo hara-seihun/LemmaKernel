@@ -1,19 +1,19 @@
 {
  "module": "sum_free_and_additive",
  "fingerprint": {
-  "module": "a93eece6458912c164eae035cf67c4fa9a765e1048757323af7c6f64dacd969e",
-  "runtime": "34dcbc05e0dcc6e4964e62ed1b00d7ee32f4a81976c4b7e2ed6c18637b83f48f",
+  "module": "23258a67e872626c54b17e5bcc5b5d39c3ba3e7434c7b418b827c3d84b3909af",
+  "runtime": "005c6c4a3f4c159a2843794446a06181360120d72ea46a56d159cff30a06cbae",
   "dependencies": [],
-  "combined": "9b6c30db1a042f9dcc874b18983bfb290eacfbfde07ad8dfcf00558eac06dad6"
+  "combined": "83e2c8fccf7942f508ff435a4e261e73925a87c1be94b6a5c0cfd0471aef33d3"
  },
- "measured_at": "2026-09-03T08:16:46+00:00",
- "commit": "e08dffa530e2ab305474e6e57cf6c9319454a838",
+ "measured_at": "2026-09-03T16:46:38+00:00",
+ "commit": "9faa2f37c0b573bbf0116d6769fdbe45086f6729",
  "machine": {
   "host": "gmktec",
   "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
   "threads": 32
  },
- "naive_limit_s": 10.0,
+ "naive_limit_s": 2.0,
  "rows": [
   {
    "case": "sum_free_10_subsets_of_30",
@@ -21,13 +21,13 @@
    "op": "sum_free_and_additive.is_sum_free",
    "reduction": "count",
    "members": 30045015,
-   "naive_s": 73.75645650980879,
+   "naive_s": 73.88415754011366,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 0.0025482929777354,
-   "kernel_all_threads_s": 0.0026310901157557964,
+   "kernel_1_thread_s": 0.0025304588489234447,
+   "kernel_all_threads_s": 0.004468349972739816,
    "threads": 32,
-   "speedup_1_thread": 28943.475948104748,
-   "speedup_all_threads": 28032.660709008745,
+   "speedup_1_thread": 29197.928894021275,
+   "speedup_all_threads": 16534.997927839304,
    "answer": "Count(value=14815, visited=30045015, family_size=30045015)"
   },
   {
@@ -36,29 +36,29 @@
    "op": "sum_free_and_additive.is_sum_free",
    "reduction": "count",
    "members": 250649105469666120,
-   "naive_s": 1901784951908.0278,
+   "naive_s": 2842296711738.847,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 1.5668743629939854,
-   "kernel_all_threads_s": 0.3819665350019932,
+   "kernel_1_thread_s": 1.4856180639471859,
+   "kernel_all_threads_s": 0.359151927055791,
    "threads": 32,
-   "speedup_1_thread": 1213744379781.7297,
-   "speedup_all_threads": 4978930816277.148,
+   "speedup_1_thread": 1913208233472.2417,
+   "speedup_all_threads": 7913911906415.365,
    "answer": "Count(value=28046377, visited=250649105469666120, family_size=250649105469666120)"
   },
   {
-   "case": "golomb_12_marks_length_84",
-   "what": "no 12-mark Golomb ruler of length 84 exists (OGR-12 is 85): 1.3e14 subsets",
+   "case": "golomb_12_marks_up_to_92",
+   "what": "12-mark Golomb rulers of length at most 92, with their reflections: 60 among 3e14 subsets",
    "op": "sum_free_and_additive.is_sidon",
    "reduction": "count",
-   "members": 131567066917650,
-   "naive_s": 5137229480.101122,
+   "members": 416579843773639,
+   "naive_s": 15234341471.100838,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 0.7891103329602629,
-   "kernel_all_threads_s": 0.05704055796377361,
+   "kernel_1_thread_s": 5.980194567004219,
+   "kernel_all_threads_s": 0.3854081949684769,
    "threads": 32,
-   "speedup_1_thread": 6510153606.567736,
-   "speedup_all_threads": 90062749445.11887,
-   "answer": "Count(value=0, visited=131567066917650, family_size=131567066917650)"
+   "speedup_1_thread": 2547465855.9031615,
+   "speedup_all_threads": 39527808878.965004,
+   "answer": "Count(value=60, visited=416579843773639, family_size=416579843773639)"
   },
   {
    "case": "three_ap_free_16_subsets_of_60",
@@ -66,13 +66,13 @@
    "op": "sum_free_and_additive.is_ap_free",
    "reduction": "count",
    "members": 149608375854525,
-   "naive_s": 372400028.0018671,
+   "naive_s": 296550616.3793695,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 4.1289583870675415,
-   "kernel_all_threads_s": 0.3505774529185146,
+   "kernel_1_thread_s": 3.88510166015476,
+   "kernel_all_threads_s": 0.3307109950110316,
    "threads": 32,
-   "speedup_1_thread": 90192245.3779807,
-   "speedup_all_threads": 1062247514.4983861,
+   "speedup_1_thread": 76330207.6289959,
+   "speedup_all_threads": 896706250.6327537,
    "answer": "Count(value=7411464, visited=149608375854525, family_size=149608375854525)"
   },
   {
@@ -81,13 +81,13 @@
    "op": "sum_free_and_additive.sumset_size",
    "reduction": "histogram",
    "members": 3838380,
-   "naive_s": 11.096774049242958,
+   "naive_s": 7.339672964299098,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 0.04898814205080271,
-   "kernel_all_threads_s": 0.0049098331946879625,
+   "kernel_1_thread_s": 0.05014219298027456,
+   "kernel_all_threads_s": 0.00482055707834661,
    "threads": 32,
-   "speedup_1_thread": 226.5195940220625,
-   "speedup_all_threads": 2260.112229728855,
+   "speedup_1_thread": 146.37718312771946,
+   "speedup_all_threads": 1522.5777529464524,
    "answer": "Histogram(visited=3838380, family_size=3838380, bins=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 140, 228, 817, 1530, 19748, 33720"
   }
  ]

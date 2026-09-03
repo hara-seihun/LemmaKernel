@@ -9,7 +9,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | module | case | members | naive | kernel ×1 | speedup ×1 | speedup all threads |
 |---|---|---:|---:|---:|---:|---:|
 | burnside | binary_necklaces_60 | 1,152,921,504,606,846,976 | 6.23e+13 s~ | 2.65e-05 s | 2.3e+18× | 1.7e+17× |
-| sum_free_and_additive | sum_free_24_subsets_of_64 | 250,649,105,469,666,120 | 1.9e+12 s~ | 1.57 s | 1.2e+12× | 5e+12× |
+| sum_free_and_additive | sum_free_24_subsets_of_64 | 250,649,105,469,666,120 | 2.84e+12 s~ | 1.49 s | 1.9e+12× | 7.9e+12× |
 | spreads_and_partitions | pg32_first_spread | 324,632 | 20.6 s~ | 5.06e-05 s | 407,345× | 40,985× |
 | words_and_growth | free group F2 geodesic prefix | 10 | 2.06 s | 1.88e-05 s | 109,456× | 179,308× |
 | perm_groups | S9 Schreier-Sims order | 1 | 1.36 s | 2.68e-05 s | 50,921× | 61,176× |
@@ -165,11 +165,11 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | strongly_regular | six-vertex graph census | count labelled strongly regular graphs among all 2^21 symmetric 6x6 binary matrices | 2,097,152 | 16.8 s~ | 0.229 s | 0.0556 s | 73× | 302× |
 | subgroups | S5 subgroup census | all 156 subgroups of S5, a parent group of order 120 | 1 | 0.363 s | 0.044 s | 0.044 s | 8.3× | 8.3× |
 | subspace_orbits | PG(4,2) line orbits | canonical indices for the 155 lines of PG(4,2) under the Singer normaliser | 155 | 0.497 s | 0.00732 s | 0.00104 s | 68× | 476× |
-| sum_free_and_additive | sum_free_10_subsets_of_30 | how many of the 30 million 10-subsets of [1,30] are sum-free | 30,045,015 | 73.8 s~ | 0.00255 s | 0.00263 s | 28,943× | 28,033× |
-| sum_free_and_additive | sum_free_24_subsets_of_64 | sum-free 24-subsets of [0,63], among 2.5e17 subsets | 250,649,105,469,666,120 | 1.9e+12 s~ | 1.57 s | 0.382 s | 1.2e+12× | 5e+12× |
-| sum_free_and_additive | golomb_12_marks_length_84 | no 12-mark Golomb ruler of length 84 exists (OGR-12 is 85): 1.3e14 subsets | 131,567,066,917,650 | 5.14e+09 s~ | 0.789 s | 0.057 s | 6.5e+09× | 9e+10× |
-| sum_free_and_additive | three_ap_free_16_subsets_of_60 | 3-AP-free 16-subsets of [0,59], among 1.5e14 subsets (r_3(60) = 20) | 149,608,375,854,525 | 3.72e+08 s~ | 4.13 s | 0.351 s | 9e+07× | 1.1e+09× |
-| sum_free_and_additive | sumset_sizes_6_subsets_of_40 | the distribution of |S+S| over every 6-subset of [1,40] | 3,838,380 | 11.1 s~ | 0.049 s | 0.00491 s | 227× | 2,260× |
+| sum_free_and_additive | sum_free_10_subsets_of_30 | how many of the 30 million 10-subsets of [1,30] are sum-free | 30,045,015 | 73.9 s~ | 0.00253 s | 0.00447 s | 29,198× | 16,535× |
+| sum_free_and_additive | sum_free_24_subsets_of_64 | sum-free 24-subsets of [0,63], among 2.5e17 subsets | 250,649,105,469,666,120 | 2.84e+12 s~ | 1.49 s | 0.359 s | 1.9e+12× | 7.9e+12× |
+| sum_free_and_additive | golomb_12_marks_up_to_92 | 12-mark Golomb rulers of length at most 92, with their reflections: 60 among 3e14 subsets | 416,579,843,773,639 | 1.52e+10 s~ | 5.98 s | 0.385 s | 2.5e+09× | 4e+10× |
+| sum_free_and_additive | three_ap_free_16_subsets_of_60 | 3-AP-free 16-subsets of [0,59], among 1.5e14 subsets (r_3(60) = 20) | 149,608,375,854,525 | 2.97e+08 s~ | 3.89 s | 0.331 s | 7.6e+07× | 9e+08× |
+| sum_free_and_additive | sumset_sizes_6_subsets_of_40 | the distribution of |S+S| over every 6-subset of [1,40] | 3,838,380 | 7.34 s~ | 0.0501 s | 0.00482 s | 146× | 1,523× |
 | vertex_transitive | all_graphs_6_vertex_transitive | count vertex-transitive isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.145 s | 0.0029 s | 0.00155 s | 50× | 94× |
 | vertex_transitive | all_graphs_6_arc_transitive | count arc-transitive isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.149 s | 0.003 s | 0.00102 s | 50× | 146× |
 | vertex_transitive | all_graphs_6_cayley | count Cayley isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.322 s | 0.00316 s | 0.000945 s | 102× | 341× |
