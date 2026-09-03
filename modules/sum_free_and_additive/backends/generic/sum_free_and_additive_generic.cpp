@@ -1194,9 +1194,14 @@ std::vector<Accumulator> search(const Problem &P, Reduction reduction, uint32_t 
     }
     /* Units are index prefixes of depth d in canonical order. Deeper prefixes balance the
      * unequal subtrees of a pruned search across threads; the depth is the largest whose
-     * prefixes, filtered by the span bounds, fit the cap. When k == 2 a unit is a leaf. */
-    uint64_t d = k <= 2 ? k : std::min<uint64_t>(k - 2, 6);
-    uint64_t cap = std::max<uint64_t>(1ULL << 16, 4096ULL * threads);
+     * prefixes, filtered by the span bounds, fit the cap, and the cap grows with the family
+     * (a few thousand units cost milliseconds, which a small search would notice). When
+     * k == 2 a unit is a leaf. */
+    uint64_t d = k <= 2 ? k : std::min<uint64_t>(k - 2, 8);
+    int size_bits = 0;
+    for (Index n = P.cum.empty() ? 0 : P.cum[0][m]; n; n >>= 1) ++size_bits;
+    uint64_t cap = 1ULL << std::clamp(size_bits / 2, 16, 18);
+    cap = std::max<uint64_t>(cap, 4096ULL * threads);
     std::vector<uint32_t> prefixes; /* d indices per unit */
     std::vector<Index> starts;      /* first leaf index per unit */
     for (;; --d) {

@@ -247,7 +247,10 @@ template <class Fn> std::vector<Status> parallel_ranges(uint64_t total, uint32_t
     threads = std::max<uint32_t>(1, std::min<uint64_t>(threads, total ? total : 1));
     std::vector<Status> statuses(threads, ok());
     std::atomic<uint64_t> next{0};
-    uint64_t chunk = std::max<uint64_t>(1, total / (threads * 16));
+    /* Units of work can differ in cost by orders of magnitude (the first prefixes of a pruned
+     * search are the widest), so units are handed out one at a time up to a million of them,
+     * and in chunks that keep the number of hand-outs there beyond. */
+    uint64_t chunk = std::max<uint64_t>(1, total >> 20);
     auto work = [&](uint32_t t) {
         for (;;) {
             uint64_t begin = next.fetch_add(chunk);
