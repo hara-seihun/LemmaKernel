@@ -95,12 +95,26 @@ def cases(ctx, rng):
              ["count"], oracle=False),
     ]
 
-    # Benchmarks. Sum-freedom is subset-closed, so the kernel prunes; sumset sizes are not, so
-    # that case is the honest per-member cost.
+    # Benchmarks. The hereditary predicates are searches with pruning, and the three frontier
+    # shapes are here: an optimal Golomb ruler proof (no 12-mark ruler shorter than 85), the
+    # extremal count behind r_3(n), and sum-free sets in a huge family. Sumset sizes are not
+    # hereditary, so that case is the honest per-member cost.
     out += [
         Case("sum_free_10_subsets_of_30",
              lambda: ctx.subsets_of(ctx.range(1, 31), 10), "is_sum_free", {"modulus": 0},
              what="how many of the 30 million 10-subsets of [1,30] are sum-free",
+             bench="count", oracle=False),
+        Case("sum_free_24_subsets_of_64",
+             lambda: ctx.subsets_of(ctx.range(0, 64), 24), "is_sum_free", {"modulus": 0},
+             what="sum-free 24-subsets of [0,63], among 2.5e17 subsets",
+             bench="count", oracle=False),
+        Case("golomb_12_marks_length_84",
+             lambda: ctx.subsets_of(ctx.range(0, 85), 12), "is_sidon", {"modulus": 0},
+             what="no 12-mark Golomb ruler of length 84 exists (OGR-12 is 85): 1.3e14 subsets",
+             bench="count", oracle=False),
+        Case("three_ap_free_16_subsets_of_60",
+             lambda: ctx.subsets_of(ctx.range(0, 60), 16), "is_ap_free", {"modulus": 0, "length": 3},
+             what="3-AP-free 16-subsets of [0,59], among 1.5e14 subsets (r_3(60) = 20)",
              bench="count", oracle=False),
         Case("sumset_sizes_6_subsets_of_40",
              lambda: ctx.subsets(elements(range(1, 41)), 6), "sumset_size", {"modulus": 0},
@@ -133,3 +147,21 @@ def invariants(ctx):
     sizes = ctx.value("sum_free_and_additive.sumset_size", interval, "histogram", modulus=0)
     assert len(sizes.bins) == 11 and sizes.bins[10] > 0
     assert ctx.value("sum_free_and_additive.is_sidon", interval, "count", modulus=0).value == sizes.bins[10]
+
+    # An increasing dictionary takes the pruned path of the generic backend (span table, mirror
+    # rule, gap bound, candidate prefilter); a shuffled dictionary of the same values takes the
+    # general one. Deep enough that every bound fires; the counts must agree.
+    import random
+    rng = random.Random(7)
+    for op, n, k, args in [("is_sidon", 36, 7, {}), ("is_sidon", 44, 8, {}),
+                           ("is_ap_free", 30, 8, {"length": 3}), ("is_ap_free", 24, 8, {"length": 4}),
+                           ("is_sum_free", 30, 10, {})]:
+        values = list(range(n))
+        shuffled = values[:]
+        rng.shuffle(shuffled)
+        sorted_count = ctx.value(f"sum_free_and_additive.{op}", ctx.subsets_of(ctx.range(0, n), k),
+                                 "count", modulus=0, **args).value
+        shuffled_count = ctx.value(f"sum_free_and_additive.{op}", ctx.subsets(elements(shuffled), k),
+                                   "count", modulus=0, **args).value
+        assert sorted_count == shuffled_count, (op, n, k, sorted_count, shuffled_count)
+        assert sorted_count > 0

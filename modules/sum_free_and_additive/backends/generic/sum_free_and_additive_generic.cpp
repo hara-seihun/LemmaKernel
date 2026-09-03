@@ -299,6 +299,7 @@ struct Walker {
     std::vector<uint32_t> vals;     /* the prefix */
     std::vector<uint64_t> measure;  /* per level: |S|, |D|, Schur count or max multiplicity */
     std::vector<uint8_t> pending;   /* per level: push() left P, PREV, S, D to finish() */
+    std::vector<uint8_t> pending_f; /* per level: push() left F to finish_forbidden() */
     std::vector<uint32_t> mult;     /* per difference code, MaxDifferenceMultiplicity */
 
     Walker(const Problem &p, Reduction r, Shared *shared)
@@ -312,6 +313,7 @@ struct Walker {
         tmp2.assign(W, 0);
         measure.assign(k + 1, 0);
         pending.assign(k + 1, 0);
+        pending_f.assign(k + 1, 0);
         if (mode == Mode::Forbid) {
             if (op == Op::IsSumFree) amb.set_value(level(0, F), 0);
             if (!prob.interval) {
@@ -372,7 +374,8 @@ struct Walker {
             case 8: sorted_forbid<8>(j, x); break;
             default: sorted_forbid<0>(j, x); break;
             }
-            if (!prob.interval) {
+            if (op == Op::IsSidon) pending_f[j + 1] = true;
+            else if (!prob.interval) {
                 uint64_t *A0 = level_allowed(j), *A1 = level_allowed(j + 1);
                 std::memcpy(A1, A0, WA * 8);
                 forbid_new(F1, F0, A1);
@@ -501,25 +504,19 @@ struct Walker {
             }
             return;
         }
-        if (op == Op::IsSidon) {
+        if (op == Op::IsSidon) { /* F waits for finish_forbidden(): the gap bound only needs D+ */
             std::memcpy(R1, R0, W * 8);
             set(R1, L - x);
             if constexpr (WT == 0) {
                 std::memcpy(D1, D0, W * 8);
                 amb.place(D1, R0, (int64_t)x - (int64_t)L); /* x - P0 as values */
-                std::memcpy(F1, F0, W * 8);
-                amb.place(F1, D1, (int64_t)x);
-                set(F1, x);
             } else {
-                uint64_t d[WT], a[WT];
+                uint64_t d[WT];
                 Words<WT>::load(d, D0);
                 Words<WT>::place(d, R0, (int64_t)x - (int64_t)L, amb);
                 Words<WT>::store(D1, d, amb);
-                Words<WT>::load(a, F0);
-                Words<WT>::place(a, D1, (int64_t)x, amb);
-                Words<WT>::set(a, x);
-                Words<WT>::store(F1, a, amb);
             }
+            (void)F0; (void)F1; (void)P0; (void)P1;
             return;
         }
         /* AP-free */
@@ -606,6 +603,44 @@ struct Walker {
             Words<WT>::place(a, P0, amb.P_minus_x_code(x), amb);
             Words<WT>::set(a, amb.zero_code());
             Words<WT>::store(level(j, D), a, amb);
+        }
+    }
+
+    /* F of level j for sorted Sidon: F_{j-1} | (x + D+_j) | {x}, and the allowed indices. */
+    template <int WT> LK_SCALAR void finish_forbidden_t(uint64_t j, uint64_t x) {
+        const uint64_t *F0 = level(j - 1, F), *D1 = level(j, D);
+        uint64_t *F1 = level(j, F);
+        if constexpr (WT == 0) {
+            std::memcpy(F1, F0, W * 8);
+            amb.place(F1, D1, (int64_t)x);
+            set(F1, x);
+        } else {
+            uint64_t a[WT];
+            Words<WT>::load(a, F0);
+            Words<WT>::place(a, D1, (int64_t)x, amb);
+            Words<WT>::set(a, x);
+            Words<WT>::store(F1, a, amb);
+        }
+    }
+    void finish_forbidden(uint64_t j) {
+        if (j == 0 || !pending_f[j]) return;
+        pending_f[j] = false;
+        uint64_t x = vals[j - 1];
+        switch (W) {
+        case 1: finish_forbidden_t<1>(j, x); break;
+        case 2: finish_forbidden_t<2>(j, x); break;
+        case 3: finish_forbidden_t<3>(j, x); break;
+        case 4: finish_forbidden_t<4>(j, x); break;
+        case 5: finish_forbidden_t<5>(j, x); break;
+        case 6: finish_forbidden_t<6>(j, x); break;
+        case 7: finish_forbidden_t<7>(j, x); break;
+        case 8: finish_forbidden_t<8>(j, x); break;
+        default: finish_forbidden_t<0>(j, x); break;
+        }
+        if (!prob.interval) {
+            uint64_t *A0 = level_allowed(j - 1), *A1 = level_allowed(j);
+            std::memcpy(A1, A0, WA * 8);
+            forbid_new(level(j, F), level(j - 1, F), A1);
         }
     }
 
@@ -762,6 +797,25 @@ struct Walker {
         return total;
     }
 
+    /* |cand ∩ (c, hi] \ (x + D+)| in index space, x = dict[c], for an interval dictionary. */
+    LK_SCALAR uint64_t child_candidate_bound(const uint64_t *cand, uint64_t c, uint64_t hi, uint64_t x) {
+        const uint64_t *Dp = level(vals.size(), D);
+        uint64_t s = x - dict[0], q = s >> 6, r = s & 63;
+        uint64_t lo = c + 1, wlo = lo >> 6, whi = hi >> 6, n = 0;
+        for (uint64_t w = wlo; w <= whi; ++w) {
+            uint64_t sh = 0;
+            if (w >= q) {
+                sh = Dp[w - q] << r;
+                if (r && w > q) sh |= Dp[w - q - 1] >> (64 - r);
+            }
+            uint64_t v = cand[w] & ~sh;
+            if (w == wlo) v &= ~0ULL << (lo & 63);
+            if (w == whi && (hi & 63) != 63) v &= (1ULL << ((hi & 63) + 1)) - 1;
+            n += __builtin_popcountll(v);
+        }
+        return n;
+    }
+
     /* The sums of the r and r-1 smallest positive integers absent from the difference set. */
     void unused_difference_sums(const uint64_t *Dp, uint64_t r, uint64_t &sum_all, uint64_t &sum_rest) {
         sum_all = sum_rest = 0;
@@ -794,6 +848,7 @@ struct Walker {
             hi = std::min(hi, prob.index_at_most((int64_t)prob.maxval() - (int64_t)sum_rest));
         }
         if ((int64_t)lo > hi) { acc.booleans(base, size, false); return; }
+        finish_forbidden(j);
         uint64_t *cand = cands.data() + j * WA;
         uint64_t total = candidates_into(j, lo, m - 1, cand);
         if (total < need) { acc.booleans(base, size, false); return; }
@@ -805,6 +860,10 @@ struct Walker {
             return;
         }
         finish(j);
+        /* Sidon over an interval: before pushing x, bound the child's candidates from above by
+         * the candidates above x outside x + D+ (the child also removes 2x - P). Most children
+         * die of too few candidates, and this costs a shifted AND rather than a push. */
+        bool prefilter = op == Op::IsSidon && prob.interval && need >= 3;
         uint64_t seen = 0;
         for (uint64_t w = 0; w < WA; ++w) {
             uint64_t bits = cand[w];
@@ -816,6 +875,11 @@ struct Walker {
                 uint64_t first = child_first(j, lo, base, c), below = child_size(j, c);
                 if (acc.exhausted(first)) { w = WA; break; }
                 if (j == 1 && prob.mirror && !mirror_bounds(vals[0], dict[c])) {
+                    acc.booleans(first, below, false);
+                    decided += below;
+                    continue;
+                }
+                if (prefilter && child_candidate_bound(cand, c, m - 1, dict[c]) < need - 1) {
                     acc.booleans(first, below, false);
                     decided += below;
                     continue;
@@ -956,7 +1020,7 @@ struct Walker {
             if (ok_here && j == 1 && prob.mirror) ok_here = mirror_bounds(dict[idx[0]], dict[c]);
             if (!ok_here) { dead_level = j; break; }
             if (!push(j, dict[c])) dead_level = j;
-            else finish(j + 1);
+            else { finish(j + 1); finish_forbidden(j + 1); }
             cur.push_back((uint32_t)c);
         }
         if (dead_level != UINT64_MAX) { acc.booleans(first, size, false); return; }
