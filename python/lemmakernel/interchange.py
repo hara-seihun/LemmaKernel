@@ -472,6 +472,27 @@ class DegreeSequences:
 
 
 @dataclass
+class Factorisation:
+    """Per member: (prime, exponent) pairs with primes increasing. `pairs` is flat, two u64 per
+    factor; member i owns pairs[2*offsets[i] : 2*offsets[i+1]]."""
+    count: int
+    offsets: list[int]
+    pairs: list[int]
+
+    def member(self, i: int) -> list[tuple[int, int]]:
+        a, b = self.offsets[i], self.offsets[i + 1]
+        return [(int(self.pairs[2 * j]), int(self.pairs[2 * j + 1])) for j in range(a, b)]
+
+    def tolist(self):
+        return [self.member(i) for i in range(self.count)]
+
+    def encode(self) -> bytes:
+        payload = (struct.pack(f"<{len(self.offsets)}Q", *self.offsets)
+                   + struct.pack(f"<{len(self.pairs)}Q", *self.pairs))
+        return encode("sieve_ranges.factorisation", {"count": self.count}, payload)
+
+
+@dataclass
 class BurnsideCounts:
     values: list[int]
 
@@ -1039,6 +1060,7 @@ KINDS = {"gfp.matrix": Matrix, "lattices.gram": Matrix, "orbits.perms": Perms, "
          "strongly_regular.spectra": StronglyRegularSpectra,
          "lattices.theta_series": ThetaSeries, "lattices.short_vectors": ShortVectors,
          "coset_enumeration.representations": CosetRepresentations,
+         "sieve_ranges.factorisation": Factorisation,
          "integers": Integers, "count": Count, "histogram": Histogram, "hits": Hits,
          "first": First, "extremum": Extremum}
 
@@ -1130,6 +1152,10 @@ def decode_at(buf: bytes, offset: int):
                               list(struct.unpack_from(f"<{2 * n}Q", pl, 2 * n))), end
     if k == "graphs.degree_sequences":
         return DegreeSequences(q["count"], q["n"], unpack_entries(pl, NATURALS, q["count"] * q["n"])), end
+    if k == "sieve_ranges.factorisation":
+        offs = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
+        rest = pl[8 * (q["count"] + 1):]
+        return Factorisation(q["count"], offs, list(struct.unpack_from(f"<{2 * offs[-1]}Q", rest, 0))), end
     if k == "burnside.counts":
         return BurnsideCounts(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "burnside.cycle_index":

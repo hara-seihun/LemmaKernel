@@ -1,0 +1,119 @@
+# sieve_ranges: the classical arithmetic functions on every number of an interval at once.
+#
+# Members are single natural numbers: a `range` family, or an `explicit` family of 1 x 1
+# lk.naturals members when the numbers are not consecutive. Every operation is a function of
+# the member's prime factorisation, and every convention at n = 0 and n = 1 is Mathlib's
+# (`Nat.factorization 0 = 0`, so 0 and 1 both factor as the empty list).
+
+[module]
+name = "sieve_ranges"
+version = 1
+summary = "Arithmetic functions of every number in an interval: primality, prime factorisation, phi, sigma, tau, mu, omega, Omega and the largest prime factor. Members are 1 x 1 natural numbers (a `range` family, or an `explicit` batch of lk.naturals). Values at 0 and 1 follow Mathlib: 0 and 1 have the empty factorisation, phi(0) = sigma(0) = tau(0) = 0, phi(1) = sigma(1) = tau(1) = 1. mu is returned shifted, as mu(n) + 1 in {0, 1, 2}, because reduction values are unsigned."
+
+lean = "lean"
+contract = "lean/Sieve_ranges/Contract.lean"
+reference = "lean/Sieve_ranges/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "sieve_ranges.factorisation"
+params = ["count"]
+payload = "u64 offsets[count+1], then offsets[count] pairs of u64 (prime, exponent)"
+lean = "factorisation"
+summary = "Per member: its prime factorisation as (prime, exponent) pairs with primes increasing and every exponent at least 1 (ragged). 0 and 1 have no pairs."
+
+[[operations]]
+name = "is_prime"
+value = "boolean"
+families = ["range", "explicit"]
+summary = "Whether the member is prime (Mathlib's `Nat.Prime`); 0 and 1 are not."
+
+[[operations]]
+name = "is_squarefree"
+value = "boolean"
+families = ["range", "explicit"]
+summary = "Whether no square above 1 divides the member (Mathlib's `Squarefree`): 1 is squarefree, 0 is not."
+
+[[operations]]
+name = "factorisation"
+value = "sieve_ranges.factorisation"
+families = ["range", "explicit"]
+summary = "The prime factorisation of the member: (prime, exponent) pairs, primes increasing, exponents at least 1. 0 and 1 give no pairs."
+
+[[operations]]
+name = "omega"
+value = "integer"
+families = ["range", "explicit"]
+summary = "Number of distinct prime factors of the member; 0 for 0 and 1."
+
+[[operations]]
+name = "big_omega"
+value = "integer"
+families = ["range", "explicit"]
+summary = "Number of prime factors of the member with multiplicity; 0 for 0 and 1."
+
+[[operations]]
+name = "totient"
+value = "integer"
+families = ["range", "explicit"]
+summary = "Euler's phi: how many of 1..n are coprime to n. phi(0) = 0, phi(1) = 1."
+
+[[operations]]
+name = "sigma"
+value = "integer"
+families = ["range", "explicit"]
+summary = "Sum of the divisors of the member. sigma(0) = 0, sigma(1) = 1."
+
+[[operations]]
+name = "divisor_count"
+value = "integer"
+families = ["range", "explicit"]
+summary = "Number of divisors of the member (tau). tau(0) = 0, tau(1) = 1."
+
+[[operations]]
+name = "mobius"
+value = "integer"
+families = ["range", "explicit"]
+summary = "Moebius mu shifted into the unsigned values a reduction carries: mu(n) + 1, so 0 means mu = -1, 1 means mu = 0 and 2 means mu = +1. A histogram is therefore (#mu=-1, #mu=0, #mu=+1), and `sum` minus the family size is the Mertens function of the interval."
+
+[[operations]]
+name = "largest_prime_factor"
+value = "integer"
+families = ["range", "explicit"]
+summary = "The largest prime factor of the member; 0 for 0 and 1, so `max` over a range answers smoothness questions directly."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/sieve_ranges_generic.cpp"]
+accepts = "any family of 1 x 1 natural-number members (range, explicit); values below 2^32"
+summary = "Portable C++: one sieve of the primes up to the square root of the largest member, then a segmented sieve that divides each block of the interval by them, so the cost per member is a few divisions rather than a trial division to its square root. Explicit batches are trial-divided by the same primes. Threads take disjoint blocks."
+
+# Requests the runtime must refuse. The reference calls the same requests `.invalid`.
+[[rejections]]
+case = "grassmannian is not a number family"
+error = "families only"
+
+[[rejections]]
+case = "matrices over F_5 are not numbers"
+error = "natural numbers"
+
+[[rejections]]
+case = "pairs of numbers are not numbers"
+error = "1 x 1"
+
+[[rejections]]
+case = "reduction mismatch"
+op = "is_prime"
+reduction = "histogram"
+error = "does not accept boolean"
+
+[[rejections]]
+case = "reduction mismatch"
+op = "factorisation"
+reduction = "count"
+error = "does not accept"
+
+[[rejections]]
+case = "histogram of a divisor sum"
+error = "bins"

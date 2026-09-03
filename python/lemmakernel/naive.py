@@ -21,6 +21,9 @@ import math
 
 from .interchange import GRAMS, NATURALS, Count, Extremum, Family, First, Histogram, Hits, Integers, Matrix, Perms
 
+# One bin per value up to the largest seen; runtime/src/reduce.hpp and Lk/Reference.lean agree.
+HISTOGRAM_BIN_LIMIT = 1 << 22
+
 
 # ---- arithmetic the families need ---------------------------------------------------------------
 
@@ -453,6 +456,8 @@ def reduce_int(reduction: str, values: list[int], members, p: int):
     if reduction == "all":
         return Integers(values)
     if reduction == "histogram":
+        if values and max(values) >= HISTOGRAM_BIN_LIMIT:
+            raise ValueError(f"histogram of a value {max(values)} needs more than {HISTOGRAM_BIN_LIMIT} bins")
         bins = [0] * (max(values) + 1 if values else 0)
         for v in values:
             bins[v] += 1

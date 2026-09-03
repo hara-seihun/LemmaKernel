@@ -140,7 +140,9 @@ RUNTIME = {'families': [{'lean': 'explicit',
                             'family_size).'},
                 {'accepts': ['integer'],
                  'name': 'histogram',
-                 'summary': 'Number of members per value (kind `histogram`: u64 bins[0..max]).'},
+                 'summary': 'Number of members per value (kind `histogram`: u64 bins[0..max]). One bin per '
+                            'value up to the largest seen, so values of 2^22 or more are refused; ask for '
+                            '`max`, `sum` or `all` instead.'},
                 {'accepts': ['boolean'],
                  'args': {'limit': 'int'},
                  'name': 'hits',
@@ -2698,6 +2700,92 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
   'rejections': [{'case': 'subsets of integers', 'error': 'family of the form'},
                  {'case': 'ternary words', 'error': 'family of the form'},
                  {'case': 'sunflower k=1', 'error': 'k must be at least 2'}]},
+ {'backends': [{'accepts': 'any family of 1 x 1 natural-number members (range, explicit); values below 2^32',
+                'name': 'generic',
+                'sources': ['backends/generic/sieve_ranges_generic.cpp'],
+                'summary': 'Portable C++: one sieve of the primes up to the square root of the largest '
+                           'member, then a segmented sieve that divides each block of the interval by them, '
+                           'so the cost per member is a few divisions rather than a trial division to its '
+                           'square root. Explicit batches are trial-divided by the same primes. Threads take '
+                           'disjoint blocks.'}],
+  'kinds': [{'lean': 'factorisation',
+             'name': 'sieve_ranges.factorisation',
+             'params': ['count'],
+             'payload': 'u64 offsets[count+1], then offsets[count] pairs of u64 (prime, exponent)',
+             'summary': 'Per member: its prime factorisation as (prime, exponent) pairs with primes '
+                        'increasing and every exponent at least 1 (ragged). 0 and 1 have no pairs.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Sieve_ranges/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'sieve_ranges',
+             'reference': 'lean/Sieve_ranges/Reference.lean',
+             'summary': 'Arithmetic functions of every number in an interval: primality, prime '
+                        'factorisation, phi, sigma, tau, mu, omega, Omega and the largest prime factor. '
+                        'Members are 1 x 1 natural numbers (a `range` family, or an `explicit` batch of '
+                        'lk.naturals). Values at 0 and 1 follow Mathlib: 0 and 1 have the empty '
+                        'factorisation, phi(0) = sigma(0) = tau(0) = 0, phi(1) = sigma(1) = tau(1) = 1. mu '
+                        'is returned shifted, as mu(n) + 1 in {0, 1, 2}, because reduction values are '
+                        'unsigned.',
+             'version': 1},
+  'operations': [{'families': ['range', 'explicit'],
+                  'name': 'is_prime',
+                  'summary': "Whether the member is prime (Mathlib's `Nat.Prime`); 0 and 1 are not.",
+                  'value': 'boolean'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'is_squarefree',
+                  'summary': "Whether no square above 1 divides the member (Mathlib's `Squarefree`): 1 is "
+                             'squarefree, 0 is not.',
+                  'value': 'boolean'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'factorisation',
+                  'summary': 'The prime factorisation of the member: (prime, exponent) pairs, primes '
+                             'increasing, exponents at least 1. 0 and 1 give no pairs.',
+                  'value': 'sieve_ranges.factorisation'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'omega',
+                  'summary': 'Number of distinct prime factors of the member; 0 for 0 and 1.',
+                  'value': 'integer'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'big_omega',
+                  'summary': 'Number of prime factors of the member with multiplicity; 0 for 0 and 1.',
+                  'value': 'integer'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'totient',
+                  'summary': "Euler's phi: how many of 1..n are coprime to n. phi(0) = 0, phi(1) = 1.",
+                  'value': 'integer'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'sigma',
+                  'summary': 'Sum of the divisors of the member. sigma(0) = 0, sigma(1) = 1.',
+                  'value': 'integer'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'divisor_count',
+                  'summary': 'Number of divisors of the member (tau). tau(0) = 0, tau(1) = 1.',
+                  'value': 'integer'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'mobius',
+                  'summary': 'Moebius mu shifted into the unsigned values a reduction carries: mu(n) + 1, so '
+                             '0 means mu = -1, 1 means mu = 0 and 2 means mu = +1. A histogram is therefore '
+                             '(#mu=-1, #mu=0, #mu=+1), and `sum` minus the family size is the Mertens '
+                             'function of the interval.',
+                  'value': 'integer'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'largest_prime_factor',
+                  'summary': 'The largest prime factor of the member; 0 for 0 and 1, so `max` over a range '
+                             'answers smoothness questions directly.',
+                  'value': 'integer'}],
+  'rejections': [{'case': 'grassmannian is not a number family', 'error': 'families only'},
+                 {'case': 'matrices over F_5 are not numbers', 'error': 'natural numbers'},
+                 {'case': 'pairs of numbers are not numbers', 'error': '1 x 1'},
+                 {'case': 'reduction mismatch',
+                  'error': 'does not accept boolean',
+                  'op': 'is_prime',
+                  'reduction': 'histogram'},
+                 {'case': 'reduction mismatch',
+                  'error': 'does not accept',
+                  'op': 'factorisation',
+                  'reduction': 'count'},
+                 {'case': 'histogram of a divisor sum', 'error': 'bins'}]},
  {'backends': [{'accepts': 'families of 0/1 matrices over F_2 with at most 64 columns; any prime p < 2^32; '
                            'at most 2^22 faces per member; boundary matrices of at most 2^24 entries; at '
                            'most 20 facets for is_shellable',

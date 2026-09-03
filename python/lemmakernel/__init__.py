@@ -20,7 +20,7 @@ from . import interchange
 from .interchange import (GRAMS, NATURALS, Basis, Bsgs, BurnsideCounts, CharacterIndicators,
                           CharacterMultiplicities, CharacterTable, Characters, Coefficients, CosetRepresentations,
                           Count, CurveGroups, CycleIndex, Degrees, DegreeSequences, Elements, Expansions, Extremum,
-                          Family, First, GraphGroups, Histogram, Hits, Integers, Inverses, Matrix, MobiusMatrices,
+                          Factorisation, Family, First, GraphGroups, Histogram, Hits, Integers, Inverses, Matrix, MobiusMatrices,
                           Partitions, Perms, PermutationGenerators, QuadraticUnits, RegularSubgroups, RskPairs,
                           ShortVectors, SignedMatrices, Solutions, Spectra, SubgroupLists, ThetaSeries, U64Matrices,
                           U64Vectors, WeightEnumerators, Witness, gram, matrix, naturals, perms)
@@ -32,7 +32,7 @@ __all__ = ["Context", "Handle", "Error", "describe", "matrix", "gram", "perms", 
            "CharacterIndicators", "CharacterMultiplicities", "PermutationGenerators", "SubgroupLists",
            "MobiusMatrices", "Characters", "RskPairs", "CurveGroups", "Elements", "Degrees", "DegreeSequences",
            "Expansions", "QuadraticUnits", "Coefficients", "ThetaSeries", "ShortVectors", "CosetRepresentations",
-           "SignedMatrices", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family",
+           "SignedMatrices", "Factorisation", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family",
            "GraphGroups", "RegularSubgroups", "NATURALS", "GRAMS"]
 
 
@@ -188,6 +188,7 @@ _PARAM_NAMES = {
     "polynomials_fq.degrees": ["count"], "coset_enumeration.representations": ["count", "generators", "max_cosets"],
     "lk.signed_matrices": ["count", "rows", "cols"], "integers": ["count"],
     "continued_fractions_and_pell.expansion": ["count"], "continued_fractions_and_pell.unit": ["count"],
+    "sieve_ranges.factorisation": ["count"],
     "count": ["value", "visited", "family_size"], "histogram": ["visited", "family_size", "bins"],
     "hits": ["p", "rows", "cols", "total", "visited", "family_size", "count", "materialised"],
     "lk.naturals": ["count", "rows", "cols"], "lattices.gram": ["count", "n"],

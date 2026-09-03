@@ -432,6 +432,10 @@ inductive Result (α : Type)
   | invalid
   deriving DecidableEq, Repr
 
+/-- One bin per value up to the largest seen, so a histogram of unbounded values is refused
+rather than materialised; `runtime/src/reduce.hpp` holds the same bound. -/
+def histogramBinLimit : Nat := 4194304
+
 def histogramOf (xs : List Nat) : List Nat :=
   (List.range (xs.foldl max 0 + 1)).map fun v => (xs.filter (· = v)).length
 
@@ -447,7 +451,8 @@ def extremumOf (better : Nat → Nat → Bool) (ms : List Mat) (xs : List Nat) :
 def reduceInt (red : Red) (ms : List Mat) (xs : List Nat) : Result α :=
   match red with
   | .all => .integers xs
-  | .histogram => .histogram xs.length (histogramOf xs)
+  | .histogram =>
+    if histogramBinLimit ≤ xs.foldl max 0 then .invalid else .histogram xs.length (histogramOf xs)
   | .sum => .count (xs.foldl (· + ·) 0) xs.length
   | .max => extremumOf (· > ·) ms xs
   | .min => extremumOf (· < ·) ms xs

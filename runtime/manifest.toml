@@ -158,7 +158,7 @@ summary = "Number of members whose value is true (kind `count`: value, visited, 
 [[reductions]]
 name = "histogram"
 accepts = ["integer"]
-summary = "Number of members per value (kind `histogram`: u64 bins[0..max])."
+summary = "Number of members per value (kind `histogram`: u64 bins[0..max]). One bin per value up to the largest seen, so values of 2^22 or more are refused; ask for `max`, `sum` or `all` instead."
 
 [[reductions]]
 name = "hits"

@@ -80,6 +80,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/residues/backends
 # module residues: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/set_systems/backends/generic/set_systems_generic.cpp)
 # module set_systems: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/sieve_ranges/backends/generic/sieve_ranges_generic.cpp)
+# module sieve_ranges: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/simplicial_complexes/backends/generic/simplicial_complexes_generic.cpp)
 # module simplicial_complexes: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/spreads_and_partitions/backends/generic/spreads_generic.cpp)

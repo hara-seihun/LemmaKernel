@@ -22,6 +22,11 @@ namespace lk {
 
 enum class Reduction { All, Count, Histogram, Hits, First, Sum, Max, Min };
 
+/* A histogram has one bin per value from zero to the largest seen, per thread, so an operation
+ * whose values are as large as its input (a sum of divisors, a prime factor) would ask for
+ * billions. Above this the request fails and says so; `max`, `sum` and `all` still answer. */
+constexpr uint64_t MAX_HISTOGRAM_BINS = 1ULL << 22;
+
 inline Reduction parse_reduction(const std::string &r) {
     static const std::map<std::string, Reduction> table{
         {"all", Reduction::All}, {"count", Reduction::Count}, {"histogram", Reduction::Histogram},
@@ -42,6 +47,7 @@ struct Accumulator {
     uint64_t visited = 0, count = 0;
     unsigned __int128 sum = 0;
     std::vector<uint64_t> hist;
+    uint64_t too_many_bins = 0; /* the largest value that did not fit, or 0 */
     std::vector<uint64_t> hit_indices;
     bool has_extreme = false;
     uint64_t extreme_value = 0, extreme_index = 0;
@@ -57,6 +63,10 @@ struct Accumulator {
         ++visited;
         switch (reduction) {
         case Reduction::Histogram:
+            if (v >= MAX_HISTOGRAM_BINS) {
+                too_many_bins = std::max(too_many_bins, v);
+                break;
+            }
             if (hist.size() <= v) hist.resize(v + 1, 0);
             ++hist[v];
             break;
@@ -112,8 +122,9 @@ inline Result<std::shared_ptr<Object>> assemble(const Request &req, Reduction re
     unsigned __int128 sum = 0;
     std::vector<uint64_t> hist, hits;
     bool has_extreme = false;
-    uint64_t extreme_value = 0, extreme_index = 0;
+    uint64_t extreme_value = 0, extreme_index = 0, too_many_bins = 0;
     for (auto &a : accs) {
+        too_many_bins = std::max(too_many_bins, a.too_many_bins);
         visited += a.visited;
         count += a.count;
         sum += a.sum;
@@ -126,6 +137,9 @@ inline Result<std::shared_ptr<Object>> assemble(const Request &req, Reduction re
             if (better) { has_extreme = true; extreme_value = a.extreme_value; extreme_index = a.extreme_index; }
         }
     }
+    if (too_many_bins)
+        return R::failure(1, "histogram of a value " + std::to_string(too_many_bins) + " needs more than " +
+                                 std::to_string(MAX_HISTOGRAM_BINS) + " bins; use max, sum or all instead");
     uint64_t best = shared.best.load();
     bool complete = reduction == Reduction::First ? (best == UINT64_MAX ? visited == size : visited >= best + 1) : visited == size;
     if (!complete)

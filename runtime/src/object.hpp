@@ -115,6 +115,14 @@ struct QuadraticUnits {
     std::vector<uint64_t> pairs; /* 2 * count entries: x_0, y_0, x_1, y_1, ... */
 };
 
+/* Per member: the prime factorisation as (prime, exponent) pairs, primes increasing. `offsets`
+ * has count+1 entries; member i owns pairs[2*offsets[i] .. 2*offsets[i+1]). */
+struct Factorisation {
+    uint64_t count = 0;
+    std::vector<uint64_t> offsets;
+    std::vector<uint64_t> pairs;
+};
+
 struct CycleIndex {
     uint64_t degree = 0, denominator = 0;
     std::vector<uint64_t> multiplicities;
@@ -293,6 +301,7 @@ struct Object {
     std::shared_ptr<Degrees> degrees;
     std::shared_ptr<ContinuedFractions> continued_fractions;
     std::shared_ptr<QuadraticUnits> quadratic_units;
+    std::shared_ptr<Factorisation> factorisation;
     std::shared_ptr<CycleIndex> cycle_index;
     std::shared_ptr<Spectra> spectra;
     std::shared_ptr<U64Matrices> u64_matrices;

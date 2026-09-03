@@ -1,0 +1,94 @@
+{
+ "module": "sieve_ranges",
+ "fingerprint": {
+  "module": "fd909c9d4051f41ba5b418826d4458aac94f7c233110dd2ef1523e9d8f1fa8ca",
+  "runtime": "c262ad3ea46fa900f8d9935ce2bde0b5aef71eec6eb271dc8948434128210209",
+  "dependencies": [],
+  "combined": "c764ccd028510ab1e48ebf37414590c83c21e8f49a4a3b68cb28ac6a64e38315"
+ },
+ "measured_at": "2026-09-03T06:34:24+00:00",
+ "commit": "6f3953a063ab9d0a20aac4bf01ea19d0108c9e7e",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "primes_in_a_window",
+   "what": "how many primes in the ten million numbers above 10^9",
+   "op": "sieve_ranges.is_prime",
+   "reduction": "count",
+   "members": 10000000,
+   "naive_s": 2959.1291560791433,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.19777009007520974,
+   "kernel_all_threads_s": 0.01404676795937121,
+   "threads": 32,
+   "speedup_1_thread": 14962.47058872158,
+   "speedup_all_threads": 210662.6353220977,
+   "answer": "Count(value=482449, visited=10000000, family_size=10000000)"
+  },
+  {
+   "case": "totient_sum",
+   "what": "sum of Euler's phi below 2*10^6, which counts the coprime pairs under it",
+   "op": "sieve_ranges.totient",
+   "reduction": "sum",
+   "members": 2000000,
+   "naive_s": 22.524290524888784,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.03332294011488557,
+   "kernel_all_threads_s": 0.002762656891718507,
+   "threads": 32,
+   "speedup_1_thread": 675.9394713441579,
+   "speedup_all_threads": 8153.12628665863,
+   "answer": "Count(value=1215854699278, visited=2000000, family_size=2000000)"
+  },
+  {
+   "case": "omega_distribution",
+   "what": "how many distinct prime factors the two million numbers above 10^9 have",
+   "op": "sieve_ranges.omega",
+   "reduction": "histogram",
+   "members": 2000000,
+   "naive_s": 864.5306620746851,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.04072645213454962,
+   "kernel_all_threads_s": 0.0039021691773086786,
+   "threads": 32,
+   "speedup_1_thread": 21227.743070240944,
+   "speedup_all_threads": 221551.30205578398,
+   "answer": "Histogram(visited=2000000, family_size=2000000, bins=[0, 96420, 396978, 651734, 547185, 245575, 56150, 5780, 177, 1])"
+  },
+  {
+   "case": "factorise_an_interval",
+   "what": "the full prime factorisation of every number in an interval of 200000 at 10^6",
+   "op": "sieve_ranges.factorisation",
+   "reduction": "all",
+   "members": 200000,
+   "naive_s": 2.7284540210384876,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.007872866000980139,
+   "kernel_all_threads_s": 0.002621911931782961,
+   "threads": 32,
+   "speedup_1_thread": 346.56426524963166,
+   "speedup_all_threads": 1040.635266182673,
+   "answer": "Factorisation(count=200000, offsets=[0, 2, 4, 7, 8, 11, 15, 18, 20, 25, 27, 31, 33, 36, 39, 42, 44, 46, 49, 51, 53, 58, "
+  },
+  {
+   "case": "smoothest_number",
+   "what": "the least largest-prime-factor in a million numbers above 10^9 (the smoothest one)",
+   "op": "sieve_ranges.largest_prime_factor",
+   "reduction": "min",
+   "members": 1000000,
+   "naive_s": 408.3217342849821,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.020989625016227365,
+   "kernel_all_threads_s": 0.002408469095826149,
+   "threads": 32,
+   "speedup_1_thread": 19453.503050640637,
+   "speedup_all_threads": 169535.79972962878,
+   "answer": "Extremum(p=18446744073709551615, rows=1, cols=1, value=7, index=187999, visited=1000000, family_size=1000000, member=Mat"
+  }
+ ]
+}

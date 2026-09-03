@@ -849,6 +849,21 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         else o->inverses = std::make_shared<Inverses>(Inverses{p.value, count.value, len.value, flags, e});
         return R::success(o);
     }
+    if (h.kind == "sieve_ranges.factorisation") {
+        auto count = need(h, "count");
+        if (!count.ok) return R::failure(count.error.status, count.error.message);
+        auto f = std::make_shared<Factorisation>();
+        f->count = count.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i <= count.value; ++i) f->offsets.push_back(r.u64());
+        if (r.bad) return R::failure(INVALID, "sieve_ranges.factorisation payload truncated");
+        for (uint64_t i = 1; i <= count.value; ++i)
+            if (f->offsets[i] < f->offsets[i - 1]) return R::failure(INVALID, "sieve_ranges.factorisation offsets decrease");
+        for (uint64_t i = 0; i < 2 * f->offsets.back(); ++i) f->pairs.push_back(r.u64());
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "sieve_ranges.factorisation payload length mismatch");
+        o->factorisation = f;
+        return R::success(o);
+    }
     if (h.kind == "gfp.witness") {
         auto p = need(h, "p"), count = need(h, "count"), rows = need(h, "rows"), cols = need(h, "cols");
         for (auto *r : {&p, &count, &rows, &cols}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -1164,6 +1179,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (degrees) return {{"count", degrees->count}};
     if (continued_fractions) return {{"count", continued_fractions->count}};
     if (quadratic_units) return {{"count", quadratic_units->count}};
+    if (factorisation) return {{"count", factorisation->count}};
     if (cycle_index) return {{"degree", cycle_index->degree}, {"count", cycle_index->multiplicities.size()},
                              {"denominator", cycle_index->denominator}};
     if (spectra) return {{"n", spectra->n}, {"count", spectra->count}};
@@ -1266,6 +1282,10 @@ std::vector<uint8_t> encode(const Object &o) {
     } else if (o.degree_sequences) {
         w.entries(o.degree_sequences->entries, 4);
         write_header(out, "graphs.degree_sequences", o.params(), w.out);
+    } else if (o.factorisation) {
+        w.u64s(o.factorisation->offsets);
+        w.u64s(o.factorisation->pairs);
+        write_header(out, "sieve_ranges.factorisation", o.params(), w.out);
     } else if (o.cycle_index) {
         for (uint64_t i = 0; i < o.cycle_index->multiplicities.size(); ++i) {
             w.u64(o.cycle_index->multiplicities[i]);
