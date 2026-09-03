@@ -37,7 +37,8 @@ from lemmakernel._manifest import MODULES, RUNTIME  # noqa: E402
 
 RUNTIME_FAMILIES = {f["name"]: f for f in RUNTIME["families"]}
 REDUCTIONS = {r["name"]: r for r in RUNTIME["reductions"]}
-KIND_LEAN = {k["name"]: k.get("lean") for m in MODULES for k in m.get("kinds", [])}
+KIND_LEAN = ({k["name"]: k.get("lean") for k in RUNTIME.get("kinds", [])} |
+             {k["name"]: k.get("lean") for m in MODULES for k in m.get("kinds", [])})
 
 
 @dataclass

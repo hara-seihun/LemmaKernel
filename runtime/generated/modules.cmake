@@ -6,6 +6,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/cayley/backends/g
 # module cayley: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/designs/backends/generic/designs_generic.cpp)
 # module designs: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/difference_sets/backends/generic/difference_sets_generic.cpp)
+# module difference_sets: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/gfp/backends/generic/gfp_generic.cpp)
 # module gfp: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/gfq/backends/generic/gfq_generic.cpp)

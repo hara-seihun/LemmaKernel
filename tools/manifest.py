@@ -71,7 +71,8 @@ def validate(runtime: dict, modules: list[dict]) -> list[str]:
                     problems.append(f"{name}: backend {b['name']} requires unknown feature {feature}")
         if "families" in m:
             problems.append(f"{name}: families are declared in runtime/manifest.toml, not per module")
-        kinds = {k["name"] for mm in modules for k in mm.get("kinds", [])}
+        kinds = ({k["name"] for k in runtime.get("kinds", [])} |
+                 {k["name"] for mm in modules for k in mm.get("kinds", [])})
         values = kinds | {"integer", "boolean"}
         family_names = {f["name"] for f in runtime.get("families", [])}
         op_names = set()
@@ -82,7 +83,8 @@ def validate(runtime: dict, modules: list[dict]) -> list[str]:
                     problems.append(f"{name}: operation {op['name']} restricts to unknown family {fam}")
             if op["value"] not in values:
                 problems.append(f"{name}: operation {op['name']} has unknown value type {op['value']}")
-            if op["value"] in kinds and not any(k.get("lean") for mm in modules for k in mm.get("kinds", []) if k["name"] == op["value"]):
+            kind_decls = runtime.get("kinds", []) + [k for mm in modules for k in mm.get("kinds", [])]
+            if op["value"] in kinds and not any(k.get("lean") for k in kind_decls if k["name"] == op["value"]):
                 problems.append(f"{name}: operation {op['name']} produces kind {op['value']}, which declares no Lean value constructor")
             if not any(op["value"] in r["accepts"] or "*" in r["accepts"] for r in reductions.values()):
                 problems.append(f"{name}: no reduction accepts operation {op['name']}")

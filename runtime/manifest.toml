@@ -5,6 +5,13 @@
 # completeness check. Argument types are the vocabulary tools/harness.py renders and generates:
 # int, vector, vectors, perms, group, family.
 
+[[kinds]]
+name = "lk.naturals"
+params = ["count", "rows", "cols"]
+payload = "count*rows*cols u32 natural numbers"
+lean = "naturals"
+summary = "A batch of natural-number matrices with entries below 2^32."
+
 [[families]]
 name = "explicit"
 member = "matrix"

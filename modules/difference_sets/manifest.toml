@@ -1,0 +1,63 @@
+# difference_sets: difference sets and regular partial and relative difference sets in finite
+# permutation groups. The input family is always subsets_of(group_elements(G), k), so each member
+# is a k-row matrix whose rows are the elements of G as permutations.
+
+[module]
+name = "difference_sets"
+version = 1
+summary = "Difference sets and regular partial and relative difference sets in finite permutation groups. Differences are ordered right quotients x*y^-1. The difference multiset is a 1 x |G| natural matrix, indexed by the lexicographic group_elements order and including the k diagonal identity quotients."
+lean = "lean"
+contract = "lean/Difference_sets/Contract.lean"
+reference = "lean/Difference_sets/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "is_difference_set"
+value = "boolean"
+families = ["subsets_of"]
+summary = "Whether the member is a (v,k,lambda) difference set in G, with v=|G|, k inferred from the family and lambda=k(k-1)/(v-1). Every nonidentity right quotient x*y^-1 of distinct elements must occur lambda times."
+
+[[operations]]
+name = "difference_multiset"
+value = "lk.naturals"
+families = ["subsets_of"]
+summary = "The multiplicities of all ordered right quotients x*y^-1, including x=y, as one row indexed by group_elements(G)'s lexicographic order. This order is the canonical answer."
+
+[[operations]]
+name = "is_pds"
+value = "boolean"
+args = { lambda = "int", mu = "int" }
+families = ["subsets_of"]
+summary = "Whether the member is a regular (v,k,lambda,mu) partial difference set: identity-free, inverse-closed, and each nonidentity quotient has multiplicity lambda inside D and mu outside D. v and k are inferred."
+
+[[operations]]
+name = "is_relative_difference_set"
+value = "boolean"
+args = { forbidden = "perms" }
+families = ["subsets_of"]
+summary = "Whether the member is a relative difference set in G relative to N=<forbidden>. Nonidentity elements of N occur zero times and every element of G\\N occurs lambda=k(k-1)/(|G|-|N|) times as an ordered right quotient."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/difference_sets_generic.cpp"]
+accepts = "subsets_of(group_elements(G), k) for permutation groups; forbidden subgroup closure up to 2^26 elements"
+summary = "Portable C++: updates quotient multiplicities along the subsets depth-first walk and rejects whole subtrees as soon as a target multiplicity is exceeded; threads over top-level branches."
+
+[[rejections]]
+case = "plain subsets"
+error = "defined on subsets_of"
+
+[[rejections]]
+case = "subsets of a range"
+error = "needs subsets_of"
+
+[[rejections]]
+case = "foreign forbidden subgroup"
+error = "subgroup of the ambient group"
+
+[[rejections]]
+case = "C4 differences"
+op = "difference_multiset"
+reduction = "count"
+error = "does not accept"

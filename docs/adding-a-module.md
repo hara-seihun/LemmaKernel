@@ -9,11 +9,12 @@ operation is a much smaller change than a new module.
 
 `modules/<name>/`, containing:
 
-- `manifest.toml`: the one declaration of the module. Kinds (each with the Lean `Value`
-  constructor that carries it), operations with typed arguments (`args = { target = "vector" }`;
+- `manifest.toml`: the one declaration of the module. Module-specific kinds (each with the Lean
+  `Value` constructor that carries it), operations with typed arguments (`args = { target = "vector" }`;
   types are `int`, `vector`, `vectors`, `perms`, `group`, `family`), backends, `[[rejections]]`
   (requests the runtime must refuse, by case name and error text), and the paths below.
-  Families and reductions are runtime-level and live in `runtime/manifest.toml`.
+  Families, reductions, and shared object kinds such as `lk.naturals` are runtime-level and live
+  in `runtime/manifest.toml`.
   `tools/manifest.py generate` derives the C++ registry data, the runtime `describe()` JSON, the
   CMake source list, the Lake libraries, and the Python-side manifest from it;
   `tools/manifest.py check` (run at CMake configure) refuses stale output.

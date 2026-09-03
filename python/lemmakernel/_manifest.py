@@ -69,6 +69,11 @@ RUNTIME = {'families': [{'lean': 'explicit',
                'summary': 'Positive compositions of total with optional exact length and largest-part bound; '
                           'one row padded to total entries with zeros. Lengths increase first, then rows are '
                           'descending lexicographic. A zero bound or length is unrestricted.'}],
+ 'kinds': [{'lean': 'naturals',
+            'name': 'lk.naturals',
+            'params': ['count', 'rows', 'cols'],
+            'payload': 'count*rows*cols u32 natural numbers',
+            'summary': 'A batch of natural-number matrices with entries below 2^32.'}],
  'reductions': [{'accepts': ['*'],
                  'name': 'all',
                  'summary': 'Materialise the per-member value for every member, in family order. Integers '
@@ -276,6 +281,57 @@ MODULES = [{'backends': [{'accepts': 'permutation groups on subsets, subsets_of,
                   'value': 'designs.matrix'}],
   'rejections': [{'case': 'malformed repeated point', 'error': 'distinct standard basis'},
                  {'case': 'Kramer-Mesner with a matrix group', 'error': 'permutation'}]},
+ {'backends': [{'accepts': 'subsets_of(group_elements(G), k) for permutation groups; forbidden subgroup '
+                           'closure up to 2^26 elements',
+                'name': 'generic',
+                'sources': ['backends/generic/difference_sets_generic.cpp'],
+                'summary': 'Portable C++: updates quotient multiplicities along the subsets depth-first walk '
+                           'and rejects whole subtrees as soon as a target multiplicity is exceeded; threads '
+                           'over top-level branches.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Difference_sets/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'difference_sets',
+             'reference': 'lean/Difference_sets/Reference.lean',
+             'summary': 'Difference sets and regular partial and relative difference sets in finite '
+                        'permutation groups. Differences are ordered right quotients x*y^-1. The difference '
+                        'multiset is a 1 x |G| natural matrix, indexed by the lexicographic group_elements '
+                        'order and including the k diagonal identity quotients.',
+             'version': 1},
+  'operations': [{'families': ['subsets_of'],
+                  'name': 'is_difference_set',
+                  'summary': 'Whether the member is a (v,k,lambda) difference set in G, with v=|G|, k '
+                             'inferred from the family and lambda=k(k-1)/(v-1). Every nonidentity right '
+                             'quotient x*y^-1 of distinct elements must occur lambda times.',
+                  'value': 'boolean'},
+                 {'families': ['subsets_of'],
+                  'name': 'difference_multiset',
+                  'summary': 'The multiplicities of all ordered right quotients x*y^-1, including x=y, as '
+                             "one row indexed by group_elements(G)'s lexicographic order. This order is the "
+                             'canonical answer.',
+                  'value': 'lk.naturals'},
+                 {'args': {'lambda': 'int', 'mu': 'int'},
+                  'families': ['subsets_of'],
+                  'name': 'is_pds',
+                  'summary': 'Whether the member is a regular (v,k,lambda,mu) partial difference set: '
+                             'identity-free, inverse-closed, and each nonidentity quotient has multiplicity '
+                             'lambda inside D and mu outside D. v and k are inferred.',
+                  'value': 'boolean'},
+                 {'args': {'forbidden': 'perms'},
+                  'families': ['subsets_of'],
+                  'name': 'is_relative_difference_set',
+                  'summary': 'Whether the member is a relative difference set in G relative to '
+                             'N=<forbidden>. Nonidentity elements of N occur zero times and every element of '
+                             'G\\N occurs lambda=k(k-1)/(|G|-|N|) times as an ordered right quotient.',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'plain subsets', 'error': 'defined on subsets_of'},
+                 {'case': 'subsets of a range', 'error': 'needs subsets_of'},
+                 {'case': 'foreign forbidden subgroup', 'error': 'subgroup of the ambient group'},
+                 {'case': 'C4 differences',
+                  'error': 'does not accept',
+                  'op': 'difference_multiset',
+                  'reduction': 'count'}]},
  {'backends': [{'accepts': 'any p < 2^32; any family; any operation',
                 'name': 'generic',
                 'sources': ['backends/generic/gfp_generic.cpp'],
