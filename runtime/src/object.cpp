@@ -691,6 +691,45 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->signed_matrices = z;
         return R::success(o);
     }
+    if (h.kind == "strongly_regular.params") {
+        auto count = need(h, "count");
+        if (!count.ok) return R::failure(count.error.status, count.error.message);
+        if ((unsigned __int128)count.value * 33 != h.payload_len)
+            return R::failure(INVALID, "strongly_regular.params payload length mismatch");
+        auto ps = std::make_shared<SrgParams>();
+        ps->count = count.value;
+        ps->present.assign(h.payload, h.payload + count.value);
+        Reader r{h.payload + count.value, h.payload + h.payload_len};
+        for (uint64_t i = 0; i < count.value * 4; ++i) ps->values.push_back(r.u64());
+        if (r.bad || r.p != r.end || std::any_of(ps->present.begin(), ps->present.end(), [](uint8_t x) { return x > 1; }))
+            return R::failure(INVALID, "invalid strongly_regular.params payload");
+        o->srg_params = ps;
+        return R::success(o);
+    }
+    if (h.kind == "strongly_regular.spectra") {
+        auto count = need(h, "count");
+        if (!count.ok) return R::failure(count.error.status, count.error.message);
+        if ((unsigned __int128)count.value * 49 != h.payload_len)
+            return R::failure(INVALID, "strongly_regular.spectra payload length mismatch");
+        auto ss = std::make_shared<SrgSpectra>();
+        ss->count = count.value;
+        ss->present.assign(h.payload, h.payload + count.value);
+        Reader r{h.payload + count.value, h.payload + h.payload_len};
+        for (uint64_t i = 0; i < count.value; ++i) {
+            ss->k.push_back(r.u64());
+            ss->delta_negative.push_back(r.u64());
+            ss->delta_abs.push_back(r.u64());
+            ss->discriminant.push_back(r.u64());
+            ss->multiplicity_plus.push_back(r.u64());
+            ss->multiplicity_minus.push_back(r.u64());
+        }
+        if (r.bad || r.p != r.end ||
+            std::any_of(ss->present.begin(), ss->present.end(), [](uint8_t x) { return x > 1; }) ||
+            std::any_of(ss->delta_negative.begin(), ss->delta_negative.end(), [](uint64_t x) { return x > 1; }))
+            return R::failure(INVALID, "invalid strongly_regular.spectra payload");
+        o->srg_spectra = ss;
+        return R::success(o);
+    }
     return R::failure(INVALID, "unknown object kind " + h.kind);
 }
 
@@ -754,6 +793,8 @@ std::map<std::string, uint64_t> Object::params() const {
     if (rsk_pairs) return {{"count", rsk_pairs->count}, {"length", rsk_pairs->length}};
     if (curve_groups) return {{"count", curve_groups->count}};
     if (coefficients) return {{"count", coefficients->count}, {"length", coefficients->length}};
+    if (srg_params) return {{"count", srg_params->count}};
+    if (srg_spectra) return {{"count", srg_spectra->count}};
     if (integers) return {{"count", integers->values.size()}};
     if (count) return {{"value", count->value}, {"visited", count->visited}, {"family_size", count->family_size}};
     if (histogram) return {{"visited", histogram->visited}, {"family_size", histogram->family_size}, {"bins", histogram->bins.size()}};
@@ -854,6 +895,21 @@ std::vector<uint8_t> encode(const Object &o) {
     } else if (o.coefficients) {
         w.i64s(o.coefficients->values);
         write_header(out, "graph_polynomials.coefficients", o.params(), w.out);
+    } else if (o.srg_params) {
+        w.bytes(o.srg_params->present);
+        w.u64s(o.srg_params->values);
+        write_header(out, "strongly_regular.params", o.params(), w.out);
+    } else if (o.srg_spectra) {
+        w.bytes(o.srg_spectra->present);
+        for (uint64_t i = 0; i < o.srg_spectra->count; ++i) {
+            w.u64(o.srg_spectra->k[i]);
+            w.u64(o.srg_spectra->delta_negative[i]);
+            w.u64(o.srg_spectra->delta_abs[i]);
+            w.u64(o.srg_spectra->discriminant[i]);
+            w.u64(o.srg_spectra->multiplicity_plus[i]);
+            w.u64(o.srg_spectra->multiplicity_minus[i]);
+        }
+        write_header(out, "strongly_regular.spectra", o.params(), w.out);
     } else if (o.integers) {
         w.u64s(o.integers->values);
         write_header(out, o.kind == "burnside.counts" ? "burnside.counts" : "integers", o.params(), w.out);

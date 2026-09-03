@@ -141,6 +141,17 @@ struct Coefficients {
     std::vector<int64_t> values;
 };
 
+struct SrgParams {
+    uint64_t count = 0;
+    std::vector<uint8_t> present;
+    std::vector<uint64_t> values; /* count records of (v, k, lambda, mu) */
+};
+
+struct SrgSpectra {
+    uint64_t count = 0;
+    std::vector<uint8_t> present;
+    std::vector<uint64_t> k, delta_negative, delta_abs, discriminant, multiplicity_plus, multiplicity_minus;
+};
 
 struct Integers {
     std::vector<uint64_t> values;
@@ -196,6 +207,8 @@ struct Object {
     std::shared_ptr<RskPairs> rsk_pairs;
     std::shared_ptr<CurveGroups> curve_groups;
     std::shared_ptr<Coefficients> coefficients;
+    std::shared_ptr<SrgParams> srg_params;
+    std::shared_ptr<SrgSpectra> srg_spectra;
     std::shared_ptr<Integers> integers;
     std::shared_ptr<Count> count;
     std::shared_ptr<Histogram> histogram;

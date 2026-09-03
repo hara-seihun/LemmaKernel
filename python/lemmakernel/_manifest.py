@@ -1814,6 +1814,67 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'error': 'does not accept integer',
                   'op': 'intersecting_pairs',
                   'reduction': 'count'}]},
+ {'backends': [{'accepts': 'square matrices over F_2 from any runtime family',
+                'name': 'generic',
+                'sources': ['backends/generic/strongly_regular_generic.cpp'],
+                'summary': 'Portable C++: bit-packed rows and popcount common-neighbour tests, one graph per '
+                           'member, threaded over family indices; bound arithmetic uses exact integers.'}],
+  'kinds': [{'lean': 'params',
+             'name': 'strongly_regular.params',
+             'params': ['count'],
+             'payload': 'u8 present[count], then count records of u64 (v, k, lambda, mu); absent records are '
+                        'zero',
+             'summary': 'Per member, some (v,k,lambda,mu) exactly when it is a noncomplete, nonempty '
+                        'strongly regular graph; none otherwise.'},
+            {'lean': 'spectrum',
+             'name': 'strongly_regular.spectra',
+             'params': ['count'],
+             'payload': 'u8 present[count], then count records of u64 (k, delta_negative, delta_abs, D, f, '
+                        'g); absent records are zero',
+             'summary': 'Per SRG, the exact spectrum k^1, ((delta+sqrt(D))/2)^f, ((delta-sqrt(D))/2)^g, '
+                        'where delta=(-1)^delta_negative*delta_abs=lambda-mu and D=delta^2+4(k-mu); none for '
+                        'a non-SRG. Equal eigenvalues from imprimitive graphs remain separate records, so '
+                        'this formula is canonical.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Strongly_regular/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'strongly_regular',
+             'reference': 'lean/Strongly_regular/Reference.lean',
+             'summary': 'Strongly regular graph tests on square F_2 adjacency matrices: canonical '
+                        'parameters, exact SRG spectra, and Krein and absolute-bound checks.',
+             'version': 1},
+  'operations': [{'name': 'srg_params',
+                  'summary': 'For each simple undirected adjacency matrix, some (v,k,lambda,mu) when 0 < k < '
+                             'v-1, every vertex has degree k, and adjacent and nonadjacent pairs have '
+                             'constant common-neighbour counts; none otherwise.',
+                  'value': 'strongly_regular.params'},
+                 {'name': 'spectrum',
+                  'summary': 'The exact canonical spectrum derived from srg_params, encoded as k^1 and the '
+                             'ordered roots (delta+sqrt(D))/2, then (delta-sqrt(D))/2 with their '
+                             'multiplicities; none for a non-SRG.',
+                  'value': 'strongly_regular.spectra'},
+                 {'name': 'is_srg',
+                  'summary': 'Whether srg_params is present. The convention accepts imprimitive SRGs but '
+                             'excludes empty and complete graphs.',
+                  'value': 'boolean'},
+                 {'name': 'krein_bound',
+                  'summary': 'Whether the member is an SRG and both exact Krein inequalities hold for its '
+                             'two ordered nonprincipal eigenvalues.',
+                  'value': 'boolean'},
+                 {'name': 'absolute_bound',
+                  'summary': 'Whether the member is an SRG and, when it is primitive (mu != 0 and v+lambda '
+                             '!= 2k), v <= f(f+3)/2 and v <= g(g+3)/2. Imprimitive SRGs pass because the '
+                             'absolute bound is not applicable.',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'ternary square matrices', 'error': 'no available backend accepts', 'op': 'is_srg'},
+                 {'case': 'rectangular binary matrices',
+                  'error': 'no available backend accepts',
+                  'op': 'srg_params'},
+                 {'case': 'C5 Cayley adjacency',
+                  'error': 'does not accept',
+                  'op': 'srg_params',
+                  'reduction': 'count'}]},
  {'backends': [{'accepts': 'Any p < 2^32 and Grassmannian-derived transform/stack family whose ambient '
                            'Grassmannian size at each encountered rank fits u64; group closure up to 2^26 '
                            'elements.',

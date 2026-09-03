@@ -1,0 +1,74 @@
+# strongly_regular: exact tests and invariants for adjacency-matrix families.
+# Graphs use square matrices over F_2. This covers explicit Cayley and geometry point graphs,
+# and runtime-generated families such as symmetric_matrices.
+
+[module]
+name = "strongly_regular"
+version = 1
+summary = "Strongly regular graph tests on square F_2 adjacency matrices: canonical parameters, exact SRG spectra, and Krein and absolute-bound checks."
+lean = "lean"
+contract = "lean/Strongly_regular/Contract.lean"
+reference = "lean/Strongly_regular/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "strongly_regular.params"
+params = ["count"]
+payload = "u8 present[count], then count records of u64 (v, k, lambda, mu); absent records are zero"
+lean = "params"
+summary = "Per member, some (v,k,lambda,mu) exactly when it is a noncomplete, nonempty strongly regular graph; none otherwise."
+
+[[kinds]]
+name = "strongly_regular.spectra"
+params = ["count"]
+payload = "u8 present[count], then count records of u64 (k, delta_negative, delta_abs, D, f, g); absent records are zero"
+lean = "spectrum"
+summary = "Per SRG, the exact spectrum k^1, ((delta+sqrt(D))/2)^f, ((delta-sqrt(D))/2)^g, where delta=(-1)^delta_negative*delta_abs=lambda-mu and D=delta^2+4(k-mu); none for a non-SRG. Equal eigenvalues from imprimitive graphs remain separate records, so this formula is canonical."
+
+[[operations]]
+name = "srg_params"
+value = "strongly_regular.params"
+summary = "For each simple undirected adjacency matrix, some (v,k,lambda,mu) when 0 < k < v-1, every vertex has degree k, and adjacent and nonadjacent pairs have constant common-neighbour counts; none otherwise."
+
+[[operations]]
+name = "spectrum"
+value = "strongly_regular.spectra"
+summary = "The exact canonical spectrum derived from srg_params, encoded as k^1 and the ordered roots (delta+sqrt(D))/2, then (delta-sqrt(D))/2 with their multiplicities; none for a non-SRG."
+
+[[operations]]
+name = "is_srg"
+value = "boolean"
+summary = "Whether srg_params is present. The convention accepts imprimitive SRGs but excludes empty and complete graphs."
+
+[[operations]]
+name = "krein_bound"
+value = "boolean"
+summary = "Whether the member is an SRG and both exact Krein inequalities hold for its two ordered nonprincipal eigenvalues."
+
+[[operations]]
+name = "absolute_bound"
+value = "boolean"
+summary = "Whether the member is an SRG and, when it is primitive (mu != 0 and v+lambda != 2k), v <= f(f+3)/2 and v <= g(g+3)/2. Imprimitive SRGs pass because the absolute bound is not applicable."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/strongly_regular_generic.cpp"]
+accepts = "square matrices over F_2 from any runtime family"
+summary = "Portable C++: bit-packed rows and popcount common-neighbour tests, one graph per member, threaded over family indices; bound arithmetic uses exact integers."
+
+[[rejections]]
+case = "ternary square matrices"
+op = "is_srg"
+error = "no available backend accepts"
+
+[[rejections]]
+case = "rectangular binary matrices"
+op = "srg_params"
+error = "no available backend accepts"
+
+[[rejections]]
+case = "C5 Cayley adjacency"
+op = "srg_params"
+reduction = "count"
+error = "does not accept"

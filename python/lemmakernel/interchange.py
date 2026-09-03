@@ -526,6 +526,40 @@ class Coefficients:
 
 
 @dataclass
+class StronglyRegularParams:
+    """Optional (v, k, lambda, mu) records, one per adjacency matrix."""
+    count: int
+    present: list[int]
+    values: list[int]
+
+    def member(self, i: int):
+        return tuple(int(x) for x in self.values[4 * i:4 * i + 4]) if self.present[i] else None
+
+    def encode(self) -> bytes:
+        payload = bytes(self.present) + struct.pack(f"<{len(self.values)}Q", *self.values)
+        return encode("strongly_regular.params", {"count": self.count}, payload)
+
+
+@dataclass
+class StronglyRegularSpectra:
+    """Exact optional SRG spectra. A record `(k, neg, abs_delta, D, f, g)` represents
+    `k^1`, `((delta + sqrt(D))/2)^f`, and `((delta - sqrt(D))/2)^g`, where delta is
+    `-abs_delta` when `neg` is one and `abs_delta` otherwise."""
+    count: int
+    present: list[int]
+    records: list[tuple[int, int, int, int, int, int]]
+
+    def member(self, i: int):
+        return tuple(int(x) for x in self.records[i]) if self.present[i] else None
+
+    def encode(self) -> bytes:
+        payload = bytearray(self.present)
+        for record in self.records:
+            payload.extend(struct.pack("<6Q", *record))
+        return encode("strongly_regular.spectra", {"count": self.count}, bytes(payload))
+
+
+@dataclass
 class Integers:
     values: list[int]
 
@@ -629,7 +663,9 @@ KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphG
          "young.characters": Characters,
          "young.rsk_pairs": RskPairs, "elliptic_curves_fp.group": CurveGroups,
          "polynomials_fq.elements": Elements, "polynomials_fq.degrees": Degrees,
-         "graph_polynomials.coefficients": Coefficients, "integers": Integers, "count": Count,
+         "graph_polynomials.coefficients": Coefficients,
+         "strongly_regular.params": StronglyRegularParams,
+         "strongly_regular.spectra": StronglyRegularSpectra, "integers": Integers, "count": Count,
          "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
 
 
@@ -752,6 +788,16 @@ def decode_at(buf: bytes, offset: int):
     if k == "graph_polynomials.coefficients":
         values = list(struct.unpack_from(f"<{q['count'] * q['length']}q", pl, 0))
         return Coefficients(q["count"], q["length"], values), end
+    if k == "strongly_regular.params":
+        count = q["count"]
+        flags = list(pl[:count])
+        values = list(struct.unpack_from(f"<{4 * count}Q", pl, count))
+        return StronglyRegularParams(count, flags, values), end
+    if k == "strongly_regular.spectra":
+        count = q["count"]
+        flags = list(pl[:count])
+        records = [struct.unpack_from("<6Q", pl, count + 48 * i) for i in range(count)]
+        return StronglyRegularSpectra(count, flags, records), end
     if k == "integers":
         return Integers(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "count":
