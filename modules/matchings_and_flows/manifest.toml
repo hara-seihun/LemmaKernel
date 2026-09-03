@@ -1,0 +1,62 @@
+# matchings_and_flows: exact counts and flow values from nonnegative integer matrices.
+
+[module]
+name = "matchings_and_flows"
+version = 1
+summary = "Exact weighted perfect-matching counts, weighted undirected spanning-tree counts, and directed maximum-flow values for families of nonnegative integer matrices. Every result must fit u64."
+lean = "lean"
+contract = "lean/Matchings_and_flows/Contract.lean"
+reference = "lean/Matchings_and_flows/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+# Members may come from any runtime family. Entries are read as their canonical nonnegative
+# integer representatives, including gfp.matrix entries and explicit lk.naturals matrices.
+
+[[operations]]
+name = "perfect_matching_count"
+value = "integer"
+summary = "The permanent of a square matrix A: sum over bijections sigma of product_i A[i,sigma(i)]. Equivalently, the number of perfect matchings in the bipartite multigraph with A[i,j] parallel edges."
+
+[[operations]]
+name = "spanning_tree_count"
+value = "integer"
+summary = "For a square symmetric matrix A, the weighted count of undirected spanning trees: sum over trees T of product_{i<j in T} A[i,j]. Diagonal entries are ignored. Asymmetric members make the request invalid."
+
+[[operations]]
+name = "max_flow"
+value = "integer"
+args = { source = "int", sink = "int" }
+summary = "Maximum integral directed flow from source to sink in the square capacity matrix A. Loops are ignored. Source and sink are zero-based distinct vertex indices."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/matchings_and_flows_generic.cpp"]
+accepts = "square nonnegative integer matrices; symmetric matrices for spanning_tree_count; perfect matching by Gray-code Ryser below 63 rows, spanning trees by the matrix-tree determinant, max flow by Edmonds-Karp; results must fit u64"
+summary = "Portable C++ with exact arbitrary-precision permanent and determinant arithmetic, an integer residual network for max flow, and parallel evaluation across family members."
+
+[[rejections]]
+case = "rectangular perfect matching"
+error = "square matrices"
+
+[[rejections]]
+case = "rectangular spanning tree"
+error = "square matrices"
+
+[[rejections]]
+case = "asymmetric spanning tree"
+error = "symmetric"
+
+[[rejections]]
+case = "equal flow terminals"
+error = "distinct"
+
+[[rejections]]
+case = "flow terminal outside graph"
+error = "vertex indices"
+
+[[rejections]]
+case = "binary 2x2 perfect matchings"
+op = "perfect_matching_count"
+reduction = "count"
+error = "does not accept integer"

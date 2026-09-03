@@ -774,6 +774,49 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
   'rejections': [{'case': 'q below two', 'error': 'q must be at least 2'},
                  {'case': 'flag count on a range', 'error': 'defined on words families only'},
                  {'case': 'wrong subspace width', 'error': 'same number of columns'}]},
+ {'backends': [{'accepts': 'square nonnegative integer matrices; symmetric matrices for spanning_tree_count; '
+                           'perfect matching by Gray-code Ryser below 63 rows, spanning trees by the '
+                           'matrix-tree determinant, max flow by Edmonds-Karp; results must fit u64',
+                'name': 'generic',
+                'sources': ['backends/generic/matchings_and_flows_generic.cpp'],
+                'summary': 'Portable C++ with exact arbitrary-precision permanent and determinant '
+                           'arithmetic, an integer residual network for max flow, and parallel evaluation '
+                           'across family members.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Matchings_and_flows/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'matchings_and_flows',
+             'reference': 'lean/Matchings_and_flows/Reference.lean',
+             'summary': 'Exact weighted perfect-matching counts, weighted undirected spanning-tree counts, '
+                        'and directed maximum-flow values for families of nonnegative integer matrices. '
+                        'Every result must fit u64.',
+             'version': 1},
+  'operations': [{'name': 'perfect_matching_count',
+                  'summary': 'The permanent of a square matrix A: sum over bijections sigma of product_i '
+                             'A[i,sigma(i)]. Equivalently, the number of perfect matchings in the bipartite '
+                             'multigraph with A[i,j] parallel edges.',
+                  'value': 'integer'},
+                 {'name': 'spanning_tree_count',
+                  'summary': 'For a square symmetric matrix A, the weighted count of undirected spanning '
+                             'trees: sum over trees T of product_{i<j in T} A[i,j]. Diagonal entries are '
+                             'ignored. Asymmetric members make the request invalid.',
+                  'value': 'integer'},
+                 {'args': {'sink': 'int', 'source': 'int'},
+                  'name': 'max_flow',
+                  'summary': 'Maximum integral directed flow from source to sink in the square capacity '
+                             'matrix A. Loops are ignored. Source and sink are zero-based distinct vertex '
+                             'indices.',
+                  'value': 'integer'}],
+  'rejections': [{'case': 'rectangular perfect matching', 'error': 'square matrices'},
+                 {'case': 'rectangular spanning tree', 'error': 'square matrices'},
+                 {'case': 'asymmetric spanning tree', 'error': 'symmetric'},
+                 {'case': 'equal flow terminals', 'error': 'distinct'},
+                 {'case': 'flow terminal outside graph', 'error': 'vertex indices'},
+                 {'case': 'binary 2x2 perfect matchings',
+                  'error': 'does not accept integer',
+                  'op': 'perfect_matching_count',
+                  'reduction': 'count'}]},
  {'backends': [{'accepts': 'subsets of flattened n x n matrices over any prime p < 2^32',
                 'name': 'generic',
                 'sources': ['backends/generic/matrix_groups_generic.cpp'],
