@@ -53,6 +53,12 @@ RUNTIME = {'families': [{'lean': 'explicit',
                'name': 'symmetric_matrices',
                'summary': 'Every symmetric n x n matrix with entries 0..q-1; index is the base-q number of '
                           'the upper triangle read row-major.'},
+              {'lean': 'alternatingMatrices',
+               'member': 'gfp.matrix',
+               'name': 'alternating_matrices',
+               'summary': 'Every alternating n x n matrix with entries 0..q-1; the diagonal is zero, the '
+                          'lower triangle is the negative transpose of the upper triangle, and the index is '
+                          'the base-q number of the strict upper triangle read row-major.'},
               {'lean': 'range',
                'member': 'lk.naturals',
                'name': 'range',
@@ -199,6 +205,71 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'summary': 'The index [Aut(G) : Inn(G)] = |Out(G)|, computed as |Aut(G)| * |Z(G)| / |G|.',
                   'value': 'integer'}],
   'rejections': [{'case': 'matrix is not a group family', 'error': 'group_tables'}]},
+ {'backends': [{'accepts': 'symmetric or alternating square matrices over any prime p < 2^32',
+                'name': 'generic',
+                'sources': ['backends/generic/bilinear_invariants_generic.cpp'],
+                'summary': 'Portable C++: symmetric Schur elimination with one- and two-dimensional pivots, '
+                           'modular square-class tests, and canonical-form assembly; threaded over '
+                           'members.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Bilinear_invariants/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'bilinear_invariants',
+             'reference': 'lean/Bilinear_invariants/Reference.lean',
+             'summary': 'Rank, radical dimension, determinant square classes, nondegeneracy, and canonical '
+                        'congruence labels for symmetric and alternating bilinear forms over prime fields. '
+                        'Square classes use 0 for zero, 1 for a nonzero square, and 2 for a nonsquare; the '
+                        'zero-rank discriminant class is 0.',
+             'version': 1},
+  'operations': [{'families': ['explicit', 'symmetric_matrices', 'alternating_matrices'],
+                  'name': 'rank',
+                  'summary': 'Rank of the Gram matrix over F_p. Explicit members must be symmetric or '
+                             'alternating.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'symmetric_matrices', 'alternating_matrices'],
+                  'name': 'radical_dimension',
+                  'summary': 'Dimension of the radical, n minus the rank.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'symmetric_matrices', 'alternating_matrices'],
+                  'name': 'determinant',
+                  'summary': 'Determinant of the Gram matrix as its canonical residue in 0..p-1.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'symmetric_matrices', 'alternating_matrices'],
+                  'name': 'determinant_class',
+                  'summary': 'Square class of the determinant: 0 for zero, 1 for a nonzero square, and 2 for '
+                             'a nonsquare.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'symmetric_matrices', 'alternating_matrices'],
+                  'name': 'discriminant_class',
+                  'summary': 'Square class of the determinant of the induced nondegenerate form after '
+                             'quotienting by the radical: 0 at rank zero, 1 for a square, and 2 for a '
+                             'nonsquare.',
+                  'value': 'integer'},
+                 {'families': ['explicit', 'symmetric_matrices', 'alternating_matrices'],
+                  'name': 'is_nondegenerate',
+                  'summary': 'Whether the radical is zero, equivalently whether the rank is n.',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'symmetric_matrices', 'alternating_matrices'],
+                  'name': 'is_alternating',
+                  'summary': 'Whether every diagonal entry is zero and A[j,i] = -A[i,j].',
+                  'value': 'boolean'},
+                 {'families': ['explicit', 'symmetric_matrices', 'alternating_matrices'],
+                  'name': 'congruence_label',
+                  'summary': 'Canonical representative of the congruence class. Alternating rank 2r uses r '
+                             'leading blocks [[0,1],[-1,0]]. Nonalternating forms over F_2 use a leading '
+                             'identity block. Symmetric forms over odd F_p use a leading diagonal block of '
+                             'ones whose last entry is the least nonsquare exactly when the radical-quotient '
+                             'discriminant is nonsquare; remaining rows and columns are zero.',
+                  'value': 'gfp.matrix'}],
+  'rejections': [{'case': 'nonsquare explicit', 'error': 'square', 'op': 'rank'},
+                 {'case': 'neither form', 'error': 'symmetric or alternating', 'op': 'determinant'},
+                 {'case': 'composite field tag', 'error': 'no available backend accepts', 'op': 'rank'},
+                 {'case': 'unrestricted matrix family', 'error': 'families', 'op': 'rank'},
+                 {'case': 'alternating F_3 dimension 2',
+                  'error': 'does not accept',
+                  'op': 'congruence_label',
+                  'reduction': 'count'}]},
  {'backends': [{'accepts': 'F_2 matrix families whose positive column count is a power of two; scalar '
                            'operations require one row',
                 'name': 'generic',

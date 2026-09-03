@@ -284,6 +284,11 @@ lk_status lk_family_symmetric_matrices(lk_context *ctx, uint64_t p, uint64_t n, 
     FAMILY_RESULT(make_symmetric_matrices(p, n));
 }
 
+lk_status lk_family_alternating_matrices(lk_context *ctx, uint64_t p, uint64_t n, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    FAMILY_RESULT(make_alternating_matrices(p, n));
+}
+
 lk_status lk_family_range(lk_context *ctx, uint64_t a, uint64_t b, lk_handle *out) {
     if (!ctx || !out) return LK_INVALID_ARGUMENT;
     FAMILY_RESULT(make_range(a, b));

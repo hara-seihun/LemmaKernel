@@ -29,7 +29,7 @@ Vocabulary, in the order a request is built:
 
 - **family**: a description of a set of objects with a canonical order (`explicit`, `subsets`
   of a dictionary, `subsets_of` another family, `grassmannian`, `all_matrices`,
-  `symmetric_matrices`, `sublattices` of a fixed integral lattice, the `transform`/`stack`
+  `symmetric_matrices`, `alternating_matrices`, `sublattices` of a fixed integral lattice, the `transform`/`stack`
   wrappers, `group_elements` of a permutation or matrix group, `group_tables` from stored Cayley
   tables or permutation generators, graph families (`all_graphs`, `edge_subgraphs`,
   `cayley_graphs`), `range`/`words` of natural numbers, `latin_squares`, constrained `partitions`,
@@ -95,6 +95,7 @@ and committed; the build refuses to configure if they are stale.
 | module | what it computes | backends |
 |---|---|---|
 | [automorphisms](modules/automorphisms/manifest.toml) | automorphism groups of finite groups: order, canonical generators, holomorph order, and outer automorphism group order | `generic` (propagated partial table isomorphisms, portable C++) |
+| [bilinear_invariants](modules/bilinear_invariants/manifest.toml) | rank, radical dimension, determinant square classes, nondegeneracy, and canonical congruence labels of symmetric and alternating forms over F_p | `generic` (symmetric Schur elimination and canonical-form assembly, portable C++) |
 | [boolean_functions](modules/boolean_functions/manifest.toml) | nonlinearity, algebraic degree, Walsh spectra, bent and APN tests, and domain-affine canonical forms for Boolean truth tables | `generic` (fast Walsh and Mobius transforms, prefix-pruned affine canonicalisation, portable C++) |
 | [burnside](modules/burnside/manifest.toml) | orbit counts, fixed counts, and canonical cycle indices for permutation groups on subsets and words, without enumerating the acted-on family | `generic` (cycle-type formulas, portable C++) |
 | [cayley](modules/cayley/manifest.toml) | simple undirected Cayley graphs of finite permutation groups: connectivity, regularity, girth, diameter, graph automorphism order, and the CI property of a connection set | `generic` (exact group closure, graph search, partition refinement and individualisation, portable C++) |

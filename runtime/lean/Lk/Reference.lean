@@ -130,6 +130,16 @@ def symmetricMembers (p n : Nat) : List Mat :=
     (List.range n).map fun i => (List.range n).map fun j =>
       if i ≤ j then digits.getD (pos i j) 0 else digits.getD (pos j i) 0
 
+/-- Every alternating `n x n` matrix over `F_p`: the strict upper triangle, row-major, is the
+base-`p` expansion of the index; the lower triangle is its negative transpose. -/
+def alternatingMembers (p n : Nat) : List Mat :=
+  (tuples p (n * (n - 1) / 2)).map fun digits =>
+    let pos := fun i j => i * n - i * (i + 1) / 2 + (j - i - 1)
+    (List.range n).map fun i => (List.range n).map fun j =>
+      if i = j then 0
+      else if i < j then digits.getD (pos i j) 0
+      else (p - digits.getD (pos j i) 0) % p
+
 def noDuplicates : List Nat → Bool
   | [] => true
   | x :: xs => if x ∈ xs then false else noDuplicates xs
@@ -322,6 +332,7 @@ inductive Family
   | groupTables (tables : List Mat)
   | subsetsOf (inner : Family) (k : Nat)
   | symmetricMatrices (p n : Nat)
+  | alternatingMatrices (p n : Nat)
   | range (a b : Nat)
   | words (alphabet length : Nat)
   | latinSquares (n : Nat)
@@ -341,7 +352,8 @@ def naturals : Nat := 18446744073709551615
 
 /-- The prime of a matrix family; 0 for permutations and for the natural-number kinds. -/
 def Family.p : Family → Nat
-  | .explicit p _ | .subsets p _ _ | .grassmannian p _ _ | .allMatrices p _ _ | .symmetricMatrices p _ => p
+  | .explicit p _ | .subsets p _ _ | .grassmannian p _ _ | .allMatrices p _ _ |
+    .symmetricMatrices p _ | .alternatingMatrices p _ => p
   | .transform f _ | .stack f _ | .subsetsOf f _ => f.p
   | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ => 2
   | .groupElements p _ => p
@@ -356,7 +368,7 @@ def Family.naturals : Family → Bool
   | .groupTables _ | .range _ _ | .words _ _ | .latinSquares _ |
     .partitions _ _ _ _ _ _ | .compositions _ _ _ | .standardTableaux _ => true
   | .transform _ _ | .grassmannian _ _ _ | .allMatrices _ _ _ | .symmetricMatrices _ _ |
-    .groupElements _ _ | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ | .sublattices _ _ => false
+    .alternatingMatrices _ _ | .groupElements _ _ | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ | .sublattices _ _ => false
 
 /-- Members in canonical order. A permutation is a one-row matrix; so is a word, and an integer
 is a `1 x 1` matrix. -/
@@ -372,6 +384,7 @@ def Family.members : Family → List Mat
   | .groupTables tables => tables
   | .subsetsOf f k => combos (f.members.map List.flatten) k
   | .symmetricMatrices p n => symmetricMembers p n
+  | .alternatingMatrices p n => alternatingMembers p n
   | .range a b => (List.range (b - a)).map fun i => [[a + i]]
   | .words q len => (tuples q len).map ([·])
   | .latinSquares n => latinSquaresMembers n

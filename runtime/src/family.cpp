@@ -386,6 +386,7 @@ const char *family_kind_name(Family::Kind k) {
     case Family::Kind::GroupTables: return "group_tables";
     case Family::Kind::SubsetsOf: return "subsets_of";
     case Family::Kind::SymmetricMatrices: return "symmetric_matrices";
+    case Family::Kind::AlternatingMatrices: return "alternating_matrices";
     case Family::Kind::Range: return "range";
     case Family::Kind::Words: return "words";
     case Family::Kind::LatinSquares: return "latin_squares";
@@ -419,7 +420,8 @@ uint64_t Family::rows() const {
     case Kind::Stack: return child->rows() + data->rows;
     case Kind::GroupElements: return data->rows;
     case Kind::SubsetsOf: return k;
-    case Kind::SymmetricMatrices: return n;
+    case Kind::SymmetricMatrices:
+    case Kind::AlternatingMatrices: return n;
     case Kind::Range: return 1;
     case Kind::Words: return 1;
     case Kind::LatinSquares: return n;
@@ -445,7 +447,8 @@ uint64_t Family::cols() const {
     case Kind::Stack: return child->cols();
     case Kind::GroupElements: return data->cols;
     case Kind::SubsetsOf: return data->cols;
-    case Kind::SymmetricMatrices: return n;
+    case Kind::SymmetricMatrices:
+    case Kind::AlternatingMatrices: return n;
     case Kind::Range: return 1;
     case Kind::Words: return n;
     case Kind::LatinSquares: return n;
@@ -479,6 +482,7 @@ Result<uint64_t> Family::size() const {
     case Kind::AllMatrices:
     case Kind::Words: return pow_checked(p, m * n);
     case Kind::SymmetricMatrices: return pow_checked(p, n * (n + 1) / 2);
+    case Kind::AlternatingMatrices: return pow_checked(p, n * (n - 1) / 2);
     case Kind::Range: return Result<uint64_t>::success(b - a);
     case Kind::LatinSquares: return Result<uint64_t>::success(latin_square_count(n));
     case Kind::Partitions: {
@@ -533,6 +537,7 @@ Result<uint64_t> Family::top_count() const {
     case Kind::AllMatrices:
     case Kind::Words:
     case Kind::SymmetricMatrices: return pow_checked(p, n);
+    case Kind::AlternatingMatrices: return pow_checked(p, n - 1);
     case Kind::Range: return size();
     case Kind::LatinSquares: {
         uint64_t factorial = 1;
@@ -662,6 +667,19 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
                 rem /= p;
                 out.entries[i * n + j] = e;
                 out.entries[j * n + i] = e;
+            }
+        break;
+    }
+    case Kind::AlternatingMatrices: {
+        /* The strict upper triangle, row-major, holds the base-p digits of the index. */
+        out.entries.assign(n * n, 0);
+        uint64_t rem = index;
+        for (int64_t i = (int64_t)n - 1; i >= 0; --i)
+            for (int64_t j = (int64_t)n - 1; j > i; --j) {
+                Entry e = (Entry)(rem % p);
+                rem /= p;
+                out.entries[i * n + j] = e;
+                out.entries[j * n + i] = e ? (Entry)(p - e) : 0;
             }
         break;
     }
@@ -1007,6 +1025,20 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
             }
         return R::success(index);
     }
+    case Kind::AlternatingMatrices: {
+        uint64_t index = 0;
+        for (uint64_t i = 0; i < n; ++i) {
+            if (mem.entries[i * n + i] != 0)
+                return R::failure(INVALID, "index_of: matrix is not alternating");
+            for (uint64_t j = i + 1; j < n; ++j) {
+                Entry upper = mem.entries[i * n + j], lower = mem.entries[j * n + i];
+                if ((upper + (uint64_t)lower) % p != 0)
+                    return R::failure(INVALID, "index_of: matrix is not alternating");
+                index = index * p + upper;
+            }
+        }
+        return R::success(index);
+    }
     case Kind::Range: {
         uint64_t v = mem.entries[0];
         if (v < a || v >= b) return R::failure(INVALID, "index_of: value outside the range");
@@ -1158,6 +1190,43 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
                 v.pop();
                 index += below[j];
                 for (int64_t q = (int64_t)n - 1; q >= (int64_t)j; --q) {
+                    if (++row[q] < p) break;
+                    row[q] = 0;
+                }
+            }
+        };
+        descend(descend, 0, top_begin * below[0], top_begin, top_end);
+        return ok();
+    }
+    case Kind::AlternatingMatrices: {
+        /* Row j has n-j-1 free strict-upper entries. Earlier entries are the negatives of the
+         * corresponding upper-triangle entries, and the diagonal is zero. */
+        std::vector<uint64_t> below(n, 1);
+        for (int64_t j = (int64_t)n - 2; j >= 0; --j)
+            below[j] = below[j + 1] * pow_checked(p, n - j - 2).value;
+        std::vector<Entry> mat(n * n, 0);
+        auto descend = [&](auto &self, uint64_t j, uint64_t index, uint64_t d_begin, uint64_t d_end) -> void {
+            Entry *row = mat.data() + j * n;
+            for (uint64_t c = 0; c < j; ++c) {
+                Entry e = mat[c * n + j];
+                row[c] = e ? (Entry)(p - e) : 0;
+            }
+            row[j] = 0;
+            uint64_t rem = d_begin;
+            for (int64_t q = (int64_t)n - 1; q > (int64_t)j; --q) { row[q] = (Entry)(rem % p); rem /= p; }
+            for (uint64_t d = d_begin; d < d_end; ++d) {
+                Step step = v.push(row, index, below[j]);
+                if (step == Step::Descend) {
+                    if (j + 1 == n) v.leaf(index);
+                    else self(self, j + 1, index, 0, pow_checked(p, n - j - 2).value);
+                } else if (step == Step::TakeAll) {
+                    v.take_all(index, below[j]);
+                } else {
+                    v.skip_all(index, below[j]);
+                }
+                v.pop();
+                index += below[j];
+                for (int64_t q = (int64_t)n - 1; q > (int64_t)j; --q) {
                     if (++row[q] < p) break;
                     row[q] = 0;
                 }
@@ -1572,6 +1641,19 @@ Result<std::shared_ptr<Family>> make_symmetric_matrices(uint64_t p, uint64_t n) 
     if (n == 0) return R::failure(INVALID, "symmetric_matrices: need n >= 1");
     auto f = std::make_shared<Family>();
     f->kind = Family::Kind::SymmetricMatrices;
+    f->p = p;
+    f->n = n;
+    auto sz = f->size();
+    if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
+    return R::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_alternating_matrices(uint64_t p, uint64_t n) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (p < 2 || p >= (1ULL << 32)) return R::failure(INVALID, "field size must satisfy 2 <= p < 2^32");
+    if (n == 0) return R::failure(INVALID, "alternating_matrices: need n >= 1");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::AlternatingMatrices;
     f->p = p;
     f->n = n;
     auto sz = f->size();

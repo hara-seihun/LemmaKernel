@@ -299,7 +299,7 @@ def lean_family(f: ic.Family) -> str:
     if f.kind == "subsets_of":
         (inner,) = f.children
         return f"(.{ctor} {lean_family(inner)} {q['k']})"
-    if f.kind == "symmetric_matrices":
+    if f.kind in ("symmetric_matrices", "alternating_matrices"):
         return f"(.{ctor} {q['p']} {q['n']})"
     if f.kind == "range":
         return f"(.{ctor} {q['a']} {q['b']})"

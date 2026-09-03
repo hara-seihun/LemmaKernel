@@ -28,7 +28,7 @@ def familyCols : Family → Nat
   | .groupElements _ gens => ((gens.headD []).headD []).length
   | .groupTables tables => ((tables.headD []).headD []).length
   | .subsetsOf inner _ => familyRows inner * familyCols inner
-  | .symmetricMatrices _ n => n
+  | .symmetricMatrices _ n | .alternatingMatrices _ n => n
   | .range _ _ => 1
   | .words _ length => length
   | .latinSquares n => n
@@ -48,7 +48,7 @@ where
     | .groupElements _ gens => (gens.headD []).length
     | .groupTables tables => (tables.headD []).length
     | .subsetsOf _ k => k
-    | .symmetricMatrices _ n => n
+    | .symmetricMatrices _ n | .alternatingMatrices _ n => n
     | .range _ _ => 1
     | .words _ _ => 1
     | .latinSquares n => n
@@ -63,7 +63,8 @@ def matrixFamily : Family → Bool
   | .explicit _ _ | .subsets _ _ _ | .grassmannian _ _ _ | .allMatrices _ _ _ |
     .symmetricMatrices _ _ => true
   | .transform inner _ | .stack inner _ | .subsetsOf inner _ => matrixFamily inner
-  | .groupElements _ _ | .groupTables _ | .range _ _ | .words _ _ | .latinSquares _ |
+  | .alternatingMatrices _ _ | .groupElements _ _ | .groupTables _ | .range _ _ | .words _ _ |
+    .latinSquares _ |
     .partitions _ _ _ _ _ _ | .compositions _ _ _ | .standardTableaux _ |
     .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ | .sublattices _ _ => false
 

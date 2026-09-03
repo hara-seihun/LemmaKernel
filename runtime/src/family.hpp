@@ -16,9 +16,9 @@ struct PartitionTable;
 
 struct Family {
     enum class Kind { Explicit, Subsets, Grassmannian, AllMatrices, Transform, Stack, GroupElements,
-                      GroupTables, SubsetsOf, SymmetricMatrices, Range, Words, LatinSquares,
-                      Partitions, Compositions, StandardTableaux, AllGraphs, EdgeSubgraphs,
-                      CayleyGraphs, Sublattices };
+                      GroupTables, SubsetsOf, SymmetricMatrices, AlternatingMatrices, Range, Words,
+                      LatinSquares, Partitions, Compositions, StandardTableaux, AllGraphs,
+                      EdgeSubgraphs, CayleyGraphs, Sublattices };
     Kind kind;
     /* Batch, group tables, dictionary (Subsets, and the materialised inner family for SubsetsOf),
      * C, stacked rows, group generators, or the shape of a StandardTableaux family. */
@@ -87,6 +87,7 @@ Result<std::shared_ptr<Family>> make_generated_group(std::shared_ptr<Matrix> gen
  * The inner family is materialised once; it must have at most 2^22 members. */
 Result<std::shared_ptr<Family>> make_subsets_of(std::shared_ptr<Family> inner, uint64_t k);
 Result<std::shared_ptr<Family>> make_symmetric_matrices(uint64_t p, uint64_t n);
+Result<std::shared_ptr<Family>> make_alternating_matrices(uint64_t p, uint64_t n);
 Result<std::shared_ptr<Family>> make_range(uint64_t a, uint64_t b);
 Result<std::shared_ptr<Family>> make_words(uint64_t alphabet, uint64_t length);
 Result<std::shared_ptr<Family>> make_latin_squares(uint64_t n);

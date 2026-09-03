@@ -55,9 +55,10 @@ gfp is the worked example of all of this; copy its shape.
 The runtime (`runtime/src/`) knows labelled field matrices with entries below the field-size tag
 (`gfp` requires a prime tag; `gfq` supplies an extension-field presentation), permutations (a
 `Matrix` with p = 0), natural-number matrices (p = `NATURALS`, kind `lk.naturals`, no arithmetic
-meaning), and ZigZag-encoded integral Gram matrices. It provides twenty family kinds:
+meaning), and ZigZag-encoded integral Gram matrices. It provides twenty-one family kinds:
 `explicit`, `subsets` of a dictionary, `subsets_of` another family, `grassmannian`, `all_matrices`,
-`symmetric_matrices`, `sublattices` of an integral lattice, the `transform`/`stack` wrappers,
+`symmetric_matrices`, `alternating_matrices`, `sublattices` of an integral lattice, the
+`transform`/`stack` wrappers,
 `group_elements` of a permutation or matrix group, `group_tables` from Cayley tables or permutation
 generators, graph families (`all_graphs`, `edge_subgraphs`, `cayley_graphs`), `range`/`words` over
 naturals, `latin_squares`, constrained `partitions`/`compositions`, and standard Young tableaux.

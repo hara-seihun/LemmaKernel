@@ -1,0 +1,36 @@
+{
+ "module": "bilinear_invariants",
+ "fingerprint": {
+  "module": "55cda0c34d738b16b0ef5fed8fa0458db7876a84d8d1a28ae272f6cbdda28260",
+  "runtime": "b781579277ade0bb8d0f523333dec0518ef7698eb0e017480e725abd4f602b35",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "9064681b4cd5d37107c0bd533463893a7cc4ee323e7cc8087907f114c0581bc0"
+ },
+ "measured_at": "2026-09-03T05:42:18+00:00",
+ "commit": "5c0ee5c82f19e26b368ddcd272aa84cd50eb0841",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "rank census of symmetric 5x5 forms",
+   "what": "rank distribution of all 32,768 symmetric 5x5 matrices over F_2",
+   "op": "bilinear_invariants.rank",
+   "reduction": "histogram",
+   "members": 32768,
+   "naive_s": 0.27950446493923664,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.005756199127063155,
+   "kernel_all_threads_s": 0.0013188021257519722,
+   "threads": 32,
+   "speedup_1_thread": 48.55712229014589,
+   "speedup_all_threads": 211.93813649630346,
+   "answer": "Histogram(visited=32768, family_size=32768, bins=[1, 31, 620, 4340, 13888, 13888])"
+  }
+ ]
+}

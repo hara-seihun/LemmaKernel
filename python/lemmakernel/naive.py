@@ -104,6 +104,18 @@ def symmetric_members(p, n):
         yield m
 
 
+def alternating_members(p, n):
+    """Every alternating n x n matrix. The strict upper triangle, row-major, contains the
+    base-p digits of the index; the lower triangle is its negative transpose."""
+    upper = [(i, j) for i in range(n) for j in range(i + 1, n)]
+    for digits in itertools.product(range(p), repeat=len(upper)):
+        m = [[0] * n for _ in range(n)]
+        for (i, j), d in zip(upper, digits):
+            m[i][j] = d
+            m[j][i] = (-d) % p
+        yield m
+
+
 def partition_members(total, max_part, max_parts, max_multiplicity, distinct, odd):
     """Constrained partitions, descending lexicographic, padded to `total` entries."""
     upper = min(max_part or total, total)
@@ -359,6 +371,8 @@ def iter_members(f: Family):
             yield [list(digits[r * cols:(r + 1) * cols]) for r in range(rows)]
     elif f.kind == "symmetric_matrices":
         yield from symmetric_members(f.params["p"], f.params["n"])
+    elif f.kind == "alternating_matrices":
+        yield from alternating_members(f.params["p"], f.params["n"])
     elif f.kind == "transform":
         inner, C = f.children
         c, p = C.member(0), C.p

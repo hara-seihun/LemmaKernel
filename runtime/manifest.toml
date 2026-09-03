@@ -80,6 +80,12 @@ lean = "symmetricMatrices"
 summary = "Every symmetric n x n matrix with entries 0..q-1; index is the base-q number of the upper triangle read row-major."
 
 [[families]]
+name = "alternating_matrices"
+member = "gfp.matrix"
+lean = "alternatingMatrices"
+summary = "Every alternating n x n matrix with entries 0..q-1; the diagonal is zero, the lower triangle is the negative transpose of the upper triangle, and the index is the base-q number of the strict upper triangle read row-major."
+
+[[families]]
 name = "range"
 member = "lk.naturals"
 lean = "range"

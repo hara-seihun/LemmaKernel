@@ -1,0 +1,91 @@
+# bilinear_invariants: congruence invariants of finite-field Gram matrices.
+
+[module]
+name = "bilinear_invariants"
+version = 1
+summary = "Rank, radical dimension, determinant square classes, nondegeneracy, and canonical congruence labels for symmetric and alternating bilinear forms over prime fields. Square classes use 0 for zero, 1 for a nonzero square, and 2 for a nonsquare; the zero-rank discriminant class is 0."
+lean = "lean"
+contract = "lean/Bilinear_invariants/Contract.lean"
+reference = "lean/Bilinear_invariants/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "rank"
+value = "integer"
+families = ["explicit", "symmetric_matrices", "alternating_matrices"]
+summary = "Rank of the Gram matrix over F_p. Explicit members must be symmetric or alternating."
+
+[[operations]]
+name = "radical_dimension"
+value = "integer"
+families = ["explicit", "symmetric_matrices", "alternating_matrices"]
+summary = "Dimension of the radical, n minus the rank."
+
+[[operations]]
+name = "determinant"
+value = "integer"
+families = ["explicit", "symmetric_matrices", "alternating_matrices"]
+summary = "Determinant of the Gram matrix as its canonical residue in 0..p-1."
+
+[[operations]]
+name = "determinant_class"
+value = "integer"
+families = ["explicit", "symmetric_matrices", "alternating_matrices"]
+summary = "Square class of the determinant: 0 for zero, 1 for a nonzero square, and 2 for a nonsquare."
+
+[[operations]]
+name = "discriminant_class"
+value = "integer"
+families = ["explicit", "symmetric_matrices", "alternating_matrices"]
+summary = "Square class of the determinant of the induced nondegenerate form after quotienting by the radical: 0 at rank zero, 1 for a square, and 2 for a nonsquare."
+
+[[operations]]
+name = "is_nondegenerate"
+value = "boolean"
+families = ["explicit", "symmetric_matrices", "alternating_matrices"]
+summary = "Whether the radical is zero, equivalently whether the rank is n."
+
+[[operations]]
+name = "is_alternating"
+value = "boolean"
+families = ["explicit", "symmetric_matrices", "alternating_matrices"]
+summary = "Whether every diagonal entry is zero and A[j,i] = -A[i,j]."
+
+[[operations]]
+name = "congruence_label"
+value = "gfp.matrix"
+families = ["explicit", "symmetric_matrices", "alternating_matrices"]
+summary = "Canonical representative of the congruence class. Alternating rank 2r uses r leading blocks [[0,1],[-1,0]]. Nonalternating forms over F_2 use a leading identity block. Symmetric forms over odd F_p use a leading diagonal block of ones whose last entry is the least nonsquare exactly when the radical-quotient discriminant is nonsquare; remaining rows and columns are zero."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/bilinear_invariants_generic.cpp"]
+accepts = "symmetric or alternating square matrices over any prime p < 2^32"
+summary = "Portable C++: symmetric Schur elimination with one- and two-dimensional pivots, modular square-class tests, and canonical-form assembly; threaded over members."
+
+[[rejections]]
+case = "nonsquare explicit"
+op = "rank"
+error = "square"
+
+[[rejections]]
+case = "neither form"
+op = "determinant"
+error = "symmetric or alternating"
+
+[[rejections]]
+case = "composite field tag"
+op = "rank"
+error = "no available backend accepts"
+
+[[rejections]]
+case = "unrestricted matrix family"
+op = "rank"
+error = "families"
+
+[[rejections]]
+case = "alternating F_3 dimension 2"
+op = "congruence_label"
+reduction = "count"
+error = "does not accept"

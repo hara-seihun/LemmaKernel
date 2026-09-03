@@ -236,10 +236,11 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         if (!inner.ok) return R::failure(inner.error.status, inner.error.message);
         return make_subsets_of(inner.value->family, k.value);
     }
-    if (sub == "symmetric_matrices") {
+    if (sub == "symmetric_matrices" || sub == "alternating_matrices") {
         auto p = need(h, "p"), n = need(h, "n");
         for (auto *r : {&p, &n}) if (!r->ok) return R::failure(r->error.status, r->error.message);
-        return make_symmetric_matrices(p.value, n.value);
+        return sub == "symmetric_matrices" ? make_symmetric_matrices(p.value, n.value)
+                                            : make_alternating_matrices(p.value, n.value);
     }
     if (sub == "all_graphs") {
         auto n = need(h, "n");
@@ -350,6 +351,7 @@ std::vector<uint8_t> encode_family(const Family &f) {
         params["k"] = f.k;
         break;
     case Family::Kind::SymmetricMatrices:
+    case Family::Kind::AlternatingMatrices:
         params = {{"p", f.p}, {"n", f.n}};
         break;
     case Family::Kind::Range:

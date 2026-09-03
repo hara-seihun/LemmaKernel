@@ -28,7 +28,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | set_systems | antichains_64_choose_5 | 7,624,512 | 16.6 s~ | 0.0204 s | 815× | 4,420× |
 | posets | divisor_heights_100000 | 100,000 | 123 s~ | 0.17 s | 725× | 11,326× |
 | graphs | random_graph_chromatic | 120 | 0.0713 s | 0.000214 s | 334× | 199× |
-| quantum_codes | distance census of three-spaces | 97,155 | 8.25 s | 0.0277 s | 298× | 2,686× |
+| quantum_codes | distance census of three-spaces | 97,155 | 8.16 s | 0.0274 s | 297× | 2,732× |
 | gfq | gf4_subset_ranks | 8,568 | 1.58 s | 0.00965 s | 163× | 593× |
 | linear_codes | grassmannian_3_7_binary | 11,811 | 0.418 s | 0.00267 s | 157× | 723× |
 | lattice_of_subspaces | g84_contains_line | 200,787 | 2.25 s | 0.0163 s | 138× | 638× |
@@ -44,6 +44,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | young | ternary_rsk_length7 | 2,187 | 0.0427 s | 0.000693 s | 62× | 29× |
 | hadamard | all_4x4_hadamard | 65,536 | 0.17 s | 0.00292 s | 58× | 267× |
 | matchings_and_flows | all_unit_networks_4 | 65,536 | 0.338 s | 0.00618 s | 55× | 359× |
+| bilinear_invariants | rank census of symmetric 5x5 forms | 32,768 | 0.28 s | 0.00576 s | 49× | 212× |
 | circulants | spectra of pairs on Z101 | 4,950 | 0.214 s | 0.00518 s | 41× | 79× |
 | hypergraphs | ramsey_R33_on_six_vertices | 6,435 | 0.0577 s | 0.00154 s | 37× | 121× |
 | polytopes_small | five-subsets of the 5-cube | 201,376 | 0.447 s | 0.0569 s | 7.9× | 81× |
@@ -53,6 +54,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | module | case | what | members | naive | kernel ×1 | kernel ×all | speedup ×1 | speedup ×all |
 |---|---|---|---:|---:|---:|---:|---:|---:|
 | automorphisms | order8_catalogue | automorphism orders for four stored groups of order 8: C8, C4xC2, C2^3, and D8 | 4 | 0.0782 s | 5.31e-05 s | 7.75e-05 s | 1,471× | 1,009× |
+| bilinear_invariants | rank census of symmetric 5x5 forms | rank distribution of all 32,768 symmetric 5x5 matrices over F_2 | 32,768 | 0.28 s | 0.00576 s | 0.00132 s | 49× | 212× |
 | boolean_functions | degree2_n5_nonlinearity | largest nonlinearity among all 65,536 Boolean functions of degree at most two in five variables | 65,536 | 2.71 s | 0.035 s | 0.00615 s | 78× | 441× |
 | boolean_functions | quadratic_n6_bent | bent functions among all 2,097,152 zero-constant quadratic forms in six variables | 2,097,152 | 221 s~ | 2.48 s | 0.187 s | 89× | 1,179× |
 | burnside | binary_necklaces_60 | binary necklaces of length 60, counted from 60 cycle types instead of 2^60 words | 1,152,921,504,606,846,976 | 6.23e+13 s~ | 2.65e-05 s | 0.000363 s | 2.3e+18× | 1.7e+17× |
@@ -119,7 +121,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | posets | eight_of_sixteen_subsets | linear-extension distribution for all 8-element induced subposets of the Boolean lattice B_4 | 12,870 | 1.74 s | 0.0108 s | 0.00242 s | 161× | 718× |
 | posets | divisor_heights_100000 | height distribution of the divisor posets of the first 100000 positive integers | 100,000 | 123 s~ | 0.17 s | 0.0108 s | 725× | 11,326× |
 | projective_sets | pg32_six_sets | maximum line intersection for every 6-point subset of the 15 points of PG(3,2) | 5,005 | 2.95 s | 0.00176 s | 0.00052 s | 1,673× | 5,674× |
-| quantum_codes | distance census of three-spaces | distance distribution of all binary symplectic 3-spaces in F_2^8 | 97,155 | 8.25 s | 0.0277 s | 0.00307 s | 298× | 2,686× |
+| quantum_codes | distance census of three-spaces | distance distribution of all binary symplectic 3-spaces in F_2^8 | 97,155 | 8.16 s | 0.0274 s | 0.00299 s | 297× | 2,732× |
 | residues | orders_mod_10007 | the multiplicative order of every unit modulo 10007 | 10,006 | 3.13 s | 0.000907 s | 0.000549 s | 3,446× | 5,692× |
 | residues | primitive_roots_mod_10007 | how many units modulo 10007 generate the whole unit group | 10,006 | 23.5 s~ | 0.000824 s | 0.000483 s | 28,580× | 48,774× |
 | residues | discrete_logs_mod_10007 | the largest discrete logarithm to base 5 modulo 10007, over every unit | 10,006 | 2.22 s | 0.00321 s | 0.000518 s | 691× | 4,282× |

@@ -85,6 +85,15 @@ theorem symmetricMatrices_spec (n : ℕ) :
     ∀ m, WellFormed p n n m → (toMatrix p n n m).IsSymm → m ∈ ms := by
   sorry
 
+/-- Every alternating `n x n` matrix over `F_p` exactly once. -/
+theorem alternatingMatrices_spec (n : ℕ) :
+    let ms := (Family.alternatingMatrices p n).members
+    ms.Nodup ∧ ms.length = p ^ (n * (n - 1) / 2) ∧
+    ∀ m, WellFormed p n n m →
+      (∀ i, (toMatrix p n n m) i i = 0) →
+      (toMatrix p n n m).transpose = -(toMatrix p n n m) → m ∈ ms := by
+  sorry
+
 theorem range_spec (a b : ℕ) :
     (Family.range a b).members = (List.range (b - a)).map fun i => [[a + i]] := by
   rfl

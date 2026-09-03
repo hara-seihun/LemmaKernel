@@ -85,6 +85,7 @@ _lib.lk_family_group_tables.argtypes = [_P, _H, ctypes.POINTER(_H)]
 _lib.lk_family_generated_group.argtypes = [_P, _H, ctypes.POINTER(_H)]
 _lib.lk_family_subsets_of.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_symmetric_matrices.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
+_lib.lk_family_alternating_matrices.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_range.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_words.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_latin_squares.argtypes = [_P, ctypes.c_uint64, ctypes.POINTER(_H)]
@@ -322,6 +323,11 @@ class Context:
     def symmetric_matrices(self, p: int, n: int) -> Handle:
         out = _H()
         self._check(_lib.lk_family_symmetric_matrices(self._ptr, p, n, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def alternating_matrices(self, p: int, n: int) -> Handle:
+        out = _H()
+        self._check(_lib.lk_family_alternating_matrices(self._ptr, p, n, ctypes.byref(out)))
         return self._wrap(out)
 
     def range(self, a: int, b: int) -> Handle:
