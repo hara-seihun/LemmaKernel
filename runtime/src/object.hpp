@@ -63,6 +63,21 @@ struct Witness {
     std::vector<Entry> r, t;
 };
 
+/* Per member, a ragged list of F_p elements: member i is values[offsets[i] .. offsets[i+1]).
+ * polynomials_fq returns roots and polynomial coefficients this way. */
+struct Elements {
+    uint64_t p = 0, count = 0;
+    std::vector<uint64_t> offsets;
+    std::vector<Entry> values;
+};
+
+/* Per member, a ragged list of naturals (no field attached): factorisation degrees. */
+struct Degrees {
+    uint64_t count = 0;
+    std::vector<uint64_t> offsets;
+    std::vector<uint64_t> values;
+};
+
 struct CycleIndex {
     uint64_t degree = 0, denominator = 0;
     std::vector<uint64_t> multiplicities;
@@ -133,6 +148,8 @@ struct Object {
     std::shared_ptr<Solutions> solutions;
     std::shared_ptr<Inverses> inverses;
     std::shared_ptr<Witness> witness;
+    std::shared_ptr<Elements> elements;
+    std::shared_ptr<Degrees> degrees;
     std::shared_ptr<CycleIndex> cycle_index;
     std::shared_ptr<U64Matrices> u64_matrices;
     std::shared_ptr<Partitions> partitions;

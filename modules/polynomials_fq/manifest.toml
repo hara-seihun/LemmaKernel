@@ -1,0 +1,104 @@
+# polynomials_fq: univariate polynomials over a finite field, on families of coefficient rows.
+# This file is the only declaration of the module. tools/manifest.py generates the C registry,
+# the runtime description, the CMake source list, the Lake libraries and the Python manifest from it.
+#
+# The canonical reading of a member, which the reference, the backend and the naive implementation
+# all obey: a member is one row `[a_0, ..., a_{d-1}]` of d entries over F_q, and it denotes the
+# monic polynomial f = x^d + a_{d-1} x^(d-1) + ... + a_1 x + a_0. Entry i is the coefficient of x^i,
+# and the degree is the number of columns, so `all_matrices(q, 1, d)` is exactly the family of all
+# monic polynomials of degree d, ordered by the base-q number whose most significant digit is the
+# constant coefficient. Members with more than one row are refused. The runtime's fields are the
+# prime fields, so q = p here; nothing in the operations is specific to prime q.
+
+[module]
+name = "polynomials_fq"
+version = 1
+summary = "Univariate polynomials over F_q on families of coefficient rows: irreducibility, factorisation degrees, primitivity, the order of x, roots and gcd. A 1 x d member [a_0, ..., a_{d-1}] is the monic polynomial x^d + sum a_i x^i, so all_matrices(q, 1, d) is every monic polynomial of degree d."
+lean = "lean"
+contract = "lean/Polynomials_fq/Contract.lean"
+reference = "lean/Polynomials_fq/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "polynomials_fq.elements"
+params = ["p", "count"]
+payload = "u64 offsets[count+1], then offsets[count] entries of F_p"
+lean = "elements"
+summary = "For each member, a list of field elements (ragged): the roots of `roots`, or the coefficients of the polynomial `gcd` returns."
+
+[[kinds]]
+name = "polynomials_fq.degrees"
+params = ["count"]
+payload = "u64 offsets[count+1], then offsets[count] u64 degrees"
+lean = "degrees"
+summary = "For each member, a list of natural numbers (ragged): the degrees `factorisation_degrees` returns."
+
+[[operations]]
+name = "is_irreducible"
+value = "boolean"
+summary = "The member is irreducible over F_q. A member of degree 0 (the polynomial 1) is not."
+
+[[operations]]
+name = "factorisation_degrees"
+value = "polynomials_fq.degrees"
+summary = "Degrees of the monic irreducible factors of the member, with multiplicity, in non-decreasing order. They sum to the degree."
+
+[[operations]]
+name = "is_primitive"
+value = "boolean"
+summary = "The member is a primitive polynomial: irreducible of degree d, with nonzero constant coefficient, and x generates the multiplicative group of F_q[x]/(f), that is `order` = q^d - 1. Refused when q^d is 2^32 or more, because the answer is found by walking the powers of x."
+
+[[operations]]
+name = "order"
+value = "integer"
+summary = "The order of the member: writing f = x^h g with g(0) != 0, the least e >= 1 with g dividing x^e - 1, that is the multiplicative order of x in F_q[x]/(g). It is 1 when g is constant (f = x^h). Refused when q^d is 2^32 or more, because the answer is found by walking the powers of x."
+
+[[operations]]
+name = "roots"
+value = "polynomials_fq.elements"
+summary = "The distinct roots of the member in F_q, in increasing order; multiplicities are not repeated."
+
+[[operations]]
+name = "root_count"
+value = "integer"
+summary = "How many distinct roots the member has in F_q; the length of `roots`."
+
+[[operations]]
+name = "gcd"
+value = "polynomials_fq.elements"
+args = { other = "vector" }
+summary = "The monic gcd of the member and the fixed monic polynomial `other` (a 1 x k row read the same way as a member, so it is x^k + sum b_i x^i), returned in the same convention: the list [c_0, ..., c_{m-1}] of the coefficients below the leading term, so its length is the degree of the gcd and the empty list is the constant 1."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/polynomials_fq_generic.cpp"]
+accepts = "any prime q < 2^32, any family of one-row members; `order` and `is_primitive` need q^d < 2^32"
+summary = "Portable C++: Musser squarefree decomposition and distinct-degree factorisation by repeated Frobenius, Euclid for gcd, Horner for roots, and the walk x, x^2, ... for the order of x. Threads over member ranges."
+
+# Requests that must be refused. `case` names a case from cases.py; `op`/`reduction` override
+# the case's own. `error` is a substring (a regular expression) of the runtime's message.
+[[rejections]]
+case = "two rows per member F_2"
+op = "is_irreducible"
+error = "one row"
+
+[[rejections]]
+case = "two rows per member F_2"
+op = "factorisation_degrees"
+error = "one row"
+
+[[rejections]]
+case = "naturals family"
+op = "root_count"
+error = "no available backend accepts"
+
+[[rejections]]
+case = "degree 32 over F_2"
+op = "order"
+error = "residue ring"
+
+[[rejections]]
+case = "degree 32 over F_2"
+op = "is_primitive"
+error = "residue ring"

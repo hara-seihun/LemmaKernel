@@ -98,6 +98,7 @@ and committed; the build refuses to configure if they are stale.
 | [matchings_and_flows](modules/matchings_and_flows/manifest.toml) | weighted bipartite perfect-matching counts, weighted undirected spanning-tree counts, and directed maximum-flow values from integer matrices | `generic` (Ryser permanent, matrix-tree determinant, and Edmonds-Karp, portable C++) |
 | [orbits](modules/orbits/manifest.toml) | finite groups acting on families: orbit representatives (`is_canonical`), canonical index, orbit size, stabiliser order, fixed points for Burnside, and the projective action that turns a matrix group into permutations of points | `generic` (per-member orbit search, portable C++) |
 | [perm_groups](modules/perm_groups/manifest.toml) | Schreier-Sims for permutation groups: order, membership, transitivity, primitivity, point-orbit partitions, and deterministic bases with strong generators | `generic` (portable C++, parallel across groups) |
+| [polynomials_fq](modules/polynomials_fq/manifest.toml) | univariate polynomials over `F_q` on families of coefficient rows: irreducibility, factorisation degrees, primitivity, the order of `x`, roots and gcd | `generic` (Frobenius distinct-degree factorisation, portable C++) |
 | [projective_sets](modules/projective_sets/manifest.toml) | arcs, caps, blocking sets, hyperovals, ovoids, span rank, maximum collinearity, and secant, tangent and passant counts for point sets in `PG(n,p)` | `generic` (precomputed line and hyperplane incidence, portable C++) |
 | [set_systems](modules/set_systems/manifest.toml) | extremal predicates on finite set systems: intersecting families, antichains, sunflowers, maximum degree, lower shadows, and exact EKR/Sperner extremality | `generic` (prefix-pruned enumeration, portable C++) |
 | [subspace_orbits](modules/subspace_orbits/manifest.toml) | GL, PGL and PGammaL orbits of row spaces from Grassmannians and their transform/stack derivatives; canonical indices use the least rref in Grassmannian order | `generic` (per-member rref orbit search, portable C++) |
@@ -124,6 +125,13 @@ naive Python implementation on inputs small enough for naive to finish, so every
 byte-for-byte agreement; single-threaded ratios on this machine run from about 40× (Grassmannian
 orbits, where each step is an elimination) to about 1700× (independence of subsets), and higher
 where the backend changes the algorithm (Burnside counts from cycle types).
+
+`polynomials_fq` reads a `1 x d` member `[a_0, ..., a_{d-1}]` as the monic polynomial
+`x^d + a_{d-1} x^(d-1) + ... + a_0`: entry `i` is the coefficient of `x^i` and the degree is the
+number of columns, so `all_matrices(q, 1, d)` is every monic polynomial of degree `d` and
+`transform`, `subsets` and `explicit` give the derived families. `order` is Lidl and
+Niederreiter's: for `f = x^h g` with `g(0)` nonzero it is the least `e` with `g` dividing
+`x^e - 1`.
 
 `subspace_orbits` treats each matrix as a row space, so it also handles transforms and stacks that
 change the displayed basis or its rank. Set `projective=0` to retain the generated GL group order,

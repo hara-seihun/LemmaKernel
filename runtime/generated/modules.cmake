@@ -30,6 +30,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/orbits/backends/g
 # module orbits: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/perm_groups/backends/generic/perm_groups_generic.cpp)
 # module perm_groups: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/polynomials_fq/backends/generic/polynomials_fq_generic.cpp)
+# module polynomials_fq: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/projective_sets/backends/generic/projective_sets_generic.cpp)
 # module projective_sets: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/set_systems/backends/generic/set_systems_generic.cpp)

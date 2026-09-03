@@ -270,6 +270,37 @@ class Witness:
 
 
 @dataclass
+class Elements:
+    """Per member, a ragged list of F_p elements (roots, or polynomial coefficients)."""
+    p: int
+    count: int
+    offsets: list[int]
+    values: object
+
+    def member(self, i: int):
+        return [int(x) for x in self.values[self.offsets[i]:self.offsets[i + 1]]]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.offsets)}Q", *self.offsets) + pack_entries(self.values, self.p)
+        return encode("polynomials_fq.elements", {"p": self.p, "count": self.count}, payload)
+
+
+@dataclass
+class Degrees:
+    """Per member, a ragged list of naturals (factorisation degrees)."""
+    count: int
+    offsets: list[int]
+    values: list[int]
+
+    def member(self, i: int):
+        return [int(x) for x in self.values[self.offsets[i]:self.offsets[i + 1]]]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.offsets)}Q", *self.offsets) + struct.pack(f"<{len(self.values)}Q", *self.values)
+        return encode("polynomials_fq.degrees", {"count": self.count}, payload)
+
+
+@dataclass
 class BurnsideCounts:
     values: list[int]
 
@@ -479,7 +510,8 @@ KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "gfp.basis": Basis, "gfp.s
          "gfp.inverses": Inverses, "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
          "burnside.cycle_index": CycleIndex, "designs.matrix": U64Matrices,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
-         "automorphisms.generators": PermutationGenerators, "integers": Integers,
+         "automorphisms.generators": PermutationGenerators,
+         "polynomials_fq.elements": Elements, "polynomials_fq.degrees": Degrees, "integers": Integers,
          "count": Count, "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
 
 
@@ -534,6 +566,14 @@ def decode_at(buf: bytes, offset: int):
         nr = q["count"] * q["rows"] * q["cols"]
         nt = q["count"] * q["rows"] * q["rows"]
         return Witness(q["p"], q["count"], q["rows"], q["cols"], unpack_entries(pl[:nr * w], q["p"], nr), unpack_entries(pl[nr * w:], q["p"], nt)), end
+    if k == "polynomials_fq.elements":
+        offs = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
+        rest = pl[8 * (q["count"] + 1):]
+        return Elements(q["p"], q["count"], offs, unpack_entries(rest, q["p"], offs[-1])), end
+    if k == "polynomials_fq.degrees":
+        offs = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
+        vals = list(struct.unpack_from(f"<{offs[-1]}Q", pl, 8 * (q["count"] + 1)))
+        return Degrees(q["count"], offs, vals), end
     if k == "burnside.counts":
         return BurnsideCounts(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "burnside.cycle_index":
