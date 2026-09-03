@@ -402,6 +402,40 @@ class Degrees:
 
 
 @dataclass
+class Expansions:
+    """Per member, a ragged list of continued-fraction partial quotients."""
+    count: int
+    offsets: list[int]
+    values: list[int]
+
+    def member(self, i: int):
+        return [int(x) for x in self.values[self.offsets[i]:self.offsets[i + 1]]]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.offsets)}Q", *self.offsets) + struct.pack(f"<{len(self.values)}Q", *self.values)
+        return encode("continued_fractions_and_pell.expansion", {"count": self.count}, payload)
+
+
+@dataclass
+class QuadraticUnits:
+    """Per member: `None`, or a unit of a real quadratic order as (norm is -1, x, y)."""
+    count: int
+    solvable: list[int]
+    negative: list[int]
+    pairs: list[int]
+
+    def member(self, i: int):
+        if not self.solvable[i]:
+            return None
+        return int(self.negative[i]), int(self.pairs[2 * i]), int(self.pairs[2 * i + 1])
+
+    def encode(self) -> bytes:
+        payload = (bytes(self.solvable) + bytes(self.negative)
+                   + struct.pack(f"<{2 * self.count}Q", *self.pairs))
+        return encode("continued_fractions_and_pell.unit", {"count": self.count}, payload)
+
+
+@dataclass
 class DegreeSequences:
     count: int
     n: int
@@ -931,6 +965,8 @@ KINDS = {"gfp.matrix": Matrix, "lattices.gram": Matrix, "orbits.perms": Perms, "
          "young.characters": Characters, "young.rsk_pairs": RskPairs,
          "elliptic_curves_fp.group": CurveGroups, "polynomials_fq.elements": Elements,
          "polynomials_fq.degrees": Degrees, "graph_polynomials.coefficients": Coefficients,
+         "continued_fractions_and_pell.expansion": Expansions,
+         "continued_fractions_and_pell.unit": QuadraticUnits,
          "strongly_regular.params": StronglyRegularParams,
          "strongly_regular.spectra": StronglyRegularSpectra,
          "lattices.theta_series": ThetaSeries, "lattices.short_vectors": ShortVectors,
@@ -1010,6 +1046,14 @@ def decode_at(buf: bytes, offset: int):
         offs = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
         vals = list(struct.unpack_from(f"<{offs[-1]}Q", pl, 8 * (q["count"] + 1)))
         return Degrees(q["count"], offs, vals), end
+    if k == "continued_fractions_and_pell.expansion":
+        offs = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
+        vals = list(struct.unpack_from(f"<{offs[-1]}Q", pl, 8 * (q["count"] + 1)))
+        return Expansions(q["count"], offs, vals), end
+    if k == "continued_fractions_and_pell.unit":
+        n = q["count"]
+        return QuadraticUnits(n, list(pl[:n]), list(pl[n:2 * n]),
+                              list(struct.unpack_from(f"<{2 * n}Q", pl, 2 * n))), end
     if k == "graphs.degree_sequences":
         return DegreeSequences(q["count"], q["n"], unpack_entries(pl, NATURALS, q["count"] * q["n"])), end
     if k == "burnside.counts":

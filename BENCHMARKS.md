@@ -47,6 +47,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | bilinear_invariants | rank census of symmetric 5x5 forms | 32,768 | 0.28 s | 0.00576 s | 49× | 212× |
 | circulants | spectra of pairs on Z101 | 4,950 | 0.214 s | 0.00518 s | 41× | 79× |
 | hypergraphs | ramsey_R33_on_six_vertices | 6,435 | 0.0577 s | 0.00154 s | 37× | 121× |
+| continued_fractions_and_pell | class_numbers_to_50000 | 50,000 | 5.01 s | 0.176 s | 28× | 365× |
 | polytopes_small | five-subsets of the 5-cube | 201,376 | 0.447 s | 0.0569 s | 7.9× | 81× |
 
 ## Every bench case
@@ -65,6 +66,10 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | char_poly | explicit_6x6_charpoly | characteristic polynomials of 10,000 dense and structured 6x6 matrices over F_251 | 10,000 | 26.1 s~ | 0.00697 s | 0.00123 s | 3,745× | 21,203× |
 | circulants | canonical 5-subsets on Z31 | multiplier-isomorphism classes of valency-five circulant digraphs on 31 vertices | 142,506 | 0.888 s | 0.0776 s | 0.0317 s | 11× | 28× |
 | circulants | spectra of pairs on Z101 | exact character spectra of every valency-two circulant digraph on 101 vertices | 4,950 | 0.214 s | 0.00518 s | 0.0027 s | 41× | 79× |
+| continued_fractions_and_pell | periods_to_200000 | the period length of sqrt(d) for every d below 200000 | 200,000 | 2.83 s | 0.135 s | 0.054 s | 21× | 52× |
+| continued_fractions_and_pell | negative_pell_to_200000 | for how many d below 200000 the equation x^2 - d y^2 = -1 is solvable | 200,000 | 3 s | 0.126 s | 0.00662 s | 24× | 454× |
+| continued_fractions_and_pell | largest_partial_quotient | the largest partial quotient in any period of sqrt(d) for d below 200000 | 200,000 | 2.37 s | 0.124 s | 0.00911 s | 19× | 260× |
+| continued_fractions_and_pell | class_numbers_to_50000 | the class number of every imaginary quadratic order of discriminant above -50000 | 50,000 | 5.01 s | 0.176 s | 0.0137 s | 28× | 365× |
 | designs | complete 6-subsets of 12 | multiplicities of all triples in the complete family of 6-subsets of 12 points | 924 | 0.0451 s | 0.000587 s | 0.000573 s | 77× | 79× |
 | difference_sets | C31 (31,6,1) search | search all 6-subsets of C31 for cyclic projective-plane difference sets | 736,281 | 1,076 s~ | 0.0779 s | 0.0148 s | 13,816× | 72,721× |
 | elliptic_curves_fp | point_counts_F_1009 | the number of points on every curve over F_1009; one histogram bin per isogeny class | 1,018,081 | 506 s~ | 0.815 s | 0.0712 s | 621× | 7,107× |

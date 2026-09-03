@@ -94,6 +94,21 @@ struct Degrees {
     std::vector<uint64_t> values;
 };
 
+/* Per member, the partial quotients of a continued fraction (ragged): member i is
+ * values[offsets[i] .. offsets[i+1]). */
+struct ContinuedFractions {
+    uint64_t count = 0;
+    std::vector<uint64_t> offsets, values;
+};
+
+/* Per member, a unit x + y*sqrt(d) of a real quadratic order: whether there is one, whether its
+ * norm is -1, and the pair (x, y), which is (0, 0) when there is none. */
+struct QuadraticUnits {
+    uint64_t count = 0;
+    std::vector<uint8_t> solvable, negative;
+    std::vector<uint64_t> pairs; /* 2 * count entries: x_0, y_0, x_1, y_1, ... */
+};
+
 struct CycleIndex {
     uint64_t degree = 0, denominator = 0;
     std::vector<uint64_t> multiplicities;
@@ -256,6 +271,8 @@ struct Object {
     std::shared_ptr<Witness> witness;
     std::shared_ptr<Elements> elements;
     std::shared_ptr<Degrees> degrees;
+    std::shared_ptr<ContinuedFractions> continued_fractions;
+    std::shared_ptr<QuadraticUnits> quadratic_units;
     std::shared_ptr<CycleIndex> cycle_index;
     std::shared_ptr<Spectra> spectra;
     std::shared_ptr<U64Matrices> u64_matrices;

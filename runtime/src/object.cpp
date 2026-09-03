@@ -764,6 +764,37 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->degrees = d;
         return R::success(o);
     }
+    if (h.kind == "continued_fractions_and_pell.expansion") {
+        auto count = need(h, "count");
+        if (!count.ok) return R::failure(count.error.status, count.error.message);
+        auto e = std::make_shared<ContinuedFractions>();
+        e->count = count.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i <= count.value; ++i) e->offsets.push_back(r.u64());
+        if (r.bad) return R::failure(INVALID, "continued_fractions_and_pell.expansion payload truncated");
+        for (uint64_t i = 0; i < e->offsets.back(); ++i) e->values.push_back(r.u64());
+        if (r.bad || r.p != r.end)
+            return R::failure(INVALID, "continued_fractions_and_pell.expansion payload length mismatch");
+        o->continued_fractions = e;
+        return R::success(o);
+    }
+    if (h.kind == "continued_fractions_and_pell.unit") {
+        auto count = need(h, "count");
+        if (!count.ok) return R::failure(count.error.status, count.error.message);
+        unsigned __int128 want = (unsigned __int128)count.value * 18; /* two flags and two u64 */
+        if (want != h.payload_len)
+            return R::failure(INVALID, "continued_fractions_and_pell.unit payload length mismatch");
+        auto u = std::make_shared<QuadraticUnits>();
+        u->count = count.value;
+        u->solvable.assign(h.payload, h.payload + count.value);
+        u->negative.assign(h.payload + count.value, h.payload + 2 * count.value);
+        Reader r{h.payload + 2 * count.value, h.payload + h.payload_len};
+        for (uint64_t i = 0; i < 2 * count.value; ++i) u->pairs.push_back(r.u64());
+        if (r.bad || r.p != r.end)
+            return R::failure(INVALID, "continued_fractions_and_pell.unit payload length mismatch");
+        o->quadratic_units = u;
+        return R::success(o);
+    }
     if (h.kind == "gfp.solutions" || h.kind == "gfp.inverses") {
         bool sol = h.kind == "gfp.solutions";
         auto p = need(h, "p"), count = need(h, "count"), len = need(h, sol ? "length" : "n");
@@ -1017,6 +1048,8 @@ std::map<std::string, uint64_t> Object::params() const {
     if (witness) return {{"p", witness->p}, {"count", witness->count}, {"rows", witness->rows}, {"cols", witness->cols}};
     if (elements) return {{"p", elements->p}, {"count", elements->count}};
     if (degrees) return {{"count", degrees->count}};
+    if (continued_fractions) return {{"count", continued_fractions->count}};
+    if (quadratic_units) return {{"count", quadratic_units->count}};
     if (cycle_index) return {{"degree", cycle_index->degree}, {"count", cycle_index->multiplicities.size()},
                              {"denominator", cycle_index->denominator}};
     if (spectra) return {{"n", spectra->n}, {"count", spectra->count}};
@@ -1099,6 +1132,15 @@ std::vector<uint8_t> encode(const Object &o) {
         w.u64s(o.degrees->offsets);
         w.u64s(o.degrees->values);
         write_header(out, "polynomials_fq.degrees", o.params(), w.out);
+    } else if (o.continued_fractions) {
+        w.u64s(o.continued_fractions->offsets);
+        w.u64s(o.continued_fractions->values);
+        write_header(out, "continued_fractions_and_pell.expansion", o.params(), w.out);
+    } else if (o.quadratic_units) {
+        w.bytes(o.quadratic_units->solvable);
+        w.bytes(o.quadratic_units->negative);
+        w.u64s(o.quadratic_units->pairs);
+        write_header(out, "continued_fractions_and_pell.unit", o.params(), w.out);
     } else if (o.degree_sequences) {
         w.entries(o.degree_sequences->entries, 4);
         write_header(out, "graphs.degree_sequences", o.params(), w.out);

@@ -1,0 +1,133 @@
+# continued_fractions_and_pell: quadratic irrationals over families of natural numbers.
+# This file is the only declaration of the module. tools/manifest.py generates the C registry,
+# the runtime description, the CMake source list, the Lake libraries and the Python manifest.
+#
+# Every member is one natural number, held as a 1 x 1 matrix: the members of a `range` family, or
+# of an `explicit` family over an lk.naturals batch. Two readings of that number are in play and
+# each operation's summary says which it takes. The continued-fraction, unit and Pell operations
+# read the member as a radicand d and work in the real quadratic order Z[sqrt d]; `class_number`
+# reads it as |D| for the negative discriminant D = -n.
+
+[module]
+name = "continued_fractions_and_pell"
+version = 1
+summary = """Continued fractions of sqrt(d), fundamental units of Z[sqrt d], fundamental Pell \
+solutions and class numbers of imaginary quadratic orders, over families of natural numbers. \
+The canonical choices, made once and reproduced by the reference, the backend and the naive \
+implementation: the expansion of sqrt(d) is a_0 = floor(sqrt d) followed by exactly one period \
+a_1..a_L, which ends at the first complete quotient with denominator 1 (equivalently at \
+a_L = 2*a_0); a perfect square d, including 0 and 1, has expansion [a_0], period length 0, no \
+unit and no Pell solution; the fundamental unit is the least x + y*sqrt(d) > 1 with x, y > 0 and \
+x^2 - d*y^2 = +-1, that is the convergent p_{L-1} + q_{L-1}*sqrt(d), and its norm is -1 exactly \
+when L is odd; the fundamental Pell solution is the least x, y > 0 with x^2 - d*y^2 = 1, so it is \
+the fundamental unit when L is even and its square when L is odd; class_number counts primitive \
+reduced positive definite forms of discriminant D = -n and is 0 when -n is not a discriminant. \
+A unit or Pell solution whose x or y exceeds 2^64 - 1 does not fit the interchange encoding, so \
+the whole request is refused rather than any member truncated."""
+lean = "lean"
+contract = "lean/Continued_fractions_and_pell/Contract.lean"
+reference = "lean/Continued_fractions_and_pell/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "continued_fractions_and_pell.expansion"
+params = ["count"]
+payload = "u64 offsets[count+1], then offsets[count] u64 partial quotients"
+lean = "expansion"
+summary = "Per member, a ragged list of partial quotients: a_0, a_1, ..., a_L, where a_1..a_L is one period of sqrt(d)."
+
+[[kinds]]
+name = "continued_fractions_and_pell.unit"
+params = ["count"]
+payload = "u8 solvable[count], u8 negative[count], then count u64 pairs (x, y)"
+lean = "unit"
+summary = "Per member, a unit x + y*sqrt(d) of a real quadratic order: whether there is one, whether its norm is -1, and (x, y), which is (0, 0) when there is none."
+
+[[operations]]
+name = "cf_period"
+value = "integer"
+families = ["range", "explicit"]
+summary = "The period length L of the continued fraction of sqrt(d) for the member d; 0 when d is a perfect square."
+
+[[operations]]
+name = "cf_period_max"
+value = "integer"
+families = ["range", "explicit"]
+summary = "The largest partial quotient of the period a_1..a_L of sqrt(d); 0 when d is a perfect square. a_0 is not a period term and is not counted."
+
+[[operations]]
+name = "cf_period_sum"
+value = "integer"
+families = ["range", "explicit"]
+summary = "The sum a_1 + ... + a_L of the period of sqrt(d); 0 when d is a perfect square. a_0 is not counted."
+
+[[operations]]
+name = "cf_expansion"
+value = "continued_fractions_and_pell.expansion"
+families = ["range", "explicit"]
+summary = "a_0 = floor(sqrt d) followed by exactly one period a_1..a_L, the last term being 2*a_0; the single term [a_0] when d is a perfect square. The full expansion is a_0 followed by that period repeated forever."
+
+[[operations]]
+name = "negative_pell"
+value = "boolean"
+families = ["range", "explicit"]
+summary = "x^2 - d*y^2 = -1 has a solution in positive integers: d is not a perfect square and the period of sqrt(d) has odd length."
+
+[[operations]]
+name = "fundamental_unit"
+value = "continued_fractions_and_pell.unit"
+families = ["range", "explicit"]
+summary = "The fundamental unit of Z[sqrt d]: the least x + y*sqrt(d) > 1 with x, y > 0 and x^2 - d*y^2 = +-1, which is the convergent p_{L-1} + q_{L-1}*sqrt(d) of norm (-1)^L. None when d is a perfect square. The request is refused when some member's x or y exceeds 2^64 - 1."
+
+[[operations]]
+name = "pell_fundamental"
+value = "continued_fractions_and_pell.unit"
+families = ["range", "explicit"]
+summary = "The fundamental solution of x^2 - d*y^2 = 1: the least x, y > 0 solving it, which is the fundamental unit when its norm is +1 and its square (2x^2 + 1, 2xy) when the norm is -1. The norm flag is therefore always 0. None when d is a perfect square. The request is refused when some member's x or y exceeds 2^64 - 1."
+
+[[operations]]
+name = "class_number"
+value = "integer"
+families = ["range", "explicit"]
+summary = "Reads the member as n and returns the class number h(D) of the imaginary quadratic order of discriminant D = -n: the number of primitive reduced positive definite forms (a, b, c) with b^2 - 4ac = D, -a < b <= a <= c, and b >= 0 when a = c. It is 0 when -n is not a discriminant, that is when n = 0 or n mod 4 is 1 or 2."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/continued_fractions_and_pell_generic.cpp"]
+accepts = "families of 1 x 1 natural-number members (range, or explicit over lk.naturals)"
+summary = """Portable C++: one continued-fraction walk per member over the standard (m, q) \
+complete-quotient recurrence, convergents accumulated in 128-bit arithmetic that stops the walk \
+as soon as a coordinate passes 2^64 - 1, and a double loop over reduced forms for class numbers; \
+threads over member ranges."""
+
+# Requests the runtime must refuse. `case` names a case from cases.py.
+[[rejections]]
+case = "words are not numbers"
+error = "families only"
+
+[[rejections]]
+case = "explicit pairs"
+error = "1 x 1 natural"
+
+[[rejections]]
+case = "residues are not numbers"
+error = "no available backend"
+
+[[rejections]]
+case = "expansion does not reduce"
+reduction = "histogram"
+error = "does not accept"
+
+[[rejections]]
+case = "period does not count"
+reduction = "count"
+error = "does not accept"
+
+[[rejections]]
+case = "unit past 64 bits"
+error = "exceeds"
+
+[[rejections]]
+case = "pell past 64 bits"
+error = "exceeds"

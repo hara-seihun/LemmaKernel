@@ -634,6 +634,103 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'connection set containing zero', 'error': 'identity-free'},
                  {'case': 'zero order spectrum', 'error': 'n must satisfy'},
                  {'case': 'is_ci on connection sets', 'error': 'range families only'}]},
+ {'backends': [{'accepts': 'families of 1 x 1 natural-number members (range, or explicit over lk.naturals)',
+                'name': 'generic',
+                'sources': ['backends/generic/continued_fractions_and_pell_generic.cpp'],
+                'summary': 'Portable C++: one continued-fraction walk per member over the standard (m, q) '
+                           'complete-quotient recurrence, convergents accumulated in 128-bit arithmetic that '
+                           'stops the walk as soon as a coordinate passes 2^64 - 1, and a double loop over '
+                           'reduced forms for class numbers; threads over member ranges.'}],
+  'kinds': [{'lean': 'expansion',
+             'name': 'continued_fractions_and_pell.expansion',
+             'params': ['count'],
+             'payload': 'u64 offsets[count+1], then offsets[count] u64 partial quotients',
+             'summary': 'Per member, a ragged list of partial quotients: a_0, a_1, ..., a_L, where a_1..a_L '
+                        'is one period of sqrt(d).'},
+            {'lean': 'unit',
+             'name': 'continued_fractions_and_pell.unit',
+             'params': ['count'],
+             'payload': 'u8 solvable[count], u8 negative[count], then count u64 pairs (x, y)',
+             'summary': 'Per member, a unit x + y*sqrt(d) of a real quadratic order: whether there is one, '
+                        'whether its norm is -1, and (x, y), which is (0, 0) when there is none.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Continued_fractions_and_pell/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'continued_fractions_and_pell',
+             'reference': 'lean/Continued_fractions_and_pell/Reference.lean',
+             'summary': 'Continued fractions of sqrt(d), fundamental units of Z[sqrt d], fundamental Pell '
+                        'solutions and class numbers of imaginary quadratic orders, over families of natural '
+                        'numbers. The canonical choices, made once and reproduced by the reference, the '
+                        'backend and the naive implementation: the expansion of sqrt(d) is a_0 = floor(sqrt '
+                        'd) followed by exactly one period a_1..a_L, which ends at the first complete '
+                        'quotient with denominator 1 (equivalently at a_L = 2*a_0); a perfect square d, '
+                        'including 0 and 1, has expansion [a_0], period length 0, no unit and no Pell '
+                        'solution; the fundamental unit is the least x + y*sqrt(d) > 1 with x, y > 0 and x^2 '
+                        '- d*y^2 = +-1, that is the convergent p_{L-1} + q_{L-1}*sqrt(d), and its norm is -1 '
+                        'exactly when L is odd; the fundamental Pell solution is the least x, y > 0 with x^2 '
+                        '- d*y^2 = 1, so it is the fundamental unit when L is even and its square when L is '
+                        'odd; class_number counts primitive reduced positive definite forms of discriminant '
+                        'D = -n and is 0 when -n is not a discriminant. A unit or Pell solution whose x or y '
+                        'exceeds 2^64 - 1 does not fit the interchange encoding, so the whole request is '
+                        'refused rather than any member truncated.',
+             'version': 1},
+  'operations': [{'families': ['range', 'explicit'],
+                  'name': 'cf_period',
+                  'summary': 'The period length L of the continued fraction of sqrt(d) for the member d; 0 '
+                             'when d is a perfect square.',
+                  'value': 'integer'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'cf_period_max',
+                  'summary': 'The largest partial quotient of the period a_1..a_L of sqrt(d); 0 when d is a '
+                             'perfect square. a_0 is not a period term and is not counted.',
+                  'value': 'integer'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'cf_period_sum',
+                  'summary': 'The sum a_1 + ... + a_L of the period of sqrt(d); 0 when d is a perfect '
+                             'square. a_0 is not counted.',
+                  'value': 'integer'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'cf_expansion',
+                  'summary': 'a_0 = floor(sqrt d) followed by exactly one period a_1..a_L, the last term '
+                             'being 2*a_0; the single term [a_0] when d is a perfect square. The full '
+                             'expansion is a_0 followed by that period repeated forever.',
+                  'value': 'continued_fractions_and_pell.expansion'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'negative_pell',
+                  'summary': 'x^2 - d*y^2 = -1 has a solution in positive integers: d is not a perfect '
+                             'square and the period of sqrt(d) has odd length.',
+                  'value': 'boolean'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'fundamental_unit',
+                  'summary': 'The fundamental unit of Z[sqrt d]: the least x + y*sqrt(d) > 1 with x, y > 0 '
+                             'and x^2 - d*y^2 = +-1, which is the convergent p_{L-1} + q_{L-1}*sqrt(d) of '
+                             'norm (-1)^L. None when d is a perfect square. The request is refused when some '
+                             "member's x or y exceeds 2^64 - 1.",
+                  'value': 'continued_fractions_and_pell.unit'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'pell_fundamental',
+                  'summary': 'The fundamental solution of x^2 - d*y^2 = 1: the least x, y > 0 solving it, '
+                             'which is the fundamental unit when its norm is +1 and its square (2x^2 + 1, '
+                             '2xy) when the norm is -1. The norm flag is therefore always 0. None when d is '
+                             "a perfect square. The request is refused when some member's x or y exceeds "
+                             '2^64 - 1.',
+                  'value': 'continued_fractions_and_pell.unit'},
+                 {'families': ['range', 'explicit'],
+                  'name': 'class_number',
+                  'summary': 'Reads the member as n and returns the class number h(D) of the imaginary '
+                             'quadratic order of discriminant D = -n: the number of primitive reduced '
+                             'positive definite forms (a, b, c) with b^2 - 4ac = D, -a < b <= a <= c, and b '
+                             '>= 0 when a = c. It is 0 when -n is not a discriminant, that is when n = 0 or '
+                             'n mod 4 is 1 or 2.',
+                  'value': 'integer'}],
+  'rejections': [{'case': 'words are not numbers', 'error': 'families only'},
+                 {'case': 'explicit pairs', 'error': '1 x 1 natural'},
+                 {'case': 'residues are not numbers', 'error': 'no available backend'},
+                 {'case': 'expansion does not reduce', 'error': 'does not accept', 'reduction': 'histogram'},
+                 {'case': 'period does not count', 'error': 'does not accept', 'reduction': 'count'},
+                 {'case': 'unit past 64 bits', 'error': 'exceeds'},
+                 {'case': 'pell past 64 bits', 'error': 'exceeds'}]},
  {'backends': [{'accepts': 'block families with canonical standard-basis block members; permutation groups '
                            'for Kramer-Mesner matrices',
                 'name': 'generic',

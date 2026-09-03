@@ -2,7 +2,7 @@
 # Lk is the runtime's reference (families, reductions) and contract; then one library
 # per module: its executable reference and contract (against Mathlib).
 name = "LemmaKernel"
-defaultTargets = ["Lk", "Automorphisms", "Bilinear_invariants", "Boolean_functions", "Burnside", "Cayley", "Char_poly", "Characters", "Circulants", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Graph_polynomials", "Graphs", "Hadamard", "Hypergraphs", "Integer_partitions", "Latin_squares", "Lattice_of_subspaces", "Lattices_small", "Linear_codes", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Polytopes_small", "Posets", "Projective_sets", "Quantum_codes", "Residues", "Set_systems", "Simplicial_complexes", "Spreads_and_partitions", "Strongly_regular", "Subspace_orbits", "Sum_free_and_additive", "Words_and_growth", "Young"]
+defaultTargets = ["Lk", "Automorphisms", "Bilinear_invariants", "Boolean_functions", "Burnside", "Cayley", "Char_poly", "Characters", "Circulants", "Continued_fractions_and_pell", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Graph_polynomials", "Graphs", "Hadamard", "Hypergraphs", "Integer_partitions", "Latin_squares", "Lattice_of_subspaces", "Lattices_small", "Linear_codes", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Polytopes_small", "Posets", "Projective_sets", "Quantum_codes", "Residues", "Set_systems", "Simplicial_complexes", "Spreads_and_partitions", "Strongly_regular", "Subspace_orbits", "Sum_free_and_additive", "Words_and_growth", "Young"]
 
 [[require]]
 name = "mathlib"
@@ -53,6 +53,11 @@ roots = ["Characters"]
 name = "Circulants"
 srcDir = "modules/circulants/lean"
 roots = ["Circulants"]
+
+[[lean_lib]]
+name = "Continued_fractions_and_pell"
+srcDir = "modules/continued_fractions_and_pell/lean"
+roots = ["Continued_fractions_and_pell"]
 
 [[lean_lib]]
 name = "Designs"

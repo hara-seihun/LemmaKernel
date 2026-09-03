@@ -1,0 +1,79 @@
+{
+ "module": "continued_fractions_and_pell",
+ "fingerprint": {
+  "module": "7aedab1e92ac683d2bbd3e6cf1c593c777fe1b83798218c58d80ed372a2ca9eb",
+  "runtime": "e6395ef70fbe1eac7bb9ad9d16db67145aca1f3a5a851ee28509835ba1109877",
+  "dependencies": [],
+  "combined": "59b35a450632bf4f8191972f920ea0f3809d5f1db07dd437e63786eff21d87fa"
+ },
+ "measured_at": "2026-09-03T05:58:26+00:00",
+ "commit": "a6b9a1993a9f0854df5348c8525c1d16d508e1fa",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "periods_to_200000",
+   "what": "the period length of sqrt(d) for every d below 200000",
+   "op": "continued_fractions_and_pell.cf_period",
+   "reduction": "histogram",
+   "members": 200000,
+   "naive_s": 2.8257183560635895,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.13541570189408958,
+   "kernel_all_threads_s": 0.05397776886820793,
+   "threads": 32,
+   "speedup_1_thread": 20.866991911127272,
+   "speedup_all_threads": 52.349669415993475,
+   "answer": "Histogram(visited=200000, family_size=200000, bins=[446, 447, 3900, 145, 4278, 562, 3753, 324, 4299, 268, 4154, 360, 367"
+  },
+  {
+   "case": "negative_pell_to_200000",
+   "what": "for how many d below 200000 the equation x^2 - d y^2 = -1 is solvable",
+   "op": "continued_fractions_and_pell.negative_pell",
+   "reduction": "count",
+   "members": 200000,
+   "naive_s": 3.002877473132685,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.1261425579432398,
+   "kernel_all_threads_s": 0.006619977066293359,
+   "threads": 32,
+   "speedup_1_thread": 23.8054271460381,
+   "speedup_all_threads": 453.6084404917808,
+   "answer": "Count(value=22107, visited=200000, family_size=200000)"
+  },
+  {
+   "case": "largest_partial_quotient",
+   "what": "the largest partial quotient in any period of sqrt(d) for d below 200000",
+   "op": "continued_fractions_and_pell.cf_period_max",
+   "reduction": "max",
+   "members": 200000,
+   "naive_s": 2.370364947943017,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.1235832991078496,
+   "kernel_all_threads_s": 0.009112699190154672,
+   "threads": 32,
+   "speedup_1_thread": 19.180301586498587,
+   "speedup_all_threads": 260.1166677930015,
+   "answer": "Extremum(p=18446744073709551615, rows=1, cols=1, value=894, index=199808, visited=200000, family_size=200000, member=Mat"
+  },
+  {
+   "case": "class_numbers_to_50000",
+   "what": "the class number of every imaginary quadratic order of discriminant above -50000",
+   "op": "continued_fractions_and_pell.class_number",
+   "reduction": "histogram",
+   "members": 50000,
+   "naive_s": 5.0128931729123,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.17602800182066858,
+   "kernel_all_threads_s": 0.013748556142672896,
+   "threads": 32,
+   "speedup_1_thread": 28.47781671702021,
+   "speedup_all_threads": 364.6123360803856,
+   "answer": "Histogram(visited=50000, family_size=50000, bins=[25000, 13, 29, 25, 84, 29, 101, 38, 208, 55, 123, 46, 379, 43, 134, 95"
+  }
+ ]
+}
