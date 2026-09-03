@@ -3175,10 +3175,14 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                            'modulus < 2^22, and elements below 2^21 when modulus is 0',
                 'name': 'generic',
                 'sources': ['backends/generic/sum_free_and_additive_generic.cpp'],
-                'summary': "Portable C++: depth-first enumeration carrying the prefix's Schur count, sumset, "
-                           'difference multiplicities and longest progressions, so each element costs '
-                           'O(|prefix|); subtrees whose prefix already fails a subset-closed predicate are '
-                           'skipped.'}],
+                'summary': 'Portable C++ over bitsets of the ambient group: a prefix carries its sumset, '
+                           'difference set and forbidden set, so extending it is a few shifted ORs and the '
+                           'candidates of a node are read off at once; dead subtrees are found by candidate '
+                           'count and leaves are a popcount. Over an increasing integer dictionary, Sidon '
+                           'and progression-free searches also use the least span of a t-element set '
+                           '(computed by the same search, cached per process), the reflection symmetry for '
+                           'counts, and the sum of the smallest unused differences; a proof that no 12-mark '
+                           'Golomb ruler is shorter than 85 takes well under a second.'}],
   'module': {'cases': 'cases.py',
              'contract': 'lean/Sum_free_and_additive/Contract.lean',
              'lean': 'lean',

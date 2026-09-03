@@ -153,8 +153,12 @@ and committed; the build refuses to configure if they are stale.
 | [strongly_regular](modules/strongly_regular/manifest.toml) | strongly regular graph parameters, exact spectra, and Krein and absolute-bound checks on adjacency-matrix families | `generic` (bit-packed common-neighbour tests, portable C++) |
 | [subgroups](modules/subgroups/manifest.toml) | subgroup counts, conjugacy-class representatives, maximal subgroups, and normality for finite permutation groups | `generic` (cyclic extension over indexed multiplication tables, portable C++) |
 | [subspace_orbits](modules/subspace_orbits/manifest.toml) | GL, PGL and PGammaL orbits of row spaces from Grassmannians and their transform/stack derivatives; canonical indices use the least rref in Grassmannian order | `generic` (per-member rref orbit search, portable C++) |
+<<<<<<< HEAD
 | [sum_free_and_additive](modules/sum_free_and_additive/manifest.toml) | sum-free, Sidon and k-AP-free sets of integers or of Z/n, with sumset and difference-set sizes, Schur triple counts, difference multiplicities and a doubling-constant test | `generic` (incremental prefix state, pruned subsets walk, portable C++) |
 | [vertex_transitive](modules/vertex_transitive/manifest.toml) | vertex and arc transitivity, Cayley recognition, and canonical lists of regular automorphism subgroups of simple graphs | `generic` (colour-refined automorphism search and direct semiregular subgroup generation, portable C++) |
+=======
+| [sum_free_and_additive](modules/sum_free_and_additive/manifest.toml) | sum-free, Sidon and k-AP-free sets of integers or of Z/n, with sumset and difference-set sizes, Schur triple counts, difference multiplicities and a doubling-constant test | `generic` (forbidden-set bitsets, span table, mirror rule and gap bounds for Golomb-ruler and r_k(n) searches, portable C++) |
+>>>>>>> 91f464e (sum_free_and_additive: describe the generic backend)
 | [words_and_growth](modules/words_and_growth/manifest.toml) | ball sizes, spherical growth-series coefficients, and geodesic-word counts for finite complete rewriting presentations of groups | `generic` (critical-pair validation and normal-form automata, portable C++) |
 | [young](modules/young/manifest.toml) | partitions and standard Young tableaux, hook-length counts, Kostka numbers, RSK, and irreducible S_n character values by Murnaghan-Nakayama | `generic` (portable C++) |
 
