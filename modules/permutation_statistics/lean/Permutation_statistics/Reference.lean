@@ -104,8 +104,9 @@ def supportedFamily : Family → Bool
   | .explicit p batch =>
     p = 0 ∧ sameDegree (batch.map (·.headD [])) ∧
       batch.all fun member => member.length = 1 ∧ validPerm (member.headD [])
-  | .groupElements generators =>
-    !generators.isEmpty ∧ sameDegree generators ∧ generators.all validPerm
+  | .groupElements p generators =>
+    let gens := generators.map (·.headD [])
+    p = 0 ∧ !generators.isEmpty ∧ sameDegree gens ∧ gens.all validPerm
   | _ => false
 
 def familyPerms (f : Family) : List Perm := f.members.map (·.headD [])
