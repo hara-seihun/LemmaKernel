@@ -136,6 +136,11 @@ struct PermutationGenerators {
     std::vector<Entry> entries;
 };
 
+struct WeightEnumerators {
+    uint64_t count = 0, n = 0;
+    std::vector<uint64_t> coefficients;
+};
+
 /* Ragged square matrices of signed 64-bit integers. Offsets count entries, not rows. */
 struct SignedMatrices {
     uint64_t count = 0;
@@ -234,6 +239,7 @@ struct Object {
     std::shared_ptr<CharacterTable> character_table;
     std::shared_ptr<CharacterIndicators> character_indicators;
     std::shared_ptr<PermutationGenerators> permutation_generators;
+    std::shared_ptr<WeightEnumerators> weight_enumerators;
     std::shared_ptr<SignedMatrices> signed_matrices;
     std::shared_ptr<Characters> characters;
     std::shared_ptr<RskPairs> rsk_pairs;

@@ -532,6 +532,19 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->spectra = spectra;
         return R::success(o);
     }
+    if (h.kind == "linear_codes.weight_enumerators") {
+        auto count = need(h, "count"), n = need(h, "n");
+        for (auto *r : {&count, &n}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        unsigned __int128 words = (unsigned __int128)count.value * (n.value + 1);
+        if (words * 8 != h.payload_len) return R::failure(INVALID, "linear_codes.weight_enumerators payload length mismatch");
+        auto enumerators = std::make_shared<WeightEnumerators>();
+        enumerators->count = count.value;
+        enumerators->n = n.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (unsigned __int128 i = 0; i < words; ++i) enumerators->coefficients.push_back(r.u64());
+        o->weight_enumerators = enumerators;
+        return R::success(o);
+    }
     if (h.kind == "histogram") {
         auto vis = need(h, "visited"), fs = need(h, "family_size"), bins = need(h, "bins");
         for (auto *r : {&vis, &fs, &bins}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -928,6 +941,7 @@ std::map<std::string, uint64_t> Object::params() const {
                                  {"conductor", character_table->conductor}};
     if (character_indicators) return {{"count", character_indicators->values.size()}};
     if (permutation_generators) return {{"count", permutation_generators->count}, {"order", permutation_generators->order}};
+    if (weight_enumerators) return {{"count", weight_enumerators->count}, {"n", weight_enumerators->n}};
     if (signed_matrices) return {{"count", signed_matrices->count}};
     if (characters) return {{"count", characters->values.size()}};
     if (rsk_pairs) return {{"count", rsk_pairs->count}, {"length", rsk_pairs->length}};
@@ -1037,6 +1051,9 @@ std::vector<uint8_t> encode(const Object &o) {
         w.u64s(o.permutation_generators->offsets);
         w.entries(o.permutation_generators->entries, 4);
         write_header(out, "automorphisms.generators", o.params(), w.out);
+    } else if (o.weight_enumerators) {
+        w.u64s(o.weight_enumerators->coefficients);
+        write_header(out, "linear_codes.weight_enumerators", o.params(), w.out);
     } else if (o.signed_matrices) {
         w.u64s(o.signed_matrices->offsets);
         w.i64s(o.signed_matrices->entries);

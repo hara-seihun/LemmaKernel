@@ -288,6 +288,21 @@ class Witness:
 
 
 @dataclass
+class WeightEnumerators:
+    """A batch of coefficient vectors `[A_0, ..., A_n]`, stored as unsigned 64-bit counts."""
+    count: int
+    n: int
+    entries: list[int]
+
+    def member(self, i: int):
+        return [int(x) for x in self.entries[i * (self.n + 1):(i + 1) * (self.n + 1)]]
+
+    def encode(self) -> bytes:
+        return encode("linear_codes.weight_enumerators", {"count": self.count, "n": self.n},
+                      struct.pack(f"<{len(self.entries)}Q", *self.entries))
+
+
+@dataclass
 class Elements:
     """Per member, a ragged list of F_p elements (roots, or polynomial coefficients)."""
     p: int
@@ -783,7 +798,8 @@ class Family:
 
 KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphGroups,
          "gfp.basis": Basis, "gfp.solutions": Solutions, "gfp.inverses": Inverses,
-         "gfp.witness": Witness, "graphs.degree_sequences": DegreeSequences,
+         "gfp.witness": Witness, "linear_codes.weight_enumerators": WeightEnumerators,
+         "graphs.degree_sequences": DegreeSequences,
          "burnside.counts": BurnsideCounts, "burnside.cycle_index": CycleIndex,
          "characters.table": CharacterTable, "characters.indicators": CharacterIndicators,
          "characters.multiplicities": CharacterMultiplicities, "circulants.spectra": Spectra,
@@ -856,6 +872,9 @@ def decode_at(buf: bytes, offset: int):
         nr = q["count"] * q["rows"] * q["cols"]
         nt = q["count"] * q["rows"] * q["rows"]
         return Witness(q["p"], q["count"], q["rows"], q["cols"], unpack_entries(pl[:nr * w], q["p"], nr), unpack_entries(pl[nr * w:], q["p"], nt)), end
+    if k == "linear_codes.weight_enumerators":
+        total = q["count"] * (q["n"] + 1)
+        return WeightEnumerators(q["count"], q["n"], list(struct.unpack_from(f"<{total}Q", pl, 0))), end
     if k == "polynomials_fq.elements":
         offs = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
         rest = pl[8 * (q["count"] + 1):]

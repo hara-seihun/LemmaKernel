@@ -36,6 +36,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/integer_partition
 # module integer_partitions: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/lattice_of_subspaces/backends/generic/lattice_of_subspaces_generic.cpp)
 # module lattice_of_subspaces: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/linear_codes/backends/generic/linear_codes_generic.cpp)
+# module linear_codes: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/matchings_and_flows/backends/generic/matchings_and_flows_generic.cpp)
 # module matchings_and_flows: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/matrix_groups/backends/generic/matrix_groups_generic.cpp)

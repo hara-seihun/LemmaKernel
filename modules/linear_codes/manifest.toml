@@ -1,0 +1,88 @@
+# linear_codes: q-ary linear codes presented by generator matrices.
+
+[module]
+name = "linear_codes"
+version = 1
+summary = "Linear codes over prime fields from generator matrices. A member denotes its row span, so redundant and zero generator rows do not change the answer. The zero code has minimum distance 0 and is not MDS. Duals use the canonical nullspace basis, weight enumerators list A_0 through A_n, and automorphisms are coordinate permutations that preserve symbols exactly."
+lean = "lean"
+contract = "lean/Linear_codes/Contract.lean"
+reference = "lean/Linear_codes/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "linear_codes.weight_enumerators"
+params = ["count", "n"]
+payload = "count*(n+1) u64 coefficients; member i is A_0,...,A_n"
+lean = "weightEnumerator"
+summary = "One Hamming weight enumerator per code. Entry A_w is the number of distinct codewords of weight w; coefficients are in increasing weight order."
+
+[[operations]]
+name = "minimum_distance"
+value = "integer"
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+summary = "Minimum nonzero Hamming weight of the row-span code. Returns 0 for the zero code."
+
+[[operations]]
+name = "weight_enumerator"
+value = "linear_codes.weight_enumerators"
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+summary = "The canonical coefficient vector [A_0,...,A_n], where A_w counts distinct codewords of Hamming weight w."
+
+[[operations]]
+name = "dual"
+value = "gfp.basis"
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+summary = "Canonical generator basis of the Euclidean dual: one vector per free column f of rref(G), in increasing f, with x_f=1 and x_pivot_i=-R[i,f]."
+
+[[operations]]
+name = "is_self_dual"
+value = "boolean"
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+summary = "Whether the row-span code equals its Euclidean dual."
+
+[[operations]]
+name = "covering_radius"
+value = "integer"
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+summary = "Maximum over F_q^n of the Hamming distance to the nearest codeword."
+
+[[operations]]
+name = "is_mds"
+value = "boolean"
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+summary = "Whether the code has positive dimension k and minimum distance n-k+1. The zero code returns false."
+
+[[operations]]
+name = "aut_order"
+value = "integer"
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+summary = "Number of coordinate permutations in S_n that preserve the code. This is the permutation automorphism group, not the monomial or semilinear group."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/linear_codes_generic.cpp"]
+accepts = "prime fields p < 2^32; codeword and ambient-space counts must fit u64; aut_order accepts n <= 10"
+summary = "Portable C++: canonicalises the row span once per member and enumerates codewords with a reflected q-ary Gray code, changing one generator coefficient at each step. Families are split across threads."
+
+[[rejections]]
+case = "words are not generator matrices"
+error = "families only"
+
+[[rejections]]
+case = "explicit binary minimum distance"
+op = "minimum_distance"
+reduction = "count"
+error = "does not accept integer"
+
+[[rejections]]
+case = "explicit binary weight enumerator"
+op = "weight_enumerator"
+reduction = "histogram"
+error = "does not accept"
+
+[[rejections]]
+case = "explicit binary dual"
+op = "dual"
+reduction = "count"
+error = "does not accept"

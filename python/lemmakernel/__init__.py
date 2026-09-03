@@ -21,12 +21,13 @@ from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, CharacterIndica
                           CharacterTable, Characters, Coefficients, Count, CurveGroups, CycleIndex, Degrees,
                           DegreeSequences, Elements, Extremum, Family, First, GraphGroups, Histogram, Hits, Integers,
                           Inverses, Matrix, MobiusMatrices, Partitions, Perms, PermutationGenerators, RskPairs,
-                          Solutions, Spectra, U64Matrices, U64Vectors, Witness, matrix, naturals, perms)
+                          Solutions, Spectra, U64Matrices, U64Vectors, WeightEnumerators, Witness, matrix, naturals,
+                          perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
-           "Matrix", "Basis", "Solutions", "Inverses", "Witness", "BurnsideCounts", "CycleIndex", "Spectra",
-           "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "CharacterTable", "CharacterIndicators",
+           "Matrix", "Basis", "Solutions", "Inverses", "Witness", "WeightEnumerators", "BurnsideCounts", "CycleIndex",
+           "Spectra", "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "CharacterTable", "CharacterIndicators",
            "CharacterMultiplicities", "PermutationGenerators", "MobiusMatrices", "Characters", "RskPairs",
            "CurveGroups", "Elements", "Degrees", "DegreeSequences", "Coefficients", "Integers", "Count", "Histogram",
            "Hits", "First", "Extremum", "Family", "GraphGroups", "NATURALS"]
@@ -168,7 +169,8 @@ class Handle:
 _PARAM_NAMES = {
     "gfp.matrix": ["p", "count", "rows", "cols"], "gfp.basis": ["p", "count", "cols"], "orbits.perms": ["n", "count"],
     "gfp.solutions": ["p", "count", "length"], "gfp.inverses": ["p", "count", "n"],
-    "gfp.witness": ["p", "count", "rows", "cols"], "graphs.degree_sequences": ["count", "n"],
+    "gfp.witness": ["p", "count", "rows", "cols"], "linear_codes.weight_enumerators": ["count", "n"],
+    "graphs.degree_sequences": ["count", "n"],
     "burnside.counts": ["count"], "burnside.cycle_index": ["degree", "count", "denominator"],
     "characters.table": ["order", "classes", "conductor"], "characters.indicators": ["count"],
     "characters.multiplicities": ["count"], "circulants.spectra": ["n", "count"],
