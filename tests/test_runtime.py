@@ -40,3 +40,57 @@ def test_describe_lists_every_module():
     for m in d["modules"]:
         assert any(b.startswith(m["module"]["name"] + ".") for b in d["available_backends"]), m["module"]["name"]
     assert {f["name"] for f in d["runtime"]["families"]} >= {"explicit", "subsets", "grassmannian", "all_matrices", "group_elements"}
+
+
+def test_natural_number_families_enumerate_like_the_naive_layer():
+    """`range` and `words` carry lk.naturals members; no module operation takes them yet, so the
+    runtime's size, member, index_of (through hits materialisation) and interchange roundtrip are
+    checked here against the shared naive enumeration."""
+    from lemmakernel import naive as rt
+    ctx = lk.Context()
+    for fam in [ctx.range(10, 15), ctx.words(3, 3), ctx.range(0, 1)]:
+        desc = fam.value()
+        expected, p = rt.members(desc)
+        assert p == lk.NATURALS
+        assert ctx.size(fam) == len(expected)
+        for i, m in enumerate(expected):
+            got = ctx.member(fam, i).value()
+            assert got.p == lk.NATURALS and got.member(0) == m
+        assert ctx.put(desc).value() == desc
+    with pytest.raises(lk.Error, match="a < b"):
+        ctx.range(5, 5)
+    with pytest.raises(lk.Error, match="alphabet"):
+        ctx.words(1, 3)
+    # naturals never enter F_p arithmetic
+    with pytest.raises(lk.Error, match="no available backend"):
+        ctx.run("gfp.rank", ctx.words(2, 3))
+    with pytest.raises(lk.Error, match="over a prime"):
+        ctx.transform(ctx.words(2, 3), ctx.naturals([[1, 0], [0, 1], [1, 1]]))
+
+
+def test_first_stops_early_and_is_thread_invariant():
+    """The first invertible 4x4 over F_2 is lexicographically the reversed identity, at index 4680
+    of 65536; `visited` is index + 1 whatever the thread count, and a family without a hit reports
+    found = 0 after visiting everything."""
+    results = []
+    for t in (1, 4, 32):
+        c = lk.Context(threads=t)
+        results.append(c.value("gfp.full_col_rank", c.all_matrices(2, 4, 4), "first"))
+    for r in results:
+        assert (r.found, r.index, r.visited, r.family_size) == (1, 4680, 4681, 65536)
+        assert r.member.member(0) == [[0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0]]
+    assert len({r.encode() for r in results}) == 1
+    ctx = lk.Context()
+    none = ctx.value("gfp.full_col_rank", ctx.grassmannian(2, 4, 1), "first")
+    assert (none.found, none.visited, none.family_size) == (0, 15, 15)
+
+
+def test_sum_max_min_reductions():
+    ctx = lk.Context()
+    G = ctx.grassmannian(2, 4, 2)
+    assert ctx.value("gfp.rank", G, "sum").value == 2 * 35
+    hi = ctx.value("gfp.nullity", ctx.all_matrices(3, 2, 2), "max")
+    assert (hi.value, hi.index, hi.member.member(0)) == (2, 0, [[0, 0], [0, 0]])
+    lo = ctx.value("gfp.nullity", ctx.all_matrices(3, 2, 2), "min")
+    assert (lo.value, lo.index) == (0, 12)  # [[0,1],[1,0]] is the first invertible 2x2 over F_3
+    assert lo.member.member(0) == [[0, 1], [1, 0]]

@@ -17,7 +17,8 @@ bytes     payload
 All integers little-endian. Kinds, their parameters, and their payload layouts are declared in
 each module's manifest (`[[kinds]]`) and in the runtime's own kinds below. Entries over F_p are
 packed at the smallest width holding p−1: 1 byte for p < 2^8, 2 for p < 2^16, 4 for p < 2^32,
-8 otherwise. Permutations (`orbits.perms`, p = 0) are packed as 4-byte point indices.
+8 otherwise. Permutations (`orbits.perms`, p = 0) and naturals (`lk.naturals`, p = 2^64 - 1 in
+a result header) are packed as 4-byte values.
 
 Runtime kinds (not module-specific):
 
@@ -27,7 +28,14 @@ Runtime kinds (not module-specific):
 | `count` | value, visited, family_size | empty |
 | `histogram` | visited, family_size, bins | u64[bins] |
 | `hits` | p, rows, cols, total, visited, family_size, count, materialised | u64 indices[count], then materialised·rows·cols entries |
+| `first` | p, rows, cols, found, index, visited, family_size | found·rows·cols entries (the hit, if any) |
+| `extremum` | p, rows, cols, value, index, visited, family_size | rows·cols entries (the member attaining the value) |
+| `lk.naturals` | count, rows, cols | count·rows·cols 4-byte entries |
 | `family.<name>` | the family's integer parameters | the nested objects (matrices, inner family) as concatenated blobs, in the order the manifest lists them |
+
+`sum` returns kind `count` with the sum as its value. `first` reports `visited` as index + 1 when
+found and family_size otherwise, so the encoding does not depend on how many members other
+threads happened to decide.
 
 A family blob is small (a Grassmannian is three integers) and re-importable, so a family can be
 saved, sent, and reproduced exactly.

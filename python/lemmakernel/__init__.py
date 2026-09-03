@@ -17,12 +17,13 @@ import os
 from pathlib import Path
 
 from . import interchange
-from .interchange import (Basis, Count, Family, Histogram, Hits, Integers, Inverses, Matrix, Perms, Solutions,
-                          Witness, matrix, perms)
+from .interchange import (NATURALS, Basis, Count, Extremum, Family, First, Histogram, Hits, Integers, Inverses, Matrix,
+                          Perms, Solutions, Witness, matrix, naturals, perms)
 from ._manifest import MODULES
 
-__all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "interchange", "MODULES", "Perms",
-           "Matrix", "Basis", "Solutions", "Inverses", "Witness", "Integers", "Count", "Histogram", "Hits", "Family"]
+__all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
+           "Matrix", "Basis", "Solutions", "Inverses", "Witness", "Integers", "Count", "Histogram", "Hits", "First",
+           "Extremum", "Family", "NATURALS"]
 
 
 class Error(RuntimeError):
@@ -72,6 +73,10 @@ _lib.lk_family_all_matrices.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ct
 _lib.lk_family_transform.argtypes = [_P, _H, _H, ctypes.POINTER(_H)]
 _lib.lk_family_stack.argtypes = [_P, _H, _H, ctypes.POINTER(_H)]
 _lib.lk_family_group_elements.argtypes = [_P, _H, ctypes.POINTER(_H)]
+_lib.lk_family_subsets_of.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
+_lib.lk_family_symmetric_matrices.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
+_lib.lk_family_range.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
+_lib.lk_family_words.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_size.argtypes = [_P, _H, ctypes.POINTER(ctypes.c_uint64)]
 _lib.lk_family_member.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_run.argtypes = [_P, ctypes.c_char_p, _H, ctypes.c_char_p, ctypes.POINTER(_Arg), ctypes.c_size_t, ctypes.POINTER(_H)]
@@ -151,6 +156,9 @@ _PARAM_NAMES = {
     "gfp.witness": ["p", "count", "rows", "cols"], "integers": ["count"],
     "count": ["value", "visited", "family_size"], "histogram": ["visited", "family_size", "bins"],
     "hits": ["p", "rows", "cols", "total", "visited", "family_size", "count", "materialised"],
+    "lk.naturals": ["count", "rows", "cols"],
+    "first": ["p", "rows", "cols", "found", "index", "visited", "family_size"],
+    "extremum": ["p", "rows", "cols", "value", "index", "visited", "family_size"],
 }
 
 
@@ -213,6 +221,9 @@ class Context:
     def perms(self, n: int, data) -> Handle:
         return self.put(perms(n, data))
 
+    def naturals(self, data, rows: int | None = None, cols: int | None = None) -> Handle:
+        return self.put(naturals(data, rows, cols))
+
     # families
     def explicit(self, batch) -> Handle:
         out = _H()
@@ -252,6 +263,30 @@ class Context:
         out = _H()
         g = self._keep(generators)
         self._check(_lib.lk_family_group_elements(self._ptr, g._h, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def subsets_of(self, family, k: int) -> Handle:
+        """k-subsets of another family's members, each flattened to one row."""
+        out = _H()
+        f = self._keep(family)
+        self._check(_lib.lk_family_subsets_of(self._ptr, f._h, k, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def symmetric_matrices(self, p: int, n: int) -> Handle:
+        out = _H()
+        self._check(_lib.lk_family_symmetric_matrices(self._ptr, p, n, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def range(self, a: int, b: int) -> Handle:
+        """The integers a <= x < b as 1 x 1 natural-number matrices."""
+        out = _H()
+        self._check(_lib.lk_family_range(self._ptr, a, b, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def words(self, alphabet: int, length: int) -> Handle:
+        """Every word of `length` letters over 0..alphabet-1 as a 1 x length natural-number matrix."""
+        out = _H()
+        self._check(_lib.lk_family_words(self._ptr, alphabet, length, ctypes.byref(out)))
         return self._wrap(out)
 
     def size(self, family) -> int:

@@ -135,8 +135,23 @@ std::vector<uint8_t> encode_matrix(const Matrix &m) {
     w.entries(m.entries, entry_width(m.p));
     Writer out;
     if (m.p == 0) write_header(out, "orbits.perms", {{"n", m.cols}, {"count", m.count}}, w.out);
+    else if (m.p == NATURALS) write_header(out, "lk.naturals", {{"count", m.count}, {"rows", m.rows}, {"cols", m.cols}}, w.out);
     else write_header(out, "gfp.matrix", {{"p", m.p}, {"count", m.count}, {"rows", m.rows}, {"cols", m.cols}}, w.out);
     return out.out;
+}
+
+Result<std::shared_ptr<Matrix>> decode_naturals(const Header &h) {
+    using R = Result<std::shared_ptr<Matrix>>;
+    auto count = need(h, "count"), rows = need(h, "rows"), cols = need(h, "cols");
+    for (auto *r : {&count, &rows, &cols}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+    if (rows.value == 0 || cols.value == 0) return R::failure(INVALID, "lk.naturals: need rows, cols >= 1");
+    auto m = std::make_shared<Matrix>();
+    m->p = NATURALS; m->count = count.value; m->rows = rows.value; m->cols = cols.value;
+    unsigned __int128 total = (unsigned __int128)count.value * rows.value * cols.value;
+    if (total * 4 != h.payload_len) return R::failure(INVALID, "lk.naturals payload length does not match count*rows*cols");
+    Reader r{h.payload, h.payload + h.payload_len};
+    r.entries(m->entries, (uint64_t)total, 4);
+    return R::success(m);
 }
 
 Result<std::shared_ptr<Matrix>> decode_perms(const Header &h) {
@@ -173,7 +188,10 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         const uint8_t *nx;
         auto o = decode_at(cur, (size_t)(end - cur), &nx);
         if (!o.ok) return o;
-        if (o.value->kind != expect && !(std::string(expect) == "family" && o.value->kind.rfind("family.", 0) == 0))
+        bool matches = o.value->kind == expect ||
+                       (std::string(expect) == "family" && o.value->kind.rfind("family.", 0) == 0) ||
+                       (std::string(expect) == "matrix" && o.value->matrix);
+        if (!matches)
             return Result<std::shared_ptr<Object>>::failure(INVALID, "family payload has the wrong kind");
         cur = nx;
         return o;
@@ -186,9 +204,31 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
     if (sub == "subsets") {
         auto k = need(h, "k");
         if (!k.ok) return R::failure(k.error.status, k.error.message);
-        auto d = child_object("gfp.matrix");
+        auto d = child_object("matrix");
         if (!d.ok) return R::failure(d.error.status, d.error.message);
         return make_subsets(d.value->matrix, k.value);
+    }
+    if (sub == "subsets_of") {
+        auto k = need(h, "k");
+        if (!k.ok) return R::failure(k.error.status, k.error.message);
+        auto inner = child_object("family");
+        if (!inner.ok) return R::failure(inner.error.status, inner.error.message);
+        return make_subsets_of(inner.value->family, k.value);
+    }
+    if (sub == "symmetric_matrices") {
+        auto p = need(h, "p"), n = need(h, "n");
+        for (auto *r : {&p, &n}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        return make_symmetric_matrices(p.value, n.value);
+    }
+    if (sub == "range") {
+        auto a = need(h, "a"), b = need(h, "b");
+        for (auto *r : {&a, &b}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        return make_range(a.value, b.value);
+    }
+    if (sub == "words") {
+        auto q = need(h, "alphabet"), len = need(h, "length");
+        for (auto *r : {&q, &len}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        return make_words(q.value, len.value);
     }
     if (sub == "grassmannian") {
         auto p = need(h, "p"), n = need(h, "n"), hh = need(h, "h");
@@ -231,6 +271,19 @@ std::vector<uint8_t> encode_family(const Family &f) {
     case Family::Kind::AllMatrices:
         params = {{"p", f.p}, {"rows", f.m}, {"cols", f.n}};
         break;
+    case Family::Kind::SubsetsOf:
+        payload.bytes(encode_family(*f.child));
+        params["k"] = f.k;
+        break;
+    case Family::Kind::SymmetricMatrices:
+        params = {{"p", f.p}, {"n", f.n}};
+        break;
+    case Family::Kind::Range:
+        params = {{"a", f.a}, {"b", f.b}};
+        break;
+    case Family::Kind::Words:
+        params = {{"alphabet", f.p}, {"length", f.n}};
+        break;
     case Family::Kind::GroupElements:
         payload.bytes(encode_matrix(*f.data));
         break;
@@ -253,8 +306,8 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
     *next = h.next;
     auto o = std::make_shared<Object>();
     o->kind = h.kind;
-    if (h.kind == "gfp.matrix" || h.kind == "orbits.perms") {
-        auto m = h.kind == "gfp.matrix" ? decode_matrix(h) : decode_perms(h);
+    if (h.kind == "gfp.matrix" || h.kind == "orbits.perms" || h.kind == "lk.naturals") {
+        auto m = h.kind == "gfp.matrix" ? decode_matrix(h) : h.kind == "orbits.perms" ? decode_perms(h) : decode_naturals(h);
         if (!m.ok) return R::failure(m.error.status, m.error.message);
         o->matrix = m.value;
         return R::success(o);
@@ -304,6 +357,32 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->hits = hh;
         return R::success(o);
     }
+    if (h.kind == "first") {
+        auto p = need(h, "p"), rows = need(h, "rows"), cols = need(h, "cols"), found = need(h, "found"),
+             index = need(h, "index"), vis = need(h, "visited"), fs = need(h, "family_size");
+        for (auto *r : {&p, &rows, &cols, &found, &index, &vis, &fs}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        auto f = std::make_shared<First>();
+        f->p = p.value; f->rows = rows.value; f->cols = cols.value; f->found = found.value; f->index = index.value;
+        f->visited = vis.value; f->family_size = fs.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        r.entries(f->member, found.value ? rows.value * cols.value : 0, entry_width(p.value));
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "first payload length mismatch");
+        o->first = f;
+        return R::success(o);
+    }
+    if (h.kind == "extremum") {
+        auto p = need(h, "p"), rows = need(h, "rows"), cols = need(h, "cols"), value = need(h, "value"),
+             index = need(h, "index"), vis = need(h, "visited"), fs = need(h, "family_size");
+        for (auto *r : {&p, &rows, &cols, &value, &index, &vis, &fs}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        auto e = std::make_shared<Extremum>();
+        e->p = p.value; e->rows = rows.value; e->cols = cols.value; e->value = value.value; e->index = index.value;
+        e->visited = vis.value; e->family_size = fs.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        r.entries(e->member, rows.value * cols.value, entry_width(p.value));
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "extremum payload length mismatch");
+        o->extremum = e;
+        return R::success(o);
+    }
     if (h.kind == "gfp.basis") {
         auto p = need(h, "p"), count = need(h, "count"), cols = need(h, "cols");
         for (auto *r : {&p, &count, &cols}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -351,7 +430,7 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
 } // namespace
 
 unsigned entry_width(uint64_t p) {
-    if (p == 0) return 4; /* permutations: point indices */
+    if (p == 0 || p == NATURALS) return 4; /* permutations: point indices; naturals */
     if (p < (1ULL << 8)) return 1;
     if (p < (1ULL << 16)) return 2;
     if (p < (1ULL << 32)) return 4;
@@ -388,6 +467,7 @@ bool is_prime(uint64_t n) {
 
 std::map<std::string, uint64_t> Object::params() const {
     if (matrix && matrix->p == 0) return {{"n", matrix->cols}, {"count", matrix->count}};
+    if (matrix && matrix->p == NATURALS) return {{"count", matrix->count}, {"rows", matrix->rows}, {"cols", matrix->cols}};
     if (matrix) return {{"p", matrix->p}, {"count", matrix->count}, {"rows", matrix->rows}, {"cols", matrix->cols}};
     if (basis) return {{"p", basis->p}, {"count", basis->count}, {"cols", basis->cols}};
     if (solutions) return {{"p", solutions->p}, {"count", solutions->count}, {"length", solutions->length}};
@@ -399,6 +479,10 @@ std::map<std::string, uint64_t> Object::params() const {
     if (hits) return {{"p", hits->p}, {"rows", hits->rows}, {"cols", hits->cols}, {"total", hits->total},
                       {"visited", hits->visited}, {"family_size", hits->family_size}, {"count", hits->indices.size()},
                       {"materialised", (hits->rows * hits->cols) != 0 ? hits->members.size() / (hits->rows * hits->cols) : 0}};
+    if (first) return {{"p", first->p}, {"rows", first->rows}, {"cols", first->cols}, {"found", first->found}, {"index", first->index},
+                       {"visited", first->visited}, {"family_size", first->family_size}};
+    if (extremum) return {{"p", extremum->p}, {"rows", extremum->rows}, {"cols", extremum->cols}, {"value", extremum->value},
+                          {"index", extremum->index}, {"visited", extremum->visited}, {"family_size", extremum->family_size}};
     if (family) {
         std::map<std::string, uint64_t> m{{"p", family->prime()}, {"rows", family->rows()}, {"cols", family->cols()}};
         auto sz = family->size();
@@ -448,6 +532,12 @@ std::vector<uint8_t> encode(const Object &o) {
         w.u64s(o.hits->indices);
         w.entries(o.hits->members, entry_width(o.hits->p));
         write_header(out, "hits", o.params(), w.out);
+    } else if (o.first) {
+        w.entries(o.first->member, entry_width(o.first->p));
+        write_header(out, "first", o.params(), w.out);
+    } else if (o.extremum) {
+        w.entries(o.extremum->member, entry_width(o.extremum->p));
+        write_header(out, "extremum", o.params(), w.out);
     }
     return out.out;
 }

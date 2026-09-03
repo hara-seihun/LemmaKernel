@@ -162,6 +162,15 @@ def lean_family(f: ic.Family) -> str:
     if f.kind == "group_elements":
         (gens,) = f.children
         return f"(.{ctor} {L(gens.tolist())})"
+    if f.kind == "subsets_of":
+        (inner,) = f.children
+        return f"(.{ctor} {lean_family(inner)} {q['k']})"
+    if f.kind == "symmetric_matrices":
+        return f"(.{ctor} {q['p']} {q['n']})"
+    if f.kind == "range":
+        return f"(.{ctor} {q['a']} {q['b']})"
+    if f.kind == "words":
+        return f"(.{ctor} {q['alphabet']} {q['length']})"
     raise ValueError(f.kind)
 
 
@@ -210,6 +219,15 @@ def lean_result(r) -> str:
     if isinstance(r, ic.Hits):
         assert r.visited == r.family_size and r.total == len(r.indices)
         return f".hits {r.family_size} {L(r.indices)} {L(r.members.tolist())}"
+    if isinstance(r, ic.First):
+        if not r.found:
+            assert r.visited == r.family_size, "incomplete enumeration reported"
+            return f".first {r.family_size} none"
+        assert r.visited == r.index + 1
+        return f".first {r.family_size} (some ({r.index}, {L(r.member.member(0))}))"
+    if isinstance(r, ic.Extremum):
+        assert r.visited == r.family_size, "incomplete enumeration reported"
+        return f".extremum {r.family_size} {r.value} {r.index} {L(r.member.member(0))}"
     ctor = KIND_LEAN.get(ic.kind_of(r))
     if ctor is None:
         raise TypeError(f"{ic.kind_of(r)} declares no Lean value constructor")

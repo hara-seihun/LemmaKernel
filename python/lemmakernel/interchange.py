@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 
 MAGIC = b"LKIF"
 VERSION = 1
+NATURALS = (1 << 64) - 1  # Matrix.p for natural-number matrices (kind lk.naturals)
 
 try:
     import numpy as _np
@@ -23,7 +24,7 @@ except ImportError:  # numpy is optional; entries fall back to lists
 
 
 def entry_width(p: int) -> int:
-    if p == 0:  # permutations: point indices
+    if p in (0, NATURALS):  # permutations: point indices; naturals
         return 4
     if p < 1 << 8:
         return 1
@@ -123,8 +124,17 @@ class Matrix:
         return [self.member(i) for i in range(self.count)]
 
     def encode(self) -> bytes:
+        if self.p == NATURALS:
+            return encode("lk.naturals", {"count": self.count, "rows": self.rows, "cols": self.cols},
+                          pack_entries(self.entries, self.p))
         return encode("gfp.matrix", {"p": self.p, "count": self.count, "rows": self.rows, "cols": self.cols},
                       pack_entries(self.entries, self.p))
+
+
+def naturals(data, rows: int | None = None, cols: int | None = None) -> Matrix:
+    """A natural-number matrix batch (kind lk.naturals, entries < 2^32): the members of `range`
+    and `words` families. Same shapes as `matrix`."""
+    return matrix(NATURALS, data, rows, cols)
 
 
 def matrix(p: int, data, rows: int | None = None, cols: int | None = None) -> Matrix:
@@ -306,6 +316,42 @@ class Hits:
 
 
 @dataclass
+class First:
+    """`first`: the least true member. `found` is 0 or 1; `member` has `found` matrices."""
+    p: int
+    rows: int
+    cols: int
+    found: int
+    index: int
+    visited: int
+    family_size: int
+    member: Matrix
+
+    def encode(self) -> bytes:
+        return encode("first", {"p": self.p, "rows": self.rows, "cols": self.cols, "found": self.found, "index": self.index,
+                                "visited": self.visited, "family_size": self.family_size},
+                      pack_entries(self.member.entries, self.p))
+
+
+@dataclass
+class Extremum:
+    """`max` / `min`: the extreme value, the least index attaining it, and that member."""
+    p: int
+    rows: int
+    cols: int
+    value: int
+    index: int
+    visited: int
+    family_size: int
+    member: Matrix
+
+    def encode(self) -> bytes:
+        return encode("extremum", {"p": self.p, "rows": self.rows, "cols": self.cols, "value": self.value, "index": self.index,
+                                   "visited": self.visited, "family_size": self.family_size},
+                      pack_entries(self.member.entries, self.p))
+
+
+@dataclass
 class Family:
     """A family description. `kind` is the family name; `params` its integers; `children` the
     nested objects (matrices and inner families) in payload order."""
@@ -319,13 +365,15 @@ class Family:
 
 KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "gfp.basis": Basis, "gfp.solutions": Solutions,
          "gfp.inverses": Inverses, "gfp.witness": Witness, "integers": Integers, "count": Count,
-         "histogram": Histogram, "hits": Hits}
+         "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
 
 
 def kind_of(obj) -> str:
     """The interchange kind of a decoded object (`family.<name>` for families)."""
     if isinstance(obj, Family):
         return "family." + obj.kind
+    if isinstance(obj, Matrix) and obj.p == NATURALS:
+        return "lk.naturals"
     for kind, cls in KINDS.items():
         if isinstance(obj, cls):
             return kind
@@ -347,6 +395,15 @@ def decode_at(buf: bytes, offset: int):
         return Matrix(q["p"], q["count"], q["rows"], q["cols"], unpack_entries(pl, q["p"], n)), end
     if k == "orbits.perms":
         return Perms(q["n"], q["count"], unpack_entries(pl, 0, q["count"] * q["n"])), end
+    if k == "lk.naturals":
+        n = q["count"] * q["rows"] * q["cols"]
+        return Matrix(NATURALS, q["count"], q["rows"], q["cols"], unpack_entries(pl, NATURALS, n)), end
+    if k == "first":
+        mem = Matrix(q["p"], q["found"], q["rows"], q["cols"], unpack_entries(pl, q["p"], q["found"] * q["rows"] * q["cols"]))
+        return First(q["p"], q["rows"], q["cols"], q["found"], q["index"], q["visited"], q["family_size"], mem), end
+    if k == "extremum":
+        mem = Matrix(q["p"], 1, q["rows"], q["cols"], unpack_entries(pl, q["p"], q["rows"] * q["cols"]))
+        return Extremum(q["p"], q["rows"], q["cols"], q["value"], q["index"], q["visited"], q["family_size"], mem), end
     if k == "gfp.basis":
         offs = list(struct.unpack_from(f"<{q['count'] + 1}Q", pl, 0))
         rest = pl[8 * (q["count"] + 1):]

@@ -27,7 +27,10 @@ operation is a much smaller change than a new module.
 - `naive/naive.py`: the obvious Python implementation, `run(op, family, reduction, prefix=None,
   **args)`. It is the benchmark baseline, and the tests hold it to the same oracle as the
   kernel, so it is also a readable second opinion. `prefix` answers for the first members only;
-  the bench uses it to sample.
+  the bench uses it to sample. Families and reductions are not the module's business:
+  `lemmakernel.naive` materialises any family (`members(desc)`) and reduces integer, boolean
+  or materialised values (`reduce_int`, `reduce_bool`, `reduce_values`) exactly as the runtime
+  and the Lean reference do, so a naive implementation is only its own mathematics per member.
 - `cases.py`: `cases(ctx, rng)` returning `tools.harness.Case` objects (family, operation,
   arguments, which reductions, whether the Lean kernel can afford it, whether and how to bench
   it), and optionally `invariants(ctx)` for cross-operation identities on inputs beyond the
@@ -43,8 +46,14 @@ gfp is the worked example of all of this; copy its shape.
 
 ## Runtime pieces you may need to extend
 
-The runtime (`runtime/src/`) knows matrices over F_p and permutations (a `Matrix` with p = 0),
-and seven family kinds. A module over a different kind of object (graphs, polynomials) needs:
+The runtime (`runtime/src/`) knows matrices over F_p, permutations (a `Matrix` with p = 0) and
+natural-number matrices (p = `NATURALS`, kind `lk.naturals`, no arithmetic meaning), and eleven
+family kinds: `explicit`, `subsets` of a dictionary, `subsets_of` another family, `grassmannian`,
+`all_matrices`, `symmetric_matrices`, the `transform`/`stack` wrappers, `group_elements` of a
+permutation group, and `range`/`words` over naturals. Look there before adding a family: k-subsets
+of a group's elements is `subsets_of(group_elements(...))`, sign matrices are `all_matrices` over
+F_2 read as signs, a v-set is `range(0, v)`. A module over a different kind of object (graphs,
+polynomials) needs:
 
 - an object kind in `object.hpp` with its interchange encoding in `object.cpp` (header plus flat
   little-endian arrays; see `docs/interchange.md`);
@@ -52,8 +61,9 @@ and seven family kinds. A module over a different kind of object (graphs, polyno
   size, `member(index)` for unranking, `index_of` for ranking when a module will permute
   members (orbits does), and a depth-first `enumerate` if backends want to share prefix work;
 - if the module's operations produce one integer or boolean per member, `runtime/src/reduce.hpp`
-  already implements the reductions (`Accumulator`, `assemble`, `parallel_ranges`); gfp and
-  orbits both use it;
+  already implements every reduction (`Shared`, `Accumulator`, `assemble`, `parallel_ranges`),
+  including the early stop of `first`; gfp and orbits both use it. Ask `acc.exhausted(index)`
+  before doing work for a member or subtree so that `first` can stop;
 - the matching `lk_family_*` constructors in `lk.h`, and their Python wrappers.
 
 Keep the C ABI additive: new functions, never changed signatures.

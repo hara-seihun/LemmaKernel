@@ -30,28 +30,28 @@ summary = "A batch of `count` permutations of {0..n-1}. As a group argument, the
 name = "is_canonical"
 value = "boolean"
 args = { group = "group" }
-families = ["subsets", "grassmannian", "all_matrices"]
+families = ["subsets", "subsets_of", "grassmannian", "all_matrices"]
 summary = "The member has the least index in its orbit under `group`. With `hits`, the orbit transversal; with `count`, the number of orbits."
 
 [[operations]]
 name = "canonical_index"
 value = "integer"
 args = { group = "group" }
-families = ["subsets", "grassmannian", "all_matrices"]
+families = ["subsets", "subsets_of", "grassmannian", "all_matrices"]
 summary = "The least index in the member's orbit under `group`."
 
 [[operations]]
 name = "orbit_size"
 value = "integer"
 args = { group = "group" }
-families = ["subsets", "grassmannian", "all_matrices"]
+families = ["subsets", "subsets_of", "grassmannian", "all_matrices"]
 summary = "Number of members in the orbit of the member under `group`."
 
 [[operations]]
 name = "stabilizer_order"
 value = "integer"
 args = { group = "group" }
-families = ["subsets", "grassmannian", "all_matrices"]
+families = ["subsets", "subsets_of", "grassmannian", "all_matrices"]
 summary = "Order of the stabiliser of the member in `group`, i.e. |group| / orbit_size. Needs the group order, so `group` must generate a group the backend can enumerate."
 
 [[operations]]

@@ -171,7 +171,8 @@ Result<Setup> setup_action(const Request &req) {
     s.perms = s.group->p == 0;
     const Family &f = *s.fam;
     if (s.perms) {
-        if (f.kind != Family::Kind::Subsets) return Result<Setup>::failure(INVALID, "permutation generators act on `subsets` families only");
+        if (f.kind != Family::Kind::Subsets && f.kind != Family::Kind::SubsetsOf)
+            return Result<Setup>::failure(INVALID, "permutation generators act on `subsets` and `subsets_of` families only");
         if (s.group->cols != f.data->count)
             return Result<Setup>::failure(INVALID, "permutations of " + std::to_string(s.group->cols) + " points cannot act on a dictionary of " + std::to_string(f.data->count) + " rows");
     } else {
@@ -249,18 +250,19 @@ R run_orbit_op(const Request &req, Op op) {
         }
     }
     Reduction reduction = parse_reduction(req.reduction);
-    std::vector<uint64_t> all;
-    auto st = prepare_all(reduction, size, all);
+    Shared shared;
+    auto st = prepare_all(reduction, size, shared);
     if (!st.ok) return R::failure(st.error.status, st.error.message);
     uint32_t threads = std::max<uint32_t>(1, std::min<uint64_t>(req.threads, size ? size : 1));
     std::vector<Walker> walkers;
     std::vector<Accumulator> accs;
     for (uint32_t t = 0; t < threads; ++t) {
         walkers.emplace_back(setup.value);
-        accs.emplace_back(reduction, &all);
+        accs.emplace_back(reduction, &shared);
     }
     auto statuses = parallel_ranges(size, threads, [&](uint32_t t, uint64_t begin, uint64_t end) -> Status {
         for (uint64_t i = begin; i < end; ++i) {
+            if (accs[t].exhausted(i)) break;
             auto o = walkers[t].orbit(i, op == Op::IsCanonical);
             if (!o.ok) return fail(o.error.status, o.error.message);
             switch (op) {
@@ -274,7 +276,7 @@ R run_orbit_op(const Request &req, Op op) {
     });
     for (const auto &s : statuses)
         if (!s.ok) return R::failure(s.error.status, s.error.message);
-    return assemble(req, reduction, accs, std::move(all));
+    return assemble(req, reduction, accs, shared);
 }
 
 /* Fixed k-subsets of a permutation: a subset is fixed iff it is a union of cycles, so the count is
@@ -298,18 +300,19 @@ R run_fixed_points(const Request &req) {
     auto it = req.handle_args.find("on");
     if (it == req.handle_args.end() || !it->second->family) return R::failure(INVALID, "`on` must be a family");
     const Family &on = *it->second->family;
-    if (on.kind != Family::Kind::Subsets) return R::failure(INVALID, "fixed_points: permutations act on `subsets` families only");
+    if (on.kind != Family::Kind::Subsets && on.kind != Family::Kind::SubsetsOf)
+        return R::failure(INVALID, "fixed_points: permutations act on `subsets` and `subsets_of` families only");
     if (group.data->cols != on.data->count) return R::failure(INVALID, "fixed_points: the group's points must be the dictionary rows of `on`");
     auto elems = group.group_elements();
     if (!elems.ok) return R::failure(elems.error.status, elems.error.message);
     uint64_t n = group.data->cols, order = elems.value->size() / n;
     Reduction reduction = parse_reduction(req.reduction);
-    std::vector<uint64_t> all;
-    auto st = prepare_all(reduction, order, all);
+    Shared shared;
+    auto st = prepare_all(reduction, order, shared);
     if (!st.ok) return R::failure(st.error.status, st.error.message);
     uint32_t threads = std::max<uint32_t>(1, std::min<uint64_t>(req.threads, order));
     std::vector<Accumulator> accs;
-    for (uint32_t t = 0; t < threads; ++t) accs.emplace_back(reduction, &all);
+    for (uint32_t t = 0; t < threads; ++t) accs.emplace_back(reduction, &shared);
     auto statuses = parallel_ranges(order, threads, [&](uint32_t t, uint64_t begin, uint64_t end) -> Status {
         std::vector<uint8_t> seen;
         std::vector<uint64_t> poly;
@@ -319,7 +322,7 @@ R run_fixed_points(const Request &req) {
     });
     for (const auto &s : statuses)
         if (!s.ok) return R::failure(s.error.status, s.error.message);
-    return assemble(req, reduction, accs, std::move(all));
+    return assemble(req, reduction, accs, shared);
 }
 
 R run_projective_action(const Request &req) {

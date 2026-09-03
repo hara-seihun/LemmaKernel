@@ -48,6 +48,7 @@ def Group.order : Group → Nat
 Grassmannian every generator invertible. -/
 def actsOn : Group → Family → Bool
   | .perms gens, .subsets _ d _ => gens.all fun g => g.length = d.length
+  | .perms gens, .subsetsOf inner _ => gens.all fun g => g.length = inner.members.length
   | .mats p gens, .grassmannian p' n _ => p = p' ∧ gens.all fun a => a.length = n ∧ a.all (·.length = n) ∧ Gfp.rank p a = n
   | .mats p gens, .allMatrices p' _ n => p = p' ∧ gens.all fun a => a.length = n ∧ a.all (·.length = n)
   | _, _ => false
@@ -56,12 +57,13 @@ def actsOn : Group → Family → Bool
 dictionary rows remain distinct members), matrix family members as themselves. -/
 def keys : Group → Family → List Mat
   | .perms _, .subsets _ d k => subsetKeys d k
+  | .perms _, .subsetsOf inner k => subsetKeys (inner.members.map List.flatten) k
   | _, f => f.members
 
 /-- Image of key `m` under generator `k`, canonicalised within the family. -/
 def image (g : Group) (f : Family) (k : Nat) (m : Mat) : Mat :=
   match g, f with
-  | .perms gens, .subsets _ _ _ => actPerm (gens.getD k []) m
+  | .perms gens, .subsets _ _ _ | .perms gens, .subsetsOf _ _ => actPerm (gens.getD k []) m
   | .mats p gens, .grassmannian _ _ _ => Gfp.rref p (matmul p m (gens.getD k []))
   | .mats p gens, _ => matmul p m (gens.getD k [])
   | _, _ => m
@@ -96,7 +98,7 @@ def orbitOp (g : Group) (f : Family) (red : Red) (value : List Nat → Nat) (boo
   let ms := f.members
   let orbits := (List.range ms.length).map fun i => orbit g f i
   if bool then reduceBool red ms (List.zipWith (fun o i => decide (leastOf o = i)) orbits (List.range ms.length))
-  else reduceInt red (orbits.map value)
+  else reduceInt red ms (orbits.map value)
 
 def run (op : Op) (f : Family) (red : Red) : Result Value :=
   match op, f with
@@ -105,12 +107,12 @@ def run (op : Op) (f : Family) (red : Red) : Result Value :=
   | .orbitSize g, _ => orbitOp g f red (·.length) false
   | .stabilizerOrder g, _ => orbitOp g f red (fun o => g.order / o.length) false
   | .fixedPoints on, .groupElements gens =>
-    match on with
-    | .subsets _ d on_k =>
+    match on.dictionary with
+    | some d =>
       if !gens.all (·.length = d.length) then .invalid else
-      let ks := subsetKeys d on_k
-      reduceInt red ((permElements gens).map fun g => (ks.filter fun m => actPerm g m = m).length)
-    | _ => .invalid
+      let ks := subsetKeys d on.subsetSize
+      reduceInt red f.members ((permElements gens).map fun g => (ks.filter fun m => actPerm g m = m).length)
+    | none => .invalid
   | .projectiveAction pts, .explicit p batch =>
     let images := batch.map fun a => pts.map fun v => normalise p ((matmul p [v] a).headD [])
     if images.all (·.all (· ∈ pts)) then reduceValues red (images.map fun g => .perm (g.map pts.idxOf))

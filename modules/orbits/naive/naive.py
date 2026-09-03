@@ -17,33 +17,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "python"))
-from lemmakernel.interchange import Count, Family, Histogram, Hits, Integers, Matrix, Perms  # noqa: E402
+from lemmakernel import naive as rt  # noqa: E402  (families and reductions, shared by every module)
+from lemmakernel.interchange import Family, Perms  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("gfp_naive", ROOT / "modules" / "gfp" / "naive" / "naive.py")
 gfp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(gfp)
 
+perm_closure = rt.perm_closure
+
 
 # ---- groups -------------------------------------------------------------------------------------
-
-def compose(g, h):
-    """Permutation x -> h(g(x))."""
-    return [h[g[x]] for x in range(len(g))]
-
-
-def perm_closure(gens: list[list[int]]) -> list[list[int]]:
-    """Every element of the generated group, sorted lexicographically."""
-    n = len(gens[0])
-    identity = list(range(n))
-    seen = {tuple(identity)}
-    queue = [identity]
-    for g in queue:
-        for gen in gens:
-            h = compose(g, gen)
-            if tuple(h) not in seen:
-                seen.add(tuple(h))
-                queue.append(h)
-    return sorted(queue)
 
 
 def matrix_closure(gens: list[list[list[int]]], p: int) -> list[list[list[int]]]:
@@ -66,15 +50,14 @@ def matrix_closure(gens: list[list[list[int]]], p: int) -> list[list[list[int]]]
 def keys(family: Family, members):
     """What the group permutes: a subset as its sorted dictionary positions (duplicate dictionary
     rows stay distinct members), a matrix as itself."""
-    if family.kind == "subsets":
-        (dictionary,) = family.children
-        return [list(c) for c in itertools.combinations(range(dictionary.count if dictionary.rows == 1 else dictionary.rows), family.params["k"])]
+    if family.kind in ("subsets", "subsets_of"):
+        return [list(c) for c in itertools.combinations(range(len(rt.dictionary(family))), family.params["k"])]
     return members
 
 
 def act(family: Family, generator, key, p):
     """Image of a member's key under one generator, canonicalised."""
-    if family.kind == "subsets":
+    if family.kind in ("subsets", "subsets_of"):
         return sorted(generator[i] for i in key)
     member = key
     if family.kind == "grassmannian":
@@ -112,31 +95,6 @@ def orbit(family, gens, ks, rank, index, p):
 
 # ---- operations -----------------------------------------------------------------------------------
 
-def _reduce_int(values, reduction, size):
-    if reduction == "all":
-        return Integers(values)
-    if reduction == "histogram":
-        bins = [0] * (max(values) + 1 if values else 0)
-        for v in values:
-            bins[v] += 1
-        return Histogram(size, size, bins)
-    raise ValueError(f"reduction {reduction} does not accept integer values")
-
-
-def _reduce_bool(flags, reduction, members, p, rows, cols, **args):
-    size = len(flags)
-    if reduction == "all":
-        return Integers([int(f) for f in flags])
-    if reduction == "count":
-        return Count(sum(flags), size, size)
-    if reduction == "hits":
-        idx = [i for i, f in enumerate(flags) if f]
-        limit = min(args.get("limit", 0), len(idx))
-        mem = Matrix(p, limit, rows, cols, [x for i in idx[:limit] for r in members[i] for x in r])
-        return Hits(p, rows, cols, len(idx), size, size, idx, mem)
-    raise ValueError(f"reduction {reduction} does not accept boolean values")
-
-
 def run(op: str, family: Family, reduction: str = "all", prefix: int | None = None, **args):
     """`prefix`: answer for the first `prefix` members only (the benchmark's timing sample)."""
     op = op.removeprefix("orbits.")
@@ -163,20 +121,18 @@ def run(op: str, family: Family, reduction: str = "all", prefix: int | None = No
         (gens,) = family.children
         elements = perm_closure(gens.tolist())[:prefix]
         on: Family = args["on"]
-        members, p = gfp.members(on)
+        members, p = rt.members(on)
         ks = keys(on, members)
         values = [sum(act(on, g, m, p) == m for m in ks) for g in elements]
-        return _reduce_int(values, reduction, len(elements))
+        return rt.reduce_int(reduction, values, [[g] for g in elements], 0)
 
     if op not in ("is_canonical", "canonical_index", "orbit_size", "stabilizer_order"):
         raise ValueError(f"unknown operation {op}")
-    if family.kind not in ("subsets", "grassmannian", "all_matrices"):
-        raise ValueError(f"{op} is defined on subsets, grassmannian, all_matrices families only")
+    if family.kind not in ("subsets", "subsets_of", "grassmannian", "all_matrices"):
+        raise ValueError(f"{op} is defined on subsets, subsets_of, grassmannian, all_matrices families only")
     group = args["group"]
     gens = generators_of(group)
-    members, p = gfp.members(family)
-    rows = len(members[0]) if members else 0
-    cols = len(members[0][0]) if members else 0
+    members, p = rt.members(family)
     ks = keys(family, members)
     rank = ranking(ks)
     if prefix is not None:
@@ -184,7 +140,7 @@ def run(op: str, family: Family, reduction: str = "all", prefix: int | None = No
     orbits = [orbit(family, gens, ks, rank, i, p) for i in range(len(members))]
     if op == "is_canonical":
         flags = [min(o) == i for i, o in enumerate(orbits)]
-        return _reduce_bool(flags, reduction, members, p, rows, cols, **args)
+        return rt.reduce_bool(reduction, flags, members, p, **args)
     if op == "canonical_index":
         values = [min(o) for o in orbits]
     elif op == "orbit_size":
@@ -192,4 +148,4 @@ def run(op: str, family: Family, reduction: str = "all", prefix: int | None = No
     else:
         order = len(perm_closure(gens)) if isinstance(group, Perms) else len(matrix_closure(gens, p))
         values = [order // len(o) for o in orbits]
-    return _reduce_int(values, reduction, len(members))
+    return rt.reduce_int(reduction, values, members, p)

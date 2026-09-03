@@ -56,6 +56,10 @@ lk_status lk_family_all_matrices(lk_context *ctx, uint64_t p, uint64_t rows, uin
 lk_status lk_family_transform(lk_context *ctx, lk_handle family, lk_handle matrix, lk_handle *out);
 lk_status lk_family_stack(lk_context *ctx, lk_handle family, lk_handle rows, lk_handle *out);
 lk_status lk_family_group_elements(lk_context *ctx, lk_handle generators, lk_handle *out);
+lk_status lk_family_subsets_of(lk_context *ctx, lk_handle family, uint64_t k, lk_handle *out);
+lk_status lk_family_symmetric_matrices(lk_context *ctx, uint64_t p, uint64_t n, lk_handle *out);
+lk_status lk_family_range(lk_context *ctx, uint64_t a, uint64_t b, lk_handle *out);
+lk_status lk_family_words(lk_context *ctx, uint64_t alphabet, uint64_t length, lk_handle *out);
 lk_status lk_family_size(lk_context *ctx, lk_handle family, uint64_t *size);
 lk_status lk_family_member(lk_context *ctx, lk_handle family, uint64_t index, lk_handle *out);
 

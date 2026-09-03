@@ -60,7 +60,7 @@ struct lk_context {
     Result<std::shared_ptr<Matrix>> get_matrix(lk_handle h, const char *what) {
         auto o = get(h);
         if (!o.ok) return Result<std::shared_ptr<Matrix>>::failure(o.error.status, o.error.message);
-        if (!o.value->matrix) return Result<std::shared_ptr<Matrix>>::failure(LK_INVALID_ARGUMENT, std::string(what) + " must be a gfp.matrix");
+        if (!o.value->matrix) return Result<std::shared_ptr<Matrix>>::failure(LK_INVALID_ARGUMENT, std::string(what) + " must be a matrix batch (gfp.matrix, orbits.perms or lk.naturals)");
         return Result<std::shared_ptr<Matrix>>::success(o.value->matrix);
     }
     Result<std::shared_ptr<Family>> get_family(lk_handle h) {
@@ -252,6 +252,28 @@ lk_status lk_family_group_elements(lk_context *ctx, lk_handle generators, lk_han
     if (!o.ok) return ctx->set_error(o.error);
     if (!o.value->matrix || o.value->matrix->p != 0) return ctx->set_error(LK_INVALID_ARGUMENT, "generators must be an orbits.perms batch");
     FAMILY_RESULT(make_group_elements(o.value->matrix));
+}
+
+lk_status lk_family_subsets_of(lk_context *ctx, lk_handle family, uint64_t k, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    auto f = ctx->get_family(family);
+    if (!f.ok) return ctx->set_error(f.error);
+    FAMILY_RESULT(make_subsets_of(f.value, k));
+}
+
+lk_status lk_family_symmetric_matrices(lk_context *ctx, uint64_t p, uint64_t n, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    FAMILY_RESULT(make_symmetric_matrices(p, n));
+}
+
+lk_status lk_family_range(lk_context *ctx, uint64_t a, uint64_t b, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    FAMILY_RESULT(make_range(a, b));
+}
+
+lk_status lk_family_words(lk_context *ctx, uint64_t alphabet, uint64_t length, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    FAMILY_RESULT(make_words(alphabet, length));
 }
 
 lk_status lk_run(lk_context *ctx, const char *op, lk_handle family, const char *reduction,

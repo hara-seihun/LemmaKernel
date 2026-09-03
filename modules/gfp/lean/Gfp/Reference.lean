@@ -118,8 +118,8 @@ def run (op : Op) (f : Family) (red : Red) : Result Value :=
   let rows := (ms.headD []).length
   let cols := ((ms.headD []).headD []).length
   match op, red with
-  | .rank, _ => reduceInt red (ms.map (rank p))
-  | .nullity, _ => reduceInt red (ms.map (nullity p))
+  | .rank, _ => reduceInt red ms (ms.map (rank p))
+  | .nullity, _ => reduceInt red ms (ms.map (nullity p))
   | .fullRowRank, _ => reduceBool red ms (ms.map fun m => rank p m = rows)
   | .fullColRank, _ => reduceBool red ms (ms.map fun m => rank p m = cols)
   | .inSpan t, _ => reduceBool red ms (ms.map fun m => inSpan p m t)

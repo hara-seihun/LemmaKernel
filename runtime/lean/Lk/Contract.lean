@@ -73,6 +73,28 @@ theorem stack_spec (f : Family) (rows : Mat) :
     (Family.stack f rows).members = f.members.map (· ++ rows) := by
   rfl
 
+/-- Every `k`-subset of the inner family's members, each flattened to one row, once. -/
+theorem subsetsOf_spec (f : Family) (k : ℕ) :
+    (Family.subsetsOf f k).members.Perm (List.sublistsLen k (f.members.map List.flatten)) := by
+  sorry
+
+/-- Every symmetric `n x n` matrix over `F_p` exactly once. -/
+theorem symmetricMatrices_spec (n : ℕ) :
+    let ms := (Family.symmetricMatrices p n).members
+    ms.Nodup ∧ ms.length = p ^ (n * (n + 1) / 2) ∧
+    ∀ m, WellFormed p n n m → (toMatrix p n n m).IsSymm → m ∈ ms := by
+  sorry
+
+theorem range_spec (a b : ℕ) :
+    (Family.range a b).members = (List.range (b - a)).map fun i => [[a + i]] := by
+  rfl
+
+/-- Every word of the given length over `0..alphabet-1` exactly once. -/
+theorem words_spec (q len : ℕ) :
+    let ms := (Family.words q len).members
+    ms.Nodup ∧ ms.length = q ^ len ∧ ∀ w : List ℕ, w.length = len → (∀ x ∈ w, x < q) → [w] ∈ ms := by
+  sorry
+
 /-- `permElements` is the generated subgroup of `Equiv.Perm (Fin n)`, each element once. -/
 theorem permElements_spec (gens : List Perm) (n : ℕ) (h : gens.all (·.length = n) = true) :
     (permElements gens).Nodup ∧ (permElements gens).length = Nat.card (Subgroup.closure

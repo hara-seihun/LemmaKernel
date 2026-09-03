@@ -90,7 +90,7 @@ struct TransformVisitor : Family::Visitor {
     std::vector<Entry> buf;
     TransformVisitor(Family::Visitor &v, const Matrix &cm, uint64_t prime, uint64_t incols)
         : inner(v), c(cm), p(prime), in_cols(incols), buf(cm.cols) {}
-    Step push(const Entry *row) override {
+    Step push(const Entry *row, uint64_t first, uint64_t below) override {
         std::vector<uint64_t> acc(c.cols, 0);
         const Entry *cd = c.entries.data();
         for (uint64_t i = 0; i < in_cols; ++i) {
@@ -100,7 +100,7 @@ struct TransformVisitor : Family::Visitor {
             for (uint64_t j = 0; j < c.cols; ++j) acc[j] = (acc[j] + r * crow[j]) % p;
         }
         for (uint64_t j = 0; j < c.cols; ++j) buf[j] = (Entry)acc[j];
-        return inner.push(buf.data());
+        return inner.push(buf.data(), first, below);
     }
     void pop() override { inner.pop(); }
     void leaf(uint64_t i) override { inner.leaf(i); }
@@ -119,11 +119,18 @@ const char *family_kind_name(Family::Kind k) {
     case Family::Kind::Transform: return "transform";
     case Family::Kind::Stack: return "stack";
     case Family::Kind::GroupElements: return "group_elements";
+    case Family::Kind::SubsetsOf: return "subsets_of";
+    case Family::Kind::SymmetricMatrices: return "symmetric_matrices";
+    case Family::Kind::Range: return "range";
+    case Family::Kind::Words: return "words";
     }
     return "?";
 }
 
-uint64_t Family::prime() const { return child ? child->prime() : p; }
+uint64_t Family::prime() const {
+    if (kind == Kind::Range || kind == Kind::Words) return NATURALS;
+    return child ? child->prime() : p;
+}
 
 uint64_t Family::rows() const {
     switch (kind) {
@@ -134,6 +141,10 @@ uint64_t Family::rows() const {
     case Kind::Transform: return child->rows();
     case Kind::Stack: return child->rows() + data->rows;
     case Kind::GroupElements: return 1;
+    case Kind::SubsetsOf: return k;
+    case Kind::SymmetricMatrices: return n;
+    case Kind::Range: return 1;
+    case Kind::Words: return 1;
     }
     return 0;
 }
@@ -147,6 +158,10 @@ uint64_t Family::cols() const {
     case Kind::Transform: return data->cols;
     case Kind::Stack: return child->cols();
     case Kind::GroupElements: return data->cols;
+    case Kind::SubsetsOf: return data->cols;
+    case Kind::SymmetricMatrices: return n;
+    case Kind::Range: return 1;
+    case Kind::Words: return n;
     }
     return 0;
 }
@@ -158,13 +173,17 @@ bool Family::is_explicit() const {
 Result<uint64_t> Family::size() const {
     switch (kind) {
     case Kind::Explicit: return Result<uint64_t>::success(data->count);
-    case Kind::Subsets: return binom(data->count, k);
+    case Kind::Subsets:
+    case Kind::SubsetsOf: return binom(data->count, k);
     case Kind::Grassmannian: {
         auto t = pivot_table();
         if (!t.ok) return Result<uint64_t>::failure(t.error.status, t.error.message);
         return Result<uint64_t>::success(t.value->offsets.back());
     }
-    case Kind::AllMatrices: return pow_checked(p, m * n);
+    case Kind::AllMatrices:
+    case Kind::Words: return pow_checked(p, m * n);
+    case Kind::SymmetricMatrices: return pow_checked(p, n * (n + 1) / 2);
+    case Kind::Range: return Result<uint64_t>::success(b - a);
     case Kind::Transform:
     case Kind::Stack: return child->size();
     case Kind::GroupElements: {
@@ -179,9 +198,13 @@ Result<uint64_t> Family::size() const {
 Result<uint64_t> Family::top_count() const {
     switch (kind) {
     case Kind::Explicit: return Result<uint64_t>::success(data->count);
-    case Kind::Subsets: return Result<uint64_t>::success(data->count - k + 1);
+    case Kind::Subsets:
+    case Kind::SubsetsOf: return Result<uint64_t>::success(data->count - k + 1);
     case Kind::Grassmannian: return binom(n, h);
-    case Kind::AllMatrices: return pow_checked(p, n);
+    case Kind::AllMatrices:
+    case Kind::Words:
+    case Kind::SymmetricMatrices: return pow_checked(p, n);
+    case Kind::Range: return size();
     case Kind::Transform:
     case Kind::Stack: return child->top_count();
     case Kind::GroupElements: return size();
@@ -208,7 +231,8 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
     case Kind::Explicit:
         out.entries.assign(data->at(index), data->at(index) + out.rows * out.cols);
         break;
-    case Kind::Subsets: {
+    case Kind::Subsets:
+    case Kind::SubsetsOf: {
         uint64_t D = data->count, remaining = index, prev = 0;
         out.entries.resize(k * out.cols);
         for (uint64_t j = 0; j < k; ++j) {
@@ -248,7 +272,8 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         }
         break;
     }
-    case Kind::AllMatrices: {
+    case Kind::AllMatrices:
+    case Kind::Words: {
         out.entries.assign(m * n, 0);
         uint64_t rem = index;
         for (int64_t q = (int64_t)(m * n) - 1; q >= 0; --q) {
@@ -257,6 +282,22 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
         }
         break;
     }
+    case Kind::SymmetricMatrices: {
+        /* The upper triangle, row-major, holds the base-p digits of the index. */
+        out.entries.assign(n * n, 0);
+        uint64_t rem = index;
+        for (int64_t i = (int64_t)n - 1; i >= 0; --i)
+            for (int64_t j = (int64_t)n - 1; j >= i; --j) {
+                Entry e = (Entry)(rem % p);
+                rem /= p;
+                out.entries[i * n + j] = e;
+                out.entries[j * n + i] = e;
+            }
+        break;
+    }
+    case Kind::Range:
+        out.entries.assign(1, (Entry)(a + index));
+        break;
     case Kind::Transform: {
         auto inner = child->member(index);
         if (!inner.ok) return fail(inner.error.status, inner.error.message);
@@ -323,7 +364,8 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
     if (mem.count != 1 || mem.rows != rows() || mem.cols != cols() || mem.p != prime())
         return R::failure(INVALID, "index_of: member has the wrong shape for this family");
     switch (kind) {
-    case Kind::Subsets: {
+    case Kind::Subsets:
+    case Kind::SubsetsOf: {
         /* Rows must be dictionary rows; the dictionary must have no duplicate rows. */
         uint64_t D = data->count, cols_ = data->cols;
         std::vector<uint64_t> idx(k);
@@ -379,10 +421,28 @@ Result<uint64_t> Family::index_of(const Matrix &mem) const {
         }
         return R::success(index + rem);
     }
-    case Kind::AllMatrices: {
+    case Kind::AllMatrices:
+    case Kind::Words: {
         uint64_t index = 0;
-        for (Entry e : mem.entries) index = index * p + e;
+        for (Entry e : mem.entries) {
+            if (e >= p) return R::failure(INVALID, "index_of: entry out of range");
+            index = index * p + e;
+        }
         return R::success(index);
+    }
+    case Kind::SymmetricMatrices: {
+        uint64_t index = 0;
+        for (uint64_t i = 0; i < n; ++i)
+            for (uint64_t j = i; j < n; ++j) {
+                if (mem.entries[i * n + j] != mem.entries[j * n + i]) return R::failure(INVALID, "index_of: matrix is not symmetric");
+                index = index * p + mem.entries[i * n + j];
+            }
+        return R::success(index);
+    }
+    case Kind::Range: {
+        uint64_t v = mem.entries[0];
+        if (v < a || v >= b) return R::failure(INVALID, "index_of: value outside the range");
+        return R::success(v - a);
     }
     case Kind::GroupElements: {
         auto g = group_elements();
@@ -413,7 +473,7 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
             uint64_t pushed = 0;
             Step step = Step::Descend;
             for (uint64_t r = 0; r < data->rows; ++r) {
-                step = v.push(base + r * data->cols);
+                step = v.push(base + r * data->cols, i, 1);
                 ++pushed;
                 if (step != Step::Descend) break;
             }
@@ -424,7 +484,8 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
         }
         return ok();
     }
-    case Kind::Subsets: {
+    case Kind::Subsets:
+    case Kind::SubsetsOf: {
         uint64_t D = data->count, cols = data->cols;
         std::vector<std::vector<uint64_t>> tail(k + 1); /* tail[j][c] = C(D-1-c, k-1-j) */
         for (uint64_t j = 0; j < k; ++j) {
@@ -442,7 +503,7 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
         auto descend = [&](auto &self, uint64_t depth, uint64_t prev, uint64_t index, uint64_t c_end) -> void {
             for (uint64_t c = prev; c < c_end; ++c) {
                 uint64_t below = tail[depth][c];
-                Step step = v.push(data->at(0) + c * cols);
+                Step step = v.push(data->at(0) + c * cols, index, below);
                 if (step == Step::Descend) {
                     if (depth + 1 == k) v.leaf(index);
                     else self(self, depth + 1, c + 1, index, D - (k - depth - 1) + 1);
@@ -478,7 +539,7 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
                 r[piv[j]] = 1;
                 const auto &fc = free_cols[j];
                 for (uint64_t d = 0; d < radix[j]; ++d) {
-                    Step step = v.push(r.data());
+                    Step step = v.push(r.data(), index, below[j]);
                     if (step == Step::Descend) {
                         if (j + 1 == h) v.leaf(index);
                         else self(self, j + 1, index);
@@ -499,7 +560,53 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
         }
         return ok();
     }
-    case Kind::AllMatrices: {
+    case Kind::SymmetricMatrices: {
+        /* Row j has n - j free entries (columns j..n-1); its first j entries are copies of column
+         * j of the rows above. The partial matrix is kept in `mat`. */
+        std::vector<uint64_t> below(n);
+        for (int64_t j = (int64_t)n - 1; j >= 0; --j)
+            below[j] = (j + 1 < (int64_t)n) ? below[j + 1] * pow_checked(p, n - j - 1).value : 1;
+        std::vector<Entry> mat(n * n, 0);
+        auto descend = [&](auto &self, uint64_t j, uint64_t index, uint64_t d_begin, uint64_t d_end) -> void {
+            Entry *row = mat.data() + j * n;
+            for (uint64_t c = 0; c < j; ++c) row[c] = mat[c * n + j];
+            uint64_t rem = d_begin;
+            for (int64_t q = (int64_t)n - 1; q >= (int64_t)j; --q) { row[q] = (Entry)(rem % p); rem /= p; }
+            for (uint64_t d = d_begin; d < d_end; ++d) {
+                Step step = v.push(row, index, below[j]);
+                if (step == Step::Descend) {
+                    if (j + 1 == n) v.leaf(index);
+                    else self(self, j + 1, index, 0, pow_checked(p, n - j - 1).value);
+                } else if (step == Step::TakeAll) {
+                    v.take_all(index, below[j]);
+                } else {
+                    v.skip_all(index, below[j]);
+                }
+                v.pop();
+                index += below[j];
+                for (int64_t q = (int64_t)n - 1; q >= (int64_t)j; --q) {
+                    if (++row[q] < p) break;
+                    row[q] = 0;
+                }
+            }
+        };
+        descend(descend, 0, top_begin * below[0], top_begin, top_end);
+        return ok();
+    }
+    case Kind::Range: {
+        Entry e;
+        for (uint64_t i = top_begin; i < top_end; ++i) {
+            e = (Entry)(a + i);
+            Step step = v.push(&e, i, 1);
+            if (step == Step::Descend) v.leaf(i);
+            else if (step == Step::TakeAll) v.take_all(i, 1);
+            else v.skip_all(i, 1);
+            v.pop();
+        }
+        return ok();
+    }
+    case Kind::AllMatrices:
+    case Kind::Words: {
         auto per_row = pow_checked(p, n);
         if (!per_row.ok) return fail(per_row.error.status, per_row.error.message);
         std::vector<uint64_t> below(m);
@@ -509,7 +616,7 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
             uint64_t rem = d_begin;
             for (int64_t q = (int64_t)n - 1; q >= 0; --q) { r[q] = (Entry)(rem % p); rem /= p; }
             for (uint64_t d = d_begin; d < d_end; ++d) {
-                Step step = v.push(r.data());
+                Step step = v.push(r.data(), index, below[j]);
                 if (step == Step::Descend) {
                     if (j + 1 == m) v.leaf(index);
                     else self(self, j + 1, index, 0, per_row.value);
@@ -538,7 +645,7 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
         if (!g.ok) return fail(g.error.status, g.error.message);
         uint64_t nn = data->cols;
         for (uint64_t i = top_begin; i < top_end; ++i) {
-            Step step = v.push(g.value->data() + i * nn);
+            Step step = v.push(g.value->data() + i * nn, i, 1);
             if (step == Step::Descend) v.leaf(i);
             else if (step == Step::TakeAll) v.take_all(i, 1);
             else v.skip_all(i, 1);
@@ -552,8 +659,10 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
          * explicit-only by contract. */
         uint64_t pushed = 0;
         Step step = Step::Descend;
+        auto whole = child->size();
+        if (!whole.ok) return fail(whole.error.status, whole.error.message);
         for (uint64_t r = 0; r < data->rows; ++r) {
-            step = v.push(data->at(0) + r * data->cols);
+            step = v.push(data->at(0) + r * data->cols, 0, whole.value);
             ++pushed;
             if (step != Step::Descend) break;
         }
@@ -562,7 +671,7 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
         else {
             struct Counter : Visitor {
                 uint64_t first = UINT64_MAX, count = 0;
-                Step push(const Entry *) override { return Step::TakeAll; }
+                Step push(const Entry *, uint64_t, uint64_t) override { return Step::TakeAll; }
                 void pop() override {}
                 void leaf(uint64_t) override {}
                 void take_all(uint64_t f, uint64_t n) override { first = std::min(first, f); count += n; }
@@ -643,6 +752,8 @@ Result<std::shared_ptr<Family>> make_all_matrices(uint64_t p, uint64_t rows, uin
 
 Result<std::shared_ptr<Family>> make_transform(std::shared_ptr<Family> inner, std::shared_ptr<Matrix> c) {
     if (c->count != 1) return Result<std::shared_ptr<Family>>::failure(INVALID, "transform: C must be a single matrix");
+    if (inner->prime() == 0 || inner->prime() == NATURALS)
+        return Result<std::shared_ptr<Family>>::failure(INVALID, "transform: members must be matrices over a prime");
     if (c->p != inner->prime()) return Result<std::shared_ptr<Family>>::failure(INVALID, "transform: prime mismatch");
     if (c->rows != inner->cols())
         return Result<std::shared_ptr<Family>>::failure(INVALID, "transform: C must have as many rows as the members have columns");
@@ -663,6 +774,74 @@ Result<std::shared_ptr<Family>> make_stack(std::shared_ptr<Family> inner, std::s
     f->child = std::move(inner);
     f->data = std::move(rows);
     return Result<std::shared_ptr<Family>>::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_subsets_of(std::shared_ptr<Family> inner, uint64_t k) {
+    using R = Result<std::shared_ptr<Family>>;
+    auto sz = inner->size();
+    if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
+    if (sz.value > (1ULL << 22)) return R::failure(INVALID, "subsets_of: the inner family has more than 2^22 members");
+    if (k == 0 || k > sz.value) return R::failure(INVALID, "subsets_of: k must satisfy 1 <= k <= inner family size");
+    auto dict = std::make_shared<Matrix>();
+    dict->p = inner->prime();
+    dict->count = sz.value;
+    dict->rows = 1;
+    dict->cols = inner->rows() * inner->cols();
+    dict->entries.resize(dict->count * dict->cols);
+    Matrix tmp;
+    for (uint64_t i = 0; i < sz.value; ++i) {
+        auto st = inner->member_into(i, tmp);
+        if (!st.ok) return R::failure(st.error.status, st.error.message);
+        std::copy(tmp.entries.begin(), tmp.entries.end(), dict->entries.begin() + i * dict->cols);
+    }
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::SubsetsOf;
+    f->child = std::move(inner);
+    f->data = std::move(dict);
+    f->p = f->data->p;
+    f->k = k;
+    auto total = f->size();
+    if (!total.ok) return R::failure(total.error.status, total.error.message);
+    return R::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_symmetric_matrices(uint64_t p, uint64_t n) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (!is_prime(p)) return R::failure(INVALID, "p is not prime");
+    if (p >= (1ULL << 32)) return R::failure(INVALID, "p must be < 2^32");
+    if (n == 0) return R::failure(INVALID, "symmetric_matrices: need n >= 1");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::SymmetricMatrices;
+    f->p = p;
+    f->n = n;
+    auto sz = f->size();
+    if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
+    return R::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_range(uint64_t a, uint64_t b) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (a >= b) return R::failure(INVALID, "range: need a < b");
+    if (b > (1ULL << 32)) return R::failure(INVALID, "range: values must be < 2^32");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::Range;
+    f->a = a;
+    f->b = b;
+    return R::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_words(uint64_t alphabet, uint64_t length) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (alphabet < 2 || alphabet >= (1ULL << 32)) return R::failure(INVALID, "words: need 2 <= alphabet < 2^32");
+    if (length == 0) return R::failure(INVALID, "words: need length >= 1");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::Words;
+    f->p = alphabet;
+    f->m = 1;
+    f->n = length;
+    auto sz = f->size();
+    if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
+    return R::success(f);
 }
 
 Result<std::vector<Entry>> permutation_closure(const Matrix &generators, uint64_t limit) {

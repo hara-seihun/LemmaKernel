@@ -17,8 +17,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "python"))
-from lemmakernel.interchange import (Basis, Count, Family, Histogram, Hits, Integers, Inverses, Matrix,  # noqa: E402
-                                     Solutions, Witness)
+from lemmakernel import naive as rt  # noqa: E402  (families and reductions, shared by every module)
+from lemmakernel.interchange import Basis, Family, Inverses, Matrix, Solutions, Witness  # noqa: E402
 
 
 # ---- arithmetic ---------------------------------------------------------------------------------
@@ -103,67 +103,8 @@ def inverse(rows, p):
     return [r[n:] for r in R]
 
 
-def matmul(a, b, p):
-    return [[sum(x * y for x, y in zip(row, col)) % p for col in zip(*b)] for row in a]
-
-
-# ---- families -----------------------------------------------------------------------------------
-
-def _batch_members(m: Matrix):
-    return [m.member(i) for i in range(m.count)]
-
-
-def grassmannian_members(p, n, h):
-    """Every h-dim subspace of F_p^n as its rref basis; pivot sets lexicographic, then free
-    entries row-major lexicographic. Yields lists of rows."""
-    for piv in itertools.combinations(range(n), h):
-        free = [(i, c) for i in range(h) for c in range(piv[i] + 1, n) if c not in piv]
-        for digits in itertools.product(range(p), repeat=len(free)):
-            rows = [[0] * n for _ in range(h)]
-            for i, pc in enumerate(piv):
-                rows[i][pc] = 1
-            for (i, c), d in zip(free, digits):
-                rows[i][c] = d
-            yield rows
-
-
-def iter_members(f: Family):
-    """Yield the members of a family in canonical order as lists of rows."""
-    if f.kind == "explicit":
-        (batch,) = f.children
-        yield from _batch_members(batch)
-    elif f.kind == "subsets":
-        (dictionary,) = f.children
-        vecs = [m[0] for m in _batch_members(dictionary)] if dictionary.rows == 1 else dictionary.member(0)
-        for idx in itertools.combinations(range(len(vecs)), f.params["k"]):
-            yield [vecs[i] for i in idx]
-    elif f.kind == "grassmannian":
-        yield from grassmannian_members(f.params["p"], f.params["n"], f.params["h"])
-    elif f.kind == "all_matrices":
-        p, rows, cols = f.params["p"], f.params["rows"], f.params["cols"]
-        for digits in itertools.product(range(p), repeat=rows * cols):
-            yield [list(digits[r * cols:(r + 1) * cols]) for r in range(rows)]
-    elif f.kind == "transform":
-        inner, C = f.children
-        c, p = C.member(0), C.p
-        for m in iter_members(inner):
-            yield matmul(m, c, p)
-    elif f.kind == "stack":
-        inner, rows = f.children
-        extra = rows.member(0)
-        for m in iter_members(inner):
-            yield m + extra
-    else:
-        raise ValueError(f"unknown family {f.kind}")
-
-
-def prime(f: Family) -> int:
-    return f.params["p"] if "p" in f.params else prime(f.children[0]) if isinstance(f.children[0], Family) else f.children[0].p
-
-
-def members(f: Family):
-    """Materialise a family in canonical order as a list of matrices (lists of rows), plus p."""
-    return list(iter_members(f)), prime(f)
+matmul = rt.matmul
+members = rt.members  # kept for callers that materialise a family through this module
 
 
 # ---- operations and reductions -------------------------------------------------------------------
@@ -175,7 +116,7 @@ def _flat(mats):
 def run(op: str, family: Family, reduction: str = "all", prefix: int | None = None, **args):
     """`prefix`: answer for the first `prefix` members only (the benchmark's timing sample)."""
     op = op.removeprefix("gfp.")
-    ms, p = list(itertools.islice(iter_members(family), prefix)), prime(family)
+    ms, p = list(itertools.islice(rt.iter_members(family), prefix)), rt.prime(family)
     size = len(ms)
     rows = len(ms[0]) if ms else family.params.get("rows", 0)
     cols = len(ms[0][0]) if ms else family.params.get("cols", 0)
@@ -211,14 +152,7 @@ def run(op: str, family: Family, reduction: str = "all", prefix: int | None = No
 
     if op in ("rank", "nullity"):
         values = [rank(m, p) if op == "rank" else cols - rank(m, p) for m in ms]
-        if reduction == "all":
-            return Integers(values)
-        if reduction == "histogram":
-            bins = [0] * (max(values) + 1 if values else 0)
-            for v in values:
-                bins[v] += 1
-            return Histogram(size, size, bins)
-        raise ValueError(f"reduction {reduction} does not accept integer values")
+        return rt.reduce_int(reduction, values, ms, p)
 
     if op == "full_row_rank":
         flags = [rank(m, p) == rows for m in ms]
@@ -230,13 +164,4 @@ def run(op: str, family: Family, reduction: str = "all", prefix: int | None = No
     else:
         raise ValueError(f"unknown operation {op}")
 
-    if reduction == "all":
-        return Integers([int(f) for f in flags])
-    if reduction == "count":
-        return Count(sum(flags), size, size)
-    if reduction == "hits":
-        idx = [i for i, f in enumerate(flags) if f]
-        limit = min(args.get("limit", 0), len(idx))
-        mem = Matrix(p, limit, rows, cols, _flat([ms[i] for i in idx[:limit]]))
-        return Hits(p, rows, cols, len(idx), size, size, idx, mem)
-    raise ValueError(f"reduction {reduction} does not accept boolean values")
+    return rt.reduce_bool(reduction, flags, ms, p, **args)

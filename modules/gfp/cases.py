@@ -20,10 +20,14 @@ def small_families(ctx, rng, p):
     out = [("explicit", ctx.explicit(random_batch(rng, p, 8, 3, 4))),
            ("subsets", ctx.subsets(random_batch(rng, p, 6, 1, 4), 3))]
     if p == 2:
-        out += [("grassmannian", ctx.grassmannian(2, 4, 2)), ("all_matrices", ctx.all_matrices(2, 2, 2))]
+        out += [("grassmannian", ctx.grassmannian(2, 4, 2)), ("all_matrices", ctx.all_matrices(2, 2, 2)),
+                ("symmetric_matrices", ctx.symmetric_matrices(2, 3)),
+                ("subsets_of(grassmannian)", ctx.subsets_of(ctx.grassmannian(2, 3, 1), 2))]
         G = ctx.grassmannian(2, 4, 2)
     elif p == 3:
-        out += [("grassmannian", ctx.grassmannian(3, 3, 1)), ("all_matrices", ctx.all_matrices(3, 1, 2))]
+        out += [("grassmannian", ctx.grassmannian(3, 3, 1)), ("all_matrices", ctx.all_matrices(3, 1, 2)),
+                ("symmetric_matrices", ctx.symmetric_matrices(3, 2)),
+                ("subsets_of(all_matrices)", ctx.subsets_of(ctx.all_matrices(3, 1, 2), 2))]
         G = ctx.subsets(random_batch(rng, p, 5, 1, 4), 2)
     elif p < 20:
         out += [("grassmannian", ctx.grassmannian(p, 2, 1)), ("all_matrices", ctx.all_matrices(p, 1, 1))]

@@ -58,6 +58,9 @@ Where the time goes in the generic basis, so you know what to attack:
 - Threads split the top-level branches. Families whose top level is narrow (a Grassmannian with
   few pivot sets) leave cores idle; a backend can split deeper if it wants, as long as indices
   stay canonical.
+- `Visitor::push(row, first, below)` names the index range of the subtree being entered. The
+  walker uses it to answer `first` without visiting anything above a hit already found
+  (`acc.exhausted(first)`); a backend with its own walk should do the same.
 
 A backend need not use the walk at all. A GPU backend will more likely unrank members in bulk
 from their canonical indices (`Family::member` is the scalar version of that) and reduce on

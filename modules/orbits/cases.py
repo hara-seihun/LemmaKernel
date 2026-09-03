@@ -37,6 +37,10 @@ def cases(ctx, rng):
         ("S4 on random dictionary", ctx.perms(4, symmetric(4)), ctx.subsets(D4, 2)),
         ("trivial on 1-subsets", ctx.perms(4, [list(range(4))]), ctx.subsets(I4, 1)),
         ("swap on 4-subsets", ctx.perms(6, [[1, 0, 2, 3, 4, 5]]), ctx.subsets(I6, 4)),
+        # the group acts on the positions of the inner family's members: C3 regular on itself
+        ("C3 on 2-subsets of C3", ctx.perms(3, cyclic(3)), ctx.subsets_of(ctx.group_elements(ctx.perms(3, cyclic(3))), 2)),
+        # PGL(2,2) as S3 on the 3 points of PG(1,2), acting on pairs of points
+        ("S3 on pairs of PG(1,2) points", ctx.perms(3, symmetric(3)), ctx.subsets_of(ctx.grassmannian(2, 2, 1), 2)),
     ]
     GL22 = lk.matrix(2, [[[1, 1], [0, 1]], [[0, 1], [1, 0]]])          # order 6
     FIB3 = lk.matrix(3, [[[0, 1], [1, 1]]])                             # order 8

@@ -115,6 +115,15 @@ def grassmannianMembers (p n h : Nat) : List Mat :=
     let free := freePositions piv n
     (tuples p free.length).map (rrefShape piv n free)
 
+/-- Every symmetric `n x n` matrix over `F_p`: the upper triangle, row-major, is the base-`p`
+expansion of the index. -/
+def symmetricMembers (p n : Nat) : List Mat :=
+  (tuples p (n * (n + 1) / 2)).map fun digits =>
+    -- position of (i, j) with i ≤ j in the row-major upper triangle
+    let pos := fun i j => i * n - i * (i - 1) / 2 + (j - i)
+    (List.range n).map fun i => (List.range n).map fun j =>
+      if i ≤ j then digits.getD (pos i j) 0 else digits.getD (pos j i) 0
+
 inductive Family
   | explicit (p : Nat) (batch : List Mat)
   | subsets (p : Nat) (dictionary : List Vec) (k : Nat)
@@ -123,14 +132,19 @@ inductive Family
   | transform (inner : Family) (c : Mat)
   | stack (inner : Family) (rows : Mat)
   | groupElements (gens : List Perm)
+  | subsetsOf (inner : Family) (k : Nat)
+  | symmetricMatrices (p n : Nat)
+  | range (a b : Nat)
+  | words (alphabet length : Nat)
 
-/-- The prime of a matrix family; 0 for permutations. -/
+/-- The prime of a matrix family; 0 for permutations and for natural-number members. -/
 def Family.p : Family → Nat
-  | .explicit p _ | .subsets p _ _ | .grassmannian p _ _ | .allMatrices p _ _ => p
-  | .transform f _ | .stack f _ => f.p
-  | .groupElements _ => 0
+  | .explicit p _ | .subsets p _ _ | .grassmannian p _ _ | .allMatrices p _ _ | .symmetricMatrices p _ => p
+  | .transform f _ | .stack f _ | .subsetsOf f _ => f.p
+  | .groupElements _ | .range _ _ | .words _ _ => 0
 
-/-- Members in canonical order. A permutation is a one-row matrix. -/
+/-- Members in canonical order. A permutation is a one-row matrix; so is a word, and an integer
+is a `1 x 1` matrix. -/
 def Family.members : Family → List Mat
   | .explicit _ batch => batch
   | .subsets _ d k => combos d k
@@ -139,18 +153,37 @@ def Family.members : Family → List Mat
   | .transform f c => f.members.map fun m => matmul f.p m c
   | .stack f rows => f.members.map (· ++ rows)
   | .groupElements gens => (permElements gens).map ([·])
+  | .subsetsOf f k => combos (f.members.map List.flatten) k
+  | .symmetricMatrices p n => symmetricMembers p n
+  | .range a b => (List.range (b - a)).map fun i => [[a + i]]
+  | .words q len => (tuples q len).map ([·])
+
+/-- The dictionary a `subsets` or `subsets_of` family draws from, for modules whose groups act
+on dictionary positions. -/
+def Family.dictionary : Family → Option (List Vec)
+  | .subsets _ d _ => some d
+  | .subsetsOf f _ => some (f.members.map List.flatten)
+  | _ => none
+
+def Family.subsetSize : Family → Nat
+  | .subsets _ _ k | .subsetsOf _ k => k
+  | _ => 0
 
 /-! ## Reductions and results -/
 
 inductive Red
-  | all | count | histogram | hits (limit : Nat)
+  | all | count | histogram | hits (limit : Nat) | first | sum | max | min
 
-/-- A result: the runtime's own kinds, or a list of module values under `all`. -/
+/-- A result: the runtime's own kinds, or a list of module values under `all`. `count` also
+carries a `sum`; `first` carries the hit's index and member when there is one; `extremum` the
+extreme value, the least index attaining it, and that member. -/
 inductive Result (α : Type)
   | integers (xs : List Nat)
   | count (value size : Nat)
   | histogram (size : Nat) (bins : List Nat)
   | hits (size : Nat) (indices : List Nat) (members : List Mat)
+  | first (size : Nat) (hit : Option (Nat × Mat))
+  | extremum (size value index : Nat) (member : Mat)
   | values (xs : List α)
   | invalid
   deriving DecidableEq, Repr
@@ -158,20 +191,32 @@ inductive Result (α : Type)
 def histogramOf (xs : List Nat) : List Nat :=
   (List.range (xs.foldl max 0 + 1)).map fun v => (xs.filter (· = v)).length
 
-def reduceInt (red : Red) (xs : List Nat) : Result α :=
+/-- The extreme value under `better` and the least index attaining it. -/
+def extremumOf (better : Nat → Nat → Bool) (ms : List Mat) (xs : List Nat) : Result α :=
+  match xs with
+  | [] => .invalid
+  | x :: rest =>
+    let v := rest.foldl (fun acc y => if better y acc then y else acc) x
+    let i := xs.idxOf v
+    .extremum xs.length v i (ms.getD i [])
+
+def reduceInt (red : Red) (ms : List Mat) (xs : List Nat) : Result α :=
   match red with
   | .all => .integers xs
   | .histogram => .histogram xs.length (histogramOf xs)
+  | .sum => .count (xs.foldl (· + ·) 0) xs.length
+  | .max => extremumOf (· > ·) ms xs
+  | .min => extremumOf (· < ·) ms xs
   | _ => .invalid
 
 def reduceBool (red : Red) (ms : List Mat) (flags : List Bool) : Result α :=
+  let idx := ((List.range flags.length).zip flags).filterMap fun (i, b) => if b then some i else none
   match red with
   | .all => .integers (flags.map fun b => if b then 1 else 0)
   | .count => .count (flags.filter id).length flags.length
-  | .hits limit =>
-    let idx := ((List.range flags.length).zip flags).filterMap fun (i, b) => if b then some i else none
-    .hits flags.length idx ((idx.take limit).map fun i => ms.getD i [])
-  | .histogram => .invalid
+  | .hits limit => .hits flags.length idx ((idx.take limit).map fun i => ms.getD i [])
+  | .first => .first flags.length (idx.head?.map fun i => (i, ms.getD i []))
+  | _ => .invalid
 
 /-- A per-member value is only ever materialised. -/
 def reduceValues (red : Red) (xs : List α) : Result α :=

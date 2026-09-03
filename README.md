@@ -27,14 +27,19 @@ anything Python can do, C can do with the same names.
 
 Vocabulary, in the order a request is built:
 
-- **family**: a description of a set of objects with a canonical order (`explicit`, `subsets`,
-  `grassmannian`, `all_matrices`, the `transform`/`stack` wrappers, and `group_elements` of a
-  permutation group). Family sizes in the hundreds of millions are normal.
+- **family**: a description of a set of objects with a canonical order (`explicit`, `subsets`
+  of a dictionary, `subsets_of` another family, `grassmannian`, `all_matrices`,
+  `symmetric_matrices`, the `transform`/`stack` wrappers, `group_elements` of a permutation
+  group, and `range`/`words` of natural numbers). Family sizes in the hundreds of millions are
+  normal.
 - **operation**: what to compute per member (`gfp.rank`, `gfp.in_span`, `gfp.rref`, ...).
-- **reduction**: what to bring back (`count`, `histogram`, `hits`, or `all`).
+- **reduction**: what to bring back. For booleans: `count`, `hits`, `first` (the least hit,
+  stopping early), `all`. For integers: `histogram`, `sum`, `max`, `min` (with the member
+  attaining it), `all`.
 
-A `count`, `histogram`, or `hits` result carries `visited` and `family_size`; they are equal or
-the call fails. That is the completeness check for a non-existence answer.
+Every reduced result carries `visited` and `family_size`; they are equal (or, for `first`,
+`visited` is the hit's index + 1) or the call fails. That is the completeness check for a
+non-existence answer.
 
 ## Build and test
 

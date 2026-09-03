@@ -50,7 +50,7 @@ inline bool parse_query(const std::string &op, Query &q) {
 }
 
 struct Outputs {
-    std::vector<uint64_t> integers;         /* `all` of an integer or boolean operation */
+    Shared shared;                          /* `all` of an integer or boolean operation; `first` state */
     std::vector<Entry> matrices;            /* `all` of rref: size*rows*cols */
     std::vector<std::vector<Entry>> ragged; /* `all` of nullspace: per member */
 };
@@ -70,13 +70,13 @@ template <class Basis> struct Walker : Family::Visitor {
 
     Walker(Basis b, Query q, Reduction r, uint64_t prime, uint64_t c, uint64_t rows, const Entry *target, Outputs *o)
         : query(q), reduction(r), p(prime), cols(c), member_rows(rows), prune(r != Reduction::All), basis(std::move(b)),
-          out(o), acc(r, &o->integers) {
+          out(o), acc(r, &o->shared) {
         if (target) target_stack.push_back(basis.pack(target));
     }
 
     uint64_t depth() const { return added.size(); }
 
-    Step push(const Entry *row) override {
+    Step push(const Entry *row, uint64_t first, uint64_t) override {
         bool independent = basis.add(row);
         added.push_back(independent);
         if (query == Query::InSpan) {
@@ -84,6 +84,7 @@ template <class Basis> struct Walker : Family::Visitor {
             if (independent) basis.reduce_by_last(target_stack.back());
         }
         if (!prune) return Step::Descend;
+        if (acc.exhausted(first)) return Step::Skip;
         switch (query) {
         case Query::FullRowRank:
             return independent ? Step::Descend : Step::Skip;
@@ -188,7 +189,7 @@ Result<std::shared_ptr<Object>> run_walk(const Request &req, Query query, Reduct
         if (size > (1ULL << 40)) return R::failure(INVALID, "family too large to materialise");
         if (query == Query::Rref) out.matrices.assign(size * rows * cols, 0);
         else if (query == Query::Nullspace) out.ragged.resize(size);
-        else out.integers.assign(size, 0);
+        else out.shared.all.assign(size, 0);
     }
 
     uint32_t threads = std::max<uint32_t>(1, std::min<uint64_t>(req.threads, tops));
@@ -226,7 +227,7 @@ Result<std::shared_ptr<Object>> run_walk(const Request &req, Query query, Reduct
     }
     std::vector<Accumulator> accs;
     for (auto &w : walkers) accs.push_back(w.acc);
-    return assemble(req, reduction, accs, std::move(out.integers));
+    return assemble(req, reduction, accs, out.shared);
 }
 
 } // namespace lk::gfp
