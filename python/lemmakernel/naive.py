@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import itertools
 
-from .interchange import NATURALS, Count, Extremum, Family, First, Histogram, Hits, Integers, Matrix
+from .interchange import NATURALS, Count, Extremum, Family, First, Histogram, Hits, Integers, Matrix, Perms
 
 
 # ---- arithmetic the families need ---------------------------------------------------------------
@@ -53,7 +53,9 @@ def batch_members(m: Matrix):
 
 
 def vectors_of(m):
-    """A batch of 1 x n rows, or one k x n matrix, as a list of vectors."""
+    """A batch of 1 x n rows, one k x n matrix, or a permutation batch as vectors."""
+    if isinstance(m, Perms):
+        return m.tolist()
     return [r[0] for r in batch_members(m)] if m.rows == 1 else m.member(0)
 
 

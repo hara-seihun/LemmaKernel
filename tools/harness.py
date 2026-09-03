@@ -148,7 +148,9 @@ def lean_family(f: ic.Family) -> str:
         return f"(.{ctor} {b.p} {L(b.tolist())})"
     if f.kind == "subsets":
         (d,) = f.children
-        return f"(.{ctor} {d.p} {L(vectors_of(d))} {q['k']})"
+        p = 0 if isinstance(d, ic.Perms) else d.p
+        vectors = d.tolist() if isinstance(d, ic.Perms) else vectors_of(d)
+        return f"(.{ctor} {p} {L(vectors)} {q['k']})"
     if f.kind == "grassmannian":
         return f"(.{ctor} {q['p']} {q['n']} {q['h']})"
     if f.kind == "all_matrices":

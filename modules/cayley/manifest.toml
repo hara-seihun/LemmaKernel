@@ -1,0 +1,86 @@
+# cayley: simple undirected Cayley graphs of finite permutation groups.
+
+[module]
+name = "cayley"
+version = 1
+summary = "Simple undirected Cayley graphs Cay(G,S). A member is a fixed-size list of distinct nonidentity elements of the permutation group G. SimpleGraph.fromRel symmetrises S when S is not inverse-closed. Girth and Mathlib-style diameter are 0 for acyclic and disconnected graphs, respectively."
+lean = "lean"
+contract = "lean/Cayley/Contract.lean"
+reference = "lean/Cayley/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+# Connection sets use existing matrix families. Each member row is the image list of one
+# permutation in G. `subsets` of a dictionary of nonidentity group elements is the usual input;
+# `explicit` and `subsets_of` are also accepted. Rows must be distinct members of G and omit the
+# identity. The group argument is an orbits.perms batch of generators.
+
+[[operations]]
+name = "connected"
+value = "boolean"
+args = { group = "group" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Whether the simple undirected Cayley graph is connected. For non-inverse-closed S, adjacency uses S union S^-1."
+
+[[operations]]
+name = "is_regular_of_degree"
+value = "boolean"
+args = { group = "group", degree = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Whether every vertex has exactly `degree` neighbours in the simple undirected Cayley graph."
+
+[[operations]]
+name = "girth"
+value = "integer"
+args = { group = "group" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Length of a shortest cycle, or 0 for an acyclic graph, matching Mathlib SimpleGraph.girth."
+
+[[operations]]
+name = "diameter"
+value = "integer"
+args = { group = "group" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Maximum shortest-path distance when connected, or 0 when disconnected, matching Mathlib SimpleGraph.diam."
+
+[[operations]]
+name = "aut_order"
+value = "integer"
+args = { group = "group" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Order of the full automorphism group of the unlabelled graph, counted by equitable partition refinement and individualisation."
+
+[[operations]]
+name = "is_ci_set"
+value = "boolean"
+args = { group = "group" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Whether S is inverse-closed and every inverse-closed identity-free T of the same size with Cay(G,T) isomorphic to Cay(G,S) is an Aut(G)-image of S. Non-inverse-closed S returns false."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/cayley_generic.cpp"]
+accepts = "finite groups given by permutation generators; graph invariants use adjacency matrices; is_ci_set exhausts inverse pairs and group automorphisms"
+summary = "Portable C++: group closure and multiplication table once per request, BFS invariants, and exact graph canonical forms by equitable partition refinement plus individualisation."
+
+[[rejections]]
+case = "matrix group is unsupported"
+error = "permutation group"
+
+[[rejections]]
+case = "identity is not a connection"
+error = "identity"
+
+[[rejections]]
+case = "element outside G"
+error = "not an element"
+
+[[rejections]]
+case = "range is not a connection family"
+error = "families only"
+
+[[rejections]]
+case = "C4 singletons"
+op = "girth"
+reduction = "count"
+error = "does not accept integer"
