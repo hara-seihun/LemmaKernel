@@ -282,7 +282,7 @@ def Family.naturals : Family → Bool
   | .groupTables _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ |
     .compositions _ _ _ | .standardTableaux _ => true
   | .transform _ _ | .grassmannian _ _ _ | .allMatrices _ _ _ | .symmetricMatrices _ _ |
-    .groupElements _ _ => false
+    .groupElements _ _ | .allGraphs _ | .edgeSubgraphs _ _ | .cayleyGraphs _ => false
 
 /-- Members in canonical order. A permutation is a one-row matrix; so is a word, and an integer
 is a `1 x 1` matrix. -/
