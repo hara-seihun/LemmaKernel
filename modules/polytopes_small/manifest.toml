@@ -1,0 +1,52 @@
+# polytopes_small: exact combinatorics and Ehrhart data for small lattice polytopes.
+
+[module]
+name = "polytopes_small"
+version = 1
+summary = "Small lattice polytopes whose selected lattice points are matrix rows. Faces are nonempty and the f-vector is (f_0,...,f_d), including the polytope itself and padded with zeros to ambient dimension. The Ehrhart polynomial is returned canonically as the padded h*-vector: L_P(t) = sum_j h*_j binom(t+r-j,r), where r is the affine dimension."
+lean = "lean"
+contract = "lean/Polytopes_small/Contract.lean"
+reference = "lean/Polytopes_small/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "polytopes_small.vectors"
+params = ["count", "length"]
+payload = "count*length u64 entries, one natural-number vector per member"
+lean = "vector"
+summary = "A batch of fixed-length natural-number vectors. Polytope vectors have ambient dimension plus one entries."
+
+[[operations]]
+name = "vertex_count"
+value = "integer"
+families = ["subsets"]
+summary = "Number of vertices of the convex hull; selected points that lie in a proper face but are not extreme are not counted."
+
+[[operations]]
+name = "ehrhart_polynomial"
+value = "polytopes_small.vectors"
+families = ["subsets"]
+summary = "The h*-vector of the convex hull, padded with trailing zeros to ambient dimension plus one. If r is the affine dimension, L_P(t) = sum_{j=0}^r h*_j binom(t+r-j,r)."
+
+[[operations]]
+name = "f_vector"
+value = "polytopes_small.vectors"
+families = ["subsets"]
+summary = "Face counts (f_0,...,f_d), including the polytope as its unique top-dimensional face and zeros above its affine dimension. The empty face is omitted."
+
+[[operations]]
+name = "is_simplicial"
+value = "boolean"
+families = ["subsets"]
+summary = "Whether every facet has exactly r vertices, where r is the affine dimension. Polytopes of dimension zero or one are simplicial."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/polytopes_small_generic.cpp"]
+accepts = "Nonempty subsets of integer-coordinate dictionaries in ambient dimension at most 6; exact integer face enumeration and lattice-point enumeration for Ehrhart data"
+summary = "Portable C++: exact determinant signs enumerate supporting facets and their intersections; Ehrhart counts enumerate the small dilated bounding boxes."
+
+[[rejections]]
+case = "explicit family is unsupported"
+error = "families"

@@ -20,12 +20,12 @@ from . import interchange
 from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, Characters, Coefficients, Count, CurveGroups,
                           CycleIndex, Degrees, Elements, Extremum, Family, First, GraphGroups, Histogram, Hits,
                           Integers, Inverses, Matrix, MobiusMatrices, Partitions, Perms, PermutationGenerators,
-                          RskPairs, Solutions, Spectra, U64Matrices, Witness, matrix, naturals, perms)
+                          RskPairs, Solutions, Spectra, U64Matrices, U64Vectors, Witness, matrix, naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
            "Matrix", "Basis", "Solutions", "Inverses", "Witness", "BurnsideCounts", "CycleIndex", "Spectra",
-           "U64Matrices", "Partitions", "Bsgs", "PermutationGenerators", "MobiusMatrices", "Characters", "RskPairs",
+           "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "PermutationGenerators", "MobiusMatrices", "Characters", "RskPairs",
            "CurveGroups", "Elements", "Degrees", "Coefficients", "Integers", "Count", "Histogram", "Hits", "First",
            "Extremum", "Family", "GraphGroups", "NATURALS"]
 
@@ -165,7 +165,8 @@ _PARAM_NAMES = {
     "gfp.solutions": ["p", "count", "length"], "gfp.inverses": ["p", "count", "n"],
     "gfp.witness": ["p", "count", "rows", "cols"], "burnside.counts": ["count"],
     "burnside.cycle_index": ["degree", "count", "denominator"], "circulants.spectra": ["n", "count"],
-    "designs.matrix": ["count", "rows", "cols"], "perm_groups.partition": ["count", "n"],
+    "designs.matrix": ["count", "rows", "cols"], "polytopes_small.vectors": ["count", "length"],
+    "perm_groups.partition": ["count", "n"],
     "perm_groups.bsgs": ["count", "n"], "automorphisms.generators": ["count", "order"],
     "posets.mobius": ["count"], "young.characters": ["count"], "young.rsk_pairs": ["count", "length"],
     "elliptic_curves_fp.group": ["count"], "polynomials_fq.elements": ["p", "count"],

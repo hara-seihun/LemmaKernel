@@ -397,6 +397,24 @@ class U64Matrices:
 
 
 @dataclass
+class U64Vectors:
+    """A batch of fixed-length natural-number vectors with 64-bit entries."""
+    count: int
+    length: int
+    entries: object
+
+    def member(self, i: int):
+        return [int(x) for x in self.entries[i * self.length:(i + 1) * self.length]]
+
+    def tolist(self):
+        return [self.member(i) for i in range(self.count)]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.entries)}Q", *map(int, self.entries))
+        return encode("polytopes_small.vectors", {"count": self.count, "length": self.length}, payload)
+
+
+@dataclass
 class Partitions:
     count: int
     n: int
@@ -679,6 +697,7 @@ KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "graph_iso.groups": GraphG
          "gfp.basis": Basis, "gfp.solutions": Solutions, "gfp.inverses": Inverses,
          "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
          "burnside.cycle_index": CycleIndex, "circulants.spectra": Spectra, "designs.matrix": U64Matrices,
+         "polytopes_small.vectors": U64Vectors,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
          "automorphisms.generators": PermutationGenerators, "posets.mobius": MobiusMatrices,
          "young.characters": Characters,
@@ -780,6 +799,11 @@ def decode_at(buf: bytes, offset: int):
         if len(pl) != n * 8:
             raise ValueError("designs.matrix payload length mismatch")
         return U64Matrices(q["count"], q["rows"], q["cols"], list(struct.unpack_from(f"<{n}Q", pl, 0))), end
+    if k == "polytopes_small.vectors":
+        n = q["count"] * q["length"]
+        if len(pl) != n * 8:
+            raise ValueError("polytopes_small.vectors payload length mismatch")
+        return U64Vectors(q["count"], q["length"], list(struct.unpack_from(f"<{n}Q", pl, 0))), end
     if k == "perm_groups.partition":
         return Partitions(q["count"], q["n"], unpack_entries(pl, 0, q["count"] * q["n"])), end
     if k == "perm_groups.bsgs":

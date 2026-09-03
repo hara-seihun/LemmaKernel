@@ -1422,6 +1422,53 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'naturals family', 'error': 'no available backend accepts', 'op': 'root_count'},
                  {'case': 'degree 32 over F_2', 'error': 'residue ring', 'op': 'order'},
                  {'case': 'degree 32 over F_2', 'error': 'residue ring', 'op': 'is_primitive'}]},
+ {'backends': [{'accepts': 'Nonempty subsets of integer-coordinate dictionaries in ambient dimension at most '
+                           '6; exact integer face enumeration and lattice-point enumeration for Ehrhart data',
+                'name': 'generic',
+                'sources': ['backends/generic/polytopes_small_generic.cpp'],
+                'summary': 'Portable C++: exact determinant signs enumerate supporting facets and their '
+                           'intersections; Ehrhart counts enumerate the small dilated bounding boxes.'}],
+  'kinds': [{'lean': 'vector',
+             'name': 'polytopes_small.vectors',
+             'params': ['count', 'length'],
+             'payload': 'count*length u64 entries, one natural-number vector per member',
+             'summary': 'A batch of fixed-length natural-number vectors. Polytope vectors have ambient '
+                        'dimension plus one entries.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Polytopes_small/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'polytopes_small',
+             'reference': 'lean/Polytopes_small/Reference.lean',
+             'summary': 'Small lattice polytopes whose selected lattice points are matrix rows. Faces are '
+                        'nonempty and the f-vector is (f_0,...,f_d), including the polytope itself and '
+                        'padded with zeros to ambient dimension. The Ehrhart polynomial is returned '
+                        'canonically as the padded h*-vector: L_P(t) = sum_j h*_j binom(t+r-j,r), where r is '
+                        'the affine dimension.',
+             'version': 1},
+  'operations': [{'families': ['subsets'],
+                  'name': 'vertex_count',
+                  'summary': 'Number of vertices of the convex hull; selected points that lie in a proper '
+                             'face but are not extreme are not counted.',
+                  'value': 'integer'},
+                 {'families': ['subsets'],
+                  'name': 'ehrhart_polynomial',
+                  'summary': 'The h*-vector of the convex hull, padded with trailing zeros to ambient '
+                             'dimension plus one. If r is the affine dimension, L_P(t) = sum_{j=0}^r h*_j '
+                             'binom(t+r-j,r).',
+                  'value': 'polytopes_small.vectors'},
+                 {'families': ['subsets'],
+                  'name': 'f_vector',
+                  'summary': 'Face counts (f_0,...,f_d), including the polytope as its unique '
+                             'top-dimensional face and zeros above its affine dimension. The empty face is '
+                             'omitted.',
+                  'value': 'polytopes_small.vectors'},
+                 {'families': ['subsets'],
+                  'name': 'is_simplicial',
+                  'summary': 'Whether every facet has exactly r vertices, where r is the affine dimension. '
+                             'Polytopes of dimension zero or one are simplicial.',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'explicit family is unsupported', 'error': 'families'}]},
  {'backends': [{'accepts': 'explicit relation matrices, subsets/subsets_of under support inclusion, and '
                            'range members through positive divisors; dynamic-programming operations accept '
                            'at most 24 elements',

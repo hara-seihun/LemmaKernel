@@ -2,7 +2,7 @@
 # Lk is the runtime's reference (families, reductions) and contract; then one library
 # per module: its executable reference and contract (against Mathlib).
 name = "LemmaKernel"
-defaultTargets = ["Lk", "Automorphisms", "Burnside", "Cayley", "Char_poly", "Circulants", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Graph_polynomials", "Hadamard", "Hypergraphs", "Integer_partitions", "Lattice_of_subspaces", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Posets", "Projective_sets", "Quantum_codes", "Residues", "Set_systems", "Simplicial_complexes", "Spreads_and_partitions", "Strongly_regular", "Subspace_orbits", "Words_and_growth", "Young"]
+defaultTargets = ["Lk", "Automorphisms", "Burnside", "Cayley", "Char_poly", "Circulants", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Graph_polynomials", "Hadamard", "Hypergraphs", "Integer_partitions", "Lattice_of_subspaces", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Polytopes_small", "Posets", "Projective_sets", "Quantum_codes", "Residues", "Set_systems", "Simplicial_complexes", "Spreads_and_partitions", "Strongly_regular", "Subspace_orbits", "Words_and_growth", "Young"]
 
 [[require]]
 name = "mathlib"
@@ -123,6 +123,11 @@ roots = ["Permutation_statistics"]
 name = "Polynomials_fq"
 srcDir = "modules/polynomials_fq/lean"
 roots = ["Polynomials_fq"]
+
+[[lean_lib]]
+name = "Polytopes_small"
+srcDir = "modules/polytopes_small/lean"
+roots = ["Polytopes_small"]
 
 [[lean_lib]]
 name = "Posets"

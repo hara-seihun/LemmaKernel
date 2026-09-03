@@ -629,6 +629,20 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->u64_matrices = m;
         return R::success(o);
     }
+    if (h.kind == "polytopes_small.vectors") {
+        auto count = need(h, "count"), length = need(h, "length");
+        for (auto *r : {&count, &length}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        unsigned __int128 total = (unsigned __int128)count.value * length.value;
+        if (total * 8 != h.payload_len) return R::failure(INVALID, "polytopes_small.vectors payload length does not match count*length");
+        auto v = std::make_shared<U64Vectors>();
+        v->count = count.value; v->length = length.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        v->entries.reserve((size_t)total);
+        for (uint64_t i = 0; i < (uint64_t)total; ++i) v->entries.push_back(r.u64());
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "polytopes_small.vectors payload length mismatch");
+        o->u64_vectors = v;
+        return R::success(o);
+    }
     if (h.kind == "perm_groups.partition") {
         auto count = need(h, "count"), n = need(h, "n");
         for (auto *q : {&count, &n}) if (!q->ok) return R::failure(q->error.status, q->error.message);
@@ -815,6 +829,7 @@ std::map<std::string, uint64_t> Object::params() const {
                              {"denominator", cycle_index->denominator}};
     if (spectra) return {{"n", spectra->n}, {"count", spectra->count}};
     if (u64_matrices) return {{"count", u64_matrices->count}, {"rows", u64_matrices->rows}, {"cols", u64_matrices->cols}};
+    if (u64_vectors) return {{"count", u64_vectors->count}, {"length", u64_vectors->length}};
     if (partitions) return {{"count", partitions->count}, {"n", partitions->n}};
     if (bsgs) return {{"count", bsgs->count}, {"n", bsgs->n}};
     if (permutation_generators) return {{"count", permutation_generators->count}, {"order", permutation_generators->order}};
@@ -898,6 +913,9 @@ std::vector<uint8_t> encode(const Object &o) {
     } else if (o.u64_matrices) {
         w.u64s(o.u64_matrices->entries);
         write_header(out, "designs.matrix", o.params(), w.out);
+    } else if (o.u64_vectors) {
+        w.u64s(o.u64_vectors->entries);
+        write_header(out, "polytopes_small.vectors", o.params(), w.out);
     } else if (o.partitions) {
         w.entries(o.partitions->labels, 4);
         write_header(out, "perm_groups.partition", o.params(), w.out);
