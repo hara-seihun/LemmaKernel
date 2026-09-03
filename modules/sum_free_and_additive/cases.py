@@ -77,6 +77,41 @@ def cases(ctx, rng):
         Case("quintuples in 0..11", twelve, "is_sum_free", {"modulus": 0, "limit": 2}, reductions=["count", "hits"]),
     ]
 
+    # Extending a fixed context: sorted dictionaries above the context (the sorted walk with the
+    # context pushed below level 0), a context above the dictionary and residues (the general
+    # update), explicit members, and a context that already fails the predicate.
+    ext = {"is_sum_free": "extends_sum_free", "is_sidon": "extends_sidon", "is_ap_free": "extends_ap_free"}
+    low = ctx.naturals([[1, 2, 5]])
+    above = ctx.subsets_of(ctx.range(6, 14), 3)
+    for op in ext.values():
+        out.append(Case("triples above {1,2,5}", above, op, {"modulus": 0, "length": 3, "context": low, "limit": 2},
+                        reductions=["count", "hits", "first"]))
+    high = ctx.naturals([[13, 7]])
+    below = ctx.subsets_of(ctx.range(0, 7), 3)
+    for op in ext.values():
+        out.append(Case("triples below {7,13}", below, op, {"modulus": 0, "length": 3, "context": high, "limit": 2},
+                        reductions=["count", "all"]))
+        out.append(Case("triples in Z/7 with {1,3}", ctx.subsets(elements([0, 2, 4, 5, 6]), 3), op,
+                        {"modulus": 7, "length": 3, "context": ctx.naturals([[1, 3]]), "limit": 2},
+                        reductions=["count", "first"]))
+        out.append(Case("five sets in Z/13 with {10}", explicit, op,
+                        {"modulus": 13, "length": 4, "context": ctx.naturals([[10]])}, reductions=["all"]))
+    out += [
+        Case("context with a progression", above, "extends_ap_free",
+             {"modulus": 0, "length": 3, "context": ctx.naturals([[1, 2, 3]]), "limit": 2},
+             reductions=["count", "hits"]),
+        Case("context that is not sum-free", above, "extends_sum_free",
+             {"modulus": 0, "context": ctx.naturals([[1, 2, 3]])}, reductions=["count"]),
+        Case("context meeting the dictionary", above, "extends_sidon",
+             {"modulus": 0, "context": ctx.naturals([[2, 8]])}, ["count"], oracle=False),
+        Case("context meeting a member", explicit, "extends_sidon",
+             {"modulus": 13, "context": ctx.naturals([[2]])}, ["all"], oracle=False),
+        Case("context with a repeat", above, "extends_sidon",
+             {"modulus": 0, "context": ctx.naturals([[2, 2]])}, ["count"], oracle=False),
+        Case("context outside Z/7", z7, "extends_sidon",
+             {"modulus": 7, "context": ctx.naturals([[9]])}, ["count"], oracle=False),
+    ]
+
     # Refusals: the family kind, the member shape, the dictionary, and the arguments.
     reject = {"modulus": 7, "length": 3, "bound_num": 5, "bound_den": 1}
     out += [
@@ -165,6 +200,51 @@ def invariants(ctx):
                                    "count", modulus=0, **args).value
         assert sorted_count == shuffled_count, (op, n, k, sorted_count, shuffled_count)
         assert sorted_count > 0
+
+    # Splitting a search by its first elements: the sets counted by is_* over [0, n) are the
+    # sets counted by extends_* under each prefix, so the pruned walk with a context below level
+    # 0 (span bounds and the gap bound included) must add up to the plain count.
+    for op, n, k, args in [("is_sidon", 40, 7, {}), ("is_ap_free", 40, 9, {"length": 3}),
+                           ("is_sum_free", 24, 8, {})]:
+        whole = ctx.value(f"sum_free_and_additive.{op}", ctx.subsets_of(ctx.range(0, n), k),
+                          "count", modulus=0, **args).value
+        split = 0
+        for a in range(n):
+            for b in range(a + 1, n - (k - 2)):
+                split += ctx.value(f"sum_free_and_additive.extends_{op[3:]}",
+                                   ctx.subsets_of(ctx.range(b + 1, n), k - 2), "count",
+                                   modulus=0, context=ctx.naturals([[a, b]]), **args).value
+        assert whole == split, (op, n, k, whole, split)
+
+    # The backend seeds its span tables with the literature (optimal Golomb ruler lengths, and
+    # G(t) from r_3(n)); with LK_SUM_FREE_SPANS=search it ignores them, and its own ladder must
+    # reproduce the head of each table. A separate process, since the tables are read once.
+    import os
+    import subprocess
+    import sys
+    script = """
+import sys
+sys.path.insert(0, %r)
+import lemmakernel as lk
+ctx = lk.Context()
+for op, args, top in [("is_sidon", {}, 12), ("is_ap_free", {"length": 3}, 26)]:
+    spans = [0, 0]
+    for t in range(2, top + 1):
+        L = spans[-1] + 1
+        while ctx.value("sum_free_and_additive." + op, ctx.subsets_of(ctx.range(0, L + 1), t), "count",
+                        modulus=0, **args).value == 0:
+            L += 1
+        spans.append(L)
+    print(op, spans)
+"""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    out = subprocess.run([sys.executable, "-c", script % str(root / "python")], capture_output=True, text=True,
+                         env={**os.environ, "LK_SUM_FREE_SPANS": "search"}, check=True, timeout=600).stdout
+    assert out.splitlines() == [
+        "is_sidon [0, 0, 1, 3, 6, 11, 17, 25, 34, 44, 55, 72, 85]",
+        "is_ap_free [0, 0, 1, 3, 4, 8, 10, 12, 13, 19, 23, 25, 29, 31, 35, 39, 40, 50, 53, 57, 62, 70, 73, 81, 83, 91, 94]",
+    ], out
 
     # A 2-term progression is any pair, so only sets of at most one element are 2-AP-free; the
     # span table must stay out of the way (it has no entries for that length).

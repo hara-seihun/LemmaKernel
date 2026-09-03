@@ -16,7 +16,9 @@ sys.path.insert(0, str(ROOT / "python"))
 from lemmakernel import naive as rt  # noqa: E402
 from lemmakernel.interchange import NATURALS, Family  # noqa: E402
 
-BOOLEAN_OPS = ("is_sum_free", "is_sidon", "is_ap_free", "is_small_doubling")
+BOOLEAN_OPS = ("is_sum_free", "is_sidon", "is_ap_free", "is_small_doubling",
+               "extends_sum_free", "extends_sidon", "extends_ap_free")
+EXTENDS = {"extends_sum_free": "is_sum_free", "extends_sidon": "is_sidon", "extends_ap_free": "is_ap_free"}
 
 
 def check_rows(rows, modulus: int, what: str) -> None:
@@ -101,7 +103,15 @@ def run(op: str, family: Family, reduction: str = "all", prefix: int | None = No
     if op == "is_small_doubling" and int(args["bound_den"]) < 1:
         raise ValueError("is_small_doubling needs bound_den >= 1")
     members, sets = elements(family, modulus, prefix)
-    values = [value(op, xs, modulus, args) for xs in sets]
+    if op in EXTENDS:
+        context = list(args["context"].member(0)[0])
+        check_rows([[x] for x in context], modulus, "context")
+        for xs in sets:
+            if set(xs) & set(context):
+                raise ValueError("the member shares an element with `context`")
+        values = [value(EXTENDS[op], context + xs, modulus, args) for xs in sets]
+    else:
+        values = [value(op, xs, modulus, args) for xs in sets]
     if op in BOOLEAN_OPS:
         return rt.reduce_bool(reduction, values, members, NATURALS, limit=int(args.get("limit", 0)))
     return rt.reduce_int(reduction, values, members, NATURALS)

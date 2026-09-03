@@ -115,6 +115,9 @@ inductive Op
   | isSumFree (modulus : Nat)
   | isSidon (modulus : Nat)
   | isApFree (length modulus : Nat)
+  | extendsSumFree (context : List Nat) (modulus : Nat)
+  | extendsSidon (context : List Nat) (modulus : Nat)
+  | extendsApFree (context : List Nat) (length modulus : Nat)
   | sumsetSize (modulus : Nat)
   | differenceSetSize (modulus : Nat)
   | schurTripleCount (modulus : Nat)
@@ -124,12 +127,24 @@ inductive Op
 def Op.modulus : Op → Nat
   | .isSumFree m | .isSidon m | .isApFree _ m | .sumsetSize m | .differenceSetSize m
   | .schurTripleCount m | .maxDifferenceMultiplicity m => m
+  | .extendsSumFree _ m | .extendsSidon _ m | .extendsApFree _ _ m => m
   | .isSmallDoubling _ _ m => m
+
+/-- The fixed set an `extends_*` operation adds to every member; empty otherwise. -/
+def Op.context : Op → List Nat
+  | .extendsSumFree c _ | .extendsSidon c _ | .extendsApFree c _ _ => c
+  | _ => []
+
+/-- A context is a set of the ambient group that meets no member. -/
+def validContext (modulus : Nat) (context : List Nat) (f : Family) : Bool :=
+  validRows modulus (context.map ([·])) &&
+    f.members.all fun m => (elems m).all (!context.contains ·)
 
 /-- Arguments the operations reject: a progression needs at least two terms, and a doubling
 bound needs a nonzero denominator. -/
 def Op.argsOk : Op → Bool
   | .isApFree length _ => 2 ≤ length
+  | .extendsApFree _ length _ => 2 ≤ length
   | .isSmallDoubling boundDen _ _ => 1 ≤ boundDen
   | _ => true
 
@@ -138,13 +153,16 @@ inductive Value
   deriving DecidableEq, Repr
 
 def run (op : Op) (f : Family) (red : Red) : Result Value :=
-  if !(op.argsOk && validFamily op.modulus f) then .invalid else
+  if !(op.argsOk && validFamily op.modulus f && validContext op.modulus op.context f) then .invalid else
   let ms := f.members
   let sets := ms.map elems
   match op with
   | .isSumFree n => reduceBool red ms (sets.map (isSumFree n))
   | .isSidon n => reduceBool red ms (sets.map (isSidon n))
   | .isApFree length n => reduceBool red ms (sets.map (isApFree length n))
+  | .extendsSumFree c n => reduceBool red ms (sets.map fun xs => isSumFree n (c ++ xs))
+  | .extendsSidon c n => reduceBool red ms (sets.map fun xs => isSidon n (c ++ xs))
+  | .extendsApFree c length n => reduceBool red ms (sets.map fun xs => isApFree length n (c ++ xs))
   | .isSmallDoubling boundDen boundNum n =>
     reduceBool red ms (sets.map (isSmallDoubling n boundNum boundDen))
   | .sumsetSize n => reduceInt red ms (sets.map (sumsetSize n))

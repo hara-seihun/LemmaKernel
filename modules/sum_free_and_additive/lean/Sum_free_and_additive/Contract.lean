@@ -81,6 +81,21 @@ theorem isApFree_spec (h : WellFormedSet modulus xs) (hlen : 2 ≤ length) :
       ∀ a : ZMod modulus, ∀ d : ZMod modulus, d ≠ 0 → ¬ HasProgression A length a d := by
   sorry
 
+/-- The `extends_*` operations are the predicates above on `context ++ xs`; `validContext` makes
+that concatenation well-formed whenever the member is, so every statement here applies to it. -/
+theorem extends_wellFormed {context : List ℕ} (hc : WellFormedSet modulus context)
+    (h : WellFormedSet modulus xs) (hd : ∀ x ∈ xs, x ∉ context) :
+    WellFormedSet modulus (context ++ xs) := by
+  refine ⟨List.nodup_append.mpr ⟨hc.1, h.1, by intro a ha b hb hab; subst hab; exact hd a hb ha⟩, ?_⟩
+  rcases h.2 with h0 | h'
+  · exact Or.inl h0
+  rcases hc.2 with h0 | hc'
+  · exact Or.inl h0
+  refine Or.inr fun x hx => ?_
+  rcases List.mem_append.mp hx with hx | hx
+  · exact hc' x hx
+  · exact h' x hx
+
 /-- At three terms this is Mathlib's `ThreeAPFree`. -/
 theorem isApFree_three (h : WellFormedSet modulus xs) :
     isApFree 3 modulus xs = true ↔ ThreeAPFree (toFinset modulus xs : Set (ZMod modulus)) := by

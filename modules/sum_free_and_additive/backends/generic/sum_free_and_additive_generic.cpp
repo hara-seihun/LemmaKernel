@@ -28,6 +28,7 @@
 #include "../../../../runtime/src/reduce.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <mutex>
 #include <numeric>
@@ -44,15 +45,18 @@ constexpr uint64_t MEMORY_BUDGET = 1ULL << 30; /* bytes of per-thread level stat
 enum class Op { IsSumFree, IsSidon, IsApFree, SumsetSize, DifferenceSetSize, SchurTripleCount,
                 MaxDifferenceMultiplicity, IsSmallDoubling };
 
-Result<Op> parse_op(const std::string &name) {
+/* `extends_sum_free` is `is_sum_free` of the member together with a fixed `context`. */
+Result<Op> parse_op(const std::string &name, bool &with_context) {
     static const std::map<std::string, Op> names{
         {"is_sum_free", Op::IsSumFree}, {"is_sidon", Op::IsSidon}, {"is_ap_free", Op::IsApFree},
+        {"extends_sum_free", Op::IsSumFree}, {"extends_sidon", Op::IsSidon}, {"extends_ap_free", Op::IsApFree},
         {"sumset_size", Op::SumsetSize}, {"difference_set_size", Op::DifferenceSetSize},
         {"schur_triple_count", Op::SchurTripleCount},
         {"max_difference_multiplicity", Op::MaxDifferenceMultiplicity},
         {"is_small_doubling", Op::IsSmallDoubling}};
     auto it = names.find(name);
     if (it == names.end()) return Result<Op>::failure(INTERNAL, "unknown sum_free_and_additive operation " + name);
+    with_context = name.rfind("extends_", 0) == 0;
     return Result<Op>::success(it->second);
 }
 
@@ -233,6 +237,9 @@ struct Problem {
     const Entry *dict = nullptr;
     std::vector<int32_t> index_of_value;
     std::vector<std::vector<Index>> cum; /* cum[j][c] = sum_{c' in [j, c)} C(m-1-c', k-1-j) */
+    /* Elements every member is taken together with (the extends_* operations), increasing.
+     * They sit below every dictionary element when the dictionary is sorted. */
+    std::vector<uint64_t> context;
     /* Increasing integer dictionaries only: */
     bool sorted = false;
     bool interval = false; /* consecutive values: index = value - dict[0], so F stands in for the allowed set */
@@ -255,7 +262,9 @@ void finish_problem(Problem &P) {
     P.mode = mode_of(P.op);
     P.index_of_value.assign(P.amb.span, -1);
     for (uint64_t i = 0; i < P.m; ++i) P.index_of_value[P.dict[i]] = (int32_t)i;
-    P.sorted = !P.amb.modulus && P.m > 0;
+    /* The sorted walk keeps every level above the one before, so the context must lie below the
+     * dictionary; otherwise the general update, which forbids in both directions, is used. */
+    P.sorted = !P.amb.modulus && P.m > 0 && (P.context.empty() || P.context.back() < P.dict[0]);
     for (uint64_t i = 1; i < P.m && P.sorted; ++i) P.sorted = P.dict[i] > P.dict[i - 1];
     P.interval = P.sorted && P.maxval() - P.dict[0] == P.m - 1;
     if (P.sorted) {
@@ -290,6 +299,8 @@ struct Walker {
     const std::vector<std::vector<Index>> *cum;
     uint64_t W, WA;
     uint32_t slots;
+    int64_t nctx;              /* context elements, held at levels -nctx..-1 */
+    bool context_alive = true; /* the context itself has the property */
     Accumulator acc;
     std::vector<int64_t> hi_of_level;  /* level_hi tightened by the mirror rule for this unit */
     uint64_t g1 = 0;                   /* first gap of the current unit, mirror mode */
@@ -302,38 +313,50 @@ struct Walker {
     std::vector<uint64_t> measure;  /* per level: |S|, |D|, Schur count or max multiplicity */
     std::vector<uint8_t> pending;   /* per level: push() left P, PREV, S, D to finish() */
     std::vector<uint8_t> pending_f; /* per level: push() left F to finish_forbidden() */
+    uint64_t &meas(int64_t j) { return measure[j + nctx]; }
+    uint8_t &pend(int64_t j) { return pending[j + nctx]; }
+    uint8_t &pendf(int64_t j) { return pending_f[j + nctx]; }
     std::vector<uint32_t> mult;     /* per difference code, MaxDifferenceMultiplicity */
 
     Walker(const Problem &p, Reduction r, Shared *shared)
         : prob(p), op(p.op), mode(p.mode), reduction(r), amb(p.amb), k(p.k), m(p.m), length(p.length),
           bound_num(p.bound_num), bound_den(p.bound_den), dict(p.dict), index_of_value(&p.index_of_value),
-          cum(&p.cum), W(p.amb.W), WA((p.m + 63) / 64), slots(SLOTS), acc(r, shared),
-          hi_of_level(p.level_hi) {
-        store.assign((k + 1) * slots * W, 0);
-        cands.assign((k + 1) * WA, 0);
+          cum(&p.cum), W(p.amb.W), WA((p.m + 63) / 64), slots(SLOTS), nctx((int64_t)p.context.size()),
+          acc(r, shared), hi_of_level(p.level_hi) {
+        uint64_t levels = k + 1 + nctx;
+        store.assign(levels * slots * W, 0);
+        cands.assign(levels * WA, 0);
         tmp.assign(W, 0);
         tmp2.assign(W, 0);
-        measure.assign(k + 1, 0);
-        pending.assign(k + 1, 0);
-        pending_f.assign(k + 1, 0);
+        measure.assign(levels, 0);
+        pending.assign(levels, 0);
+        pending_f.assign(levels, 0);
         if (mode == Mode::Forbid) {
-            if (op == Op::IsSumFree) amb.set_value(level(0, F), 0);
+            if (op == Op::IsSumFree) amb.set_value(level(-nctx, F), 0);
             if (!prob.interval) {
-                allowed.assign((k + 1) * WA, 0);
-                uint64_t *A = level_allowed(0);
+                allowed.assign(levels * WA, 0);
+                uint64_t *A = level_allowed(-nctx);
                 for (uint64_t i = 0; i < m; ++i) set(A, i);
-                forbid_new(level(0, F), nullptr, A);
+                forbid_new(level(-nctx, F), nullptr, A);
             }
         }
         if (op == Op::MaxDifferenceMultiplicity) mult.assign(amb.span, 0);
+        /* The context is pushed once, as the levels below 0; every member extends it. */
+        for (int64_t i = 0; i < nctx && context_alive; ++i) {
+            int64_t j = i - nctx;
+            uint64_t x = p.context[i];
+            if (mode == Mode::Forbid && bit(level(j, F), x)) { context_alive = false; break; }
+            context_alive = push(j, x);
+            if (context_alive) { finish(j + 1); finish_forbidden(j + 1); }
+        }
     }
 
-    static uint64_t bytes_per_thread(uint64_t k, uint64_t W, uint64_t m) {
-        return (k + 1) * (SLOTS * W + 2 * ((m + 63) / 64)) * 8 + 2 * W * 8;
+    static uint64_t bytes_per_thread(uint64_t k, uint64_t c, uint64_t W, uint64_t m) {
+        return (k + 1 + c) * (SLOTS * W + 2 * ((m + 63) / 64)) * 8 + 2 * W * 8;
     }
 
-    uint64_t *level(uint64_t j, Slot s) { return store.data() + (j * slots + s) * W; }
-    uint64_t *level_allowed(uint64_t j) { return allowed.data() + j * WA; }
+    uint64_t *level(int64_t j, Slot s) { return store.data() + ((j + nctx) * slots + s) * W; }
+    uint64_t *level_allowed(int64_t j) { return allowed.data() + (j + nctx) * WA; }
     bool allowed_index(uint64_t j, uint64_t c) {
         return prob.interval ? !bit(level(j, F), c + dict[0]) : bit(level_allowed(j), c);
     }
@@ -359,7 +382,7 @@ struct Walker {
      * Forbid-mode operations compute only F here, which is all a child needs to learn whether it
      * has enough candidates; most children do not. The remaining bitsets of level j+1 are
      * produced by finish() when the level is about to be expanded. */
-    bool push(uint64_t j, uint64_t x) {
+    bool push(int64_t j, uint64_t x) {
         uint64_t *P0 = level(j, P), *R0 = level(j, PREV), *S0 = level(j, S), *D0 = level(j, D), *F0 = level(j, F);
         uint64_t *P1 = level(j + 1, P), *R1 = level(j + 1, PREV), *S1 = level(j + 1, S), *D1 = level(j + 1, D),
                  *F1 = level(j + 1, F);
@@ -376,7 +399,7 @@ struct Walker {
             case 8: sorted_forbid<8>(j, x); break;
             default: sorted_forbid<0>(j, x); break;
             }
-            if (op == Op::IsSidon) pending_f[j + 1] = true;
+            if (op == Op::IsSidon) pendf(j + 1) = true;
             else if (!prob.interval) {
                 uint64_t *A0 = level_allowed(j), *A1 = level_allowed(j + 1);
                 std::memcpy(A1, A0, WA * 8);
@@ -408,7 +431,7 @@ struct Walker {
                 amb.place(F1, P0, amb.P_minus_x_value(x));        /* P - x */
                 amb.halves(F1, x);                                /* 2v = x */
             }
-            pending[j + 1] = true;
+            pend(j + 1) = true;
             break;
         case Op::IsSidon:
             switch (W) {
@@ -430,7 +453,7 @@ struct Walker {
                 for (uint32_t y : vals) amb.halves(F1, amb.add(x, y));
                 amb.halves(F1, amb.add(x, x));
             }
-            pending[j + 1] = true;
+            pend(j + 1) = true;
             break;
         case Op::IsApFree:
             std::memcpy(P1, P0, W * 8);
@@ -443,9 +466,9 @@ struct Walker {
             std::memcpy(S1, S0, W * 8);
             amb.place(S1, P0, (int64_t)x);
             amb.set_value(S1, amb.add(x, x));
-            measure[j + 1] = measure[j] + popcount_andnot(S1, S0, W);
+            meas(j + 1) = meas(j) + popcount_andnot(S1, S0, W);
             if (op == Op::IsSmallDoubling)
-                alive = (unsigned __int128)measure[j + 1] * bound_den <= (unsigned __int128)bound_num * k;
+                alive = (unsigned __int128)meas(j + 1) * bound_den <= (unsigned __int128)bound_num * k;
             break;
         case Op::DifferenceSetSize:
             std::memcpy(R1, R0, W * 8);
@@ -454,20 +477,20 @@ struct Walker {
             amb.place(D1, R0, amb.x_minus_P_code(x));
             amb.place(D1, P0, amb.P_minus_x_code(x));
             set(D1, amb.zero_code());
-            measure[j + 1] = measure[j] + popcount_andnot(D1, D0, W);
+            meas(j + 1) = meas(j) + popcount_andnot(D1, D0, W);
             break;
         case Op::SchurTripleCount:
             std::memcpy(R1, R0, W * 8);
             set(R1, amb.rev(x));
-            measure[j + 1] = measure[j] + schur_delta(P0, R0, P1, x);
+            meas(j + 1) = meas(j) + schur_delta(P0, R0, P1, x);
             break;
         case Op::MaxDifferenceMultiplicity: {
-            uint64_t best = measure[j];
+            uint64_t best = meas(j);
             for (uint32_t y : vals) {
                 best = std::max<uint64_t>(best, ++mult[code(x, y)]);
                 best = std::max<uint64_t>(best, ++mult[code(y, x)]);
             }
-            measure[j + 1] = best;
+            meas(j + 1) = best;
             break;
         }
         }
@@ -488,7 +511,7 @@ struct Walker {
      *             largest known term is x:               F |= 2x - P0 for length 3; a loop otherwise
      * F is complete above x, so a candidate never creates a violation and nothing is pending.
      * WT == 0 is the runtime-width fallback through Ambient::place. */
-    template <int WT> LK_SCALAR void sorted_forbid(uint64_t j, uint64_t x) {
+    template <int WT> LK_SCALAR void sorted_forbid(int64_t j, uint64_t x) {
         const uint64_t *P0 = level(j, P), *R0 = level(j, PREV), *D0 = level(j, D), *F0 = level(j, F);
         uint64_t *P1 = level(j + 1, P), *R1 = level(j + 1, PREV), *D1 = level(j + 1, D), *F1 = level(j + 1, F);
         uint64_t L = amb.L;
@@ -551,7 +574,7 @@ struct Walker {
         }
     }
 
-    template <int WT> LK_SCALAR void sum_free_forbid(uint64_t j, uint64_t x) {
+    template <int WT> LK_SCALAR void sum_free_forbid(int64_t j, uint64_t x) {
         const uint64_t *P0 = level(j, P), *R0 = level(j, PREV), *F0 = level(j, F);
         uint64_t a[WT];
         Words<WT>::load(a, F0);
@@ -563,7 +586,7 @@ struct Walker {
         amb.halves(level(j + 1, F), x);                              /* 2v = x */
     }
 
-    template <int WT> LK_SCALAR void sidon_forbid(uint64_t j, uint64_t x) {
+    template <int WT> LK_SCALAR void sidon_forbid(int64_t j, uint64_t x) {
         const uint64_t *P0 = level(j, P), *R0 = level(j, PREV), *S0 = level(j, S), *D0 = level(j, D),
                        *F0 = level(j, F);
         uint64_t a[WT];
@@ -586,7 +609,7 @@ struct Walker {
         }
     }
 
-    template <int WT> LK_SCALAR void finish_t(uint64_t j, uint64_t x) {
+    template <int WT> LK_SCALAR void finish_t(int64_t j, uint64_t x) {
         const uint64_t *P0 = level(j - 1, P), *R0 = level(j - 1, PREV), *S0 = level(j - 1, S), *D0 = level(j - 1, D);
         uint64_t a[WT];
         Words<WT>::load(a, P0);
@@ -609,7 +632,7 @@ struct Walker {
     }
 
     /* F of level j for sorted Sidon: F_{j-1} | (x + D+_j) | {x}, and the allowed indices. */
-    template <int WT> LK_SCALAR void finish_forbidden_t(uint64_t j, uint64_t x) {
+    template <int WT> LK_SCALAR void finish_forbidden_t(int64_t j, uint64_t x) {
         const uint64_t *F0 = level(j - 1, F), *D1 = level(j, D);
         uint64_t *F1 = level(j, F);
         if constexpr (WT == 0) {
@@ -624,10 +647,10 @@ struct Walker {
             Words<WT>::store(F1, a, amb);
         }
     }
-    void finish_forbidden(uint64_t j) {
-        if (j == 0 || !pending_f[j]) return;
-        pending_f[j] = false;
-        uint64_t x = vals[j - 1];
+    void finish_forbidden(int64_t j) {
+        if (j + nctx == 0 || !pendf(j)) return;
+        pendf(j) = false;
+        uint64_t x = vals[j + nctx - 1];
         switch (W) {
         case 1: finish_forbidden_t<1>(j, x); break;
         case 2: finish_forbidden_t<2>(j, x); break;
@@ -647,10 +670,10 @@ struct Walker {
     }
 
     /* The bitsets of level j that push() left out, from level j-1 and the element it added. */
-    void finish(uint64_t j) {
-        if (j == 0 || !pending[j]) return;
-        pending[j] = false;
-        uint64_t x = vals[j - 1];
+    void finish(int64_t j) {
+        if (j + nctx == 0 || !pend(j)) return;
+        pend(j) = false;
+        uint64_t x = vals[j + nctx - 1];
         switch (W) {
         case 1: finish_t<1>(j, x); return;
         case 2: finish_t<2>(j, x); return;
@@ -801,7 +824,7 @@ struct Walker {
 
     /* |cand ∩ (c, hi] \ (x + D+)| in index space, x = dict[c], for an interval dictionary. */
     LK_SCALAR uint64_t child_candidate_bound(const uint64_t *cand, uint64_t c, uint64_t hi, uint64_t x) {
-        const uint64_t *Dp = level(vals.size(), D);
+        const uint64_t *Dp = level((int64_t)vals.size() - nctx, D);
         uint64_t s = x - dict[0], q = s >> 6, r = s & 63;
         uint64_t lo = c + 1, wlo = lo >> 6, whi = hi >> 6, n = 0;
         for (uint64_t w = wlo; w <= whi; ++w) {
@@ -854,7 +877,7 @@ struct Walker {
         }
         if ((int64_t)lo > hi) { acc.booleans(base, size, false); return; }
         finish_forbidden(j);
-        uint64_t *cand = cands.data() + j * WA;
+        uint64_t *cand = cands.data() + (j + nctx) * WA;
         uint64_t total = candidates_into(j, lo, m - 1, cand);
         if (total < need) { acc.booleans(base, size, false); return; }
         Index decided = 0;
@@ -879,7 +902,7 @@ struct Walker {
                 if ((int64_t)c > hi || total - seen < need - 1) { w = WA; break; } /* too few candidates after c */
                 Index first = child_first(j, lo, base, c), below = child_size(j, c);
                 if (acc.exhausted(first)) { w = WA; break; }
-                if (j == 1 && prob.mirror && !mirror_bounds(vals[0], dict[c])) {
+                if (j == 1 && prob.mirror && !mirror_bounds(vals[nctx], dict[c])) {
                     acc.booleans(first, below, false);
                     decided += below;
                     continue;
@@ -974,7 +997,7 @@ struct Walker {
                 std::fill(tmp.begin(), tmp.end(), 0);
                 amb.place(tmp.data(), P0, (int64_t)x);
                 amb.set_value(tmp.data(), amb.add(x, x));
-                uint64_t v = measure[j] + popcount_andnot(tmp.data(), S0, W);
+                uint64_t v = meas(j) + popcount_andnot(tmp.data(), S0, W);
                 if (op == Op::SumsetSize) acc.integer(index, v);
                 else acc.boolean(index, (unsigned __int128)v * bound_den <= (unsigned __int128)bound_num * k);
                 break;
@@ -984,17 +1007,17 @@ struct Walker {
                 amb.place(tmp.data(), R0, amb.x_minus_P_code(x));
                 amb.place(tmp.data(), P0, amb.P_minus_x_code(x));
                 set(tmp.data(), amb.zero_code());
-                acc.integer(index, measure[j] + popcount_andnot(tmp.data(), D0, W));
+                acc.integer(index, meas(j) + popcount_andnot(tmp.data(), D0, W));
                 break;
             }
             case Op::SchurTripleCount: {
                 std::memcpy(tmp2.data(), P0, W * 8);
                 set(tmp2.data(), x);
-                acc.integer(index, measure[j] + schur_delta(P0, R0, tmp2.data(), x));
+                acc.integer(index, meas(j) + schur_delta(P0, R0, tmp2.data(), x));
                 break;
             }
             case Op::MaxDifferenceMultiplicity: {
-                uint64_t best = measure[j];
+                uint64_t best = meas(j);
                 for (uint32_t y : vals) {
                     best = std::max<uint64_t>(best, ++mult[code(x, y)]);
                     best = std::max<uint64_t>(best, ++mult[code(y, x)]);
@@ -1016,6 +1039,7 @@ struct Walker {
 
     void unit(const uint32_t *idx, uint64_t d, Index first, Index size) {
         if (acc.exhausted(first)) return;
+        if (!context_alive) { acc.booleans(first, size, false); return; }
         uint64_t common = 0;
         while (common < d && common < cur.size() && cur[common] == idx[common]) ++common;
         while (cur.size() > common) { cur.pop_back(); pop(); }
@@ -1031,7 +1055,7 @@ struct Walker {
         }
         if (dead_level != UINT64_MAX) { acc.booleans(first, size, false); return; }
         if (d == k) { /* k <= 2: the unit is a leaf */
-            if (mode == Mode::Integer) acc.integer(first, measure[k]);
+            if (mode == Mode::Integer) acc.integer(first, meas(k));
             else acc.booleans(first, 1, true);
         } else if (k == 1) {
             if (mode == Mode::Forbid) acc.booleans(first, 1, allowed_index(0, idx[0]));
@@ -1057,10 +1081,10 @@ struct Walker {
 
     /* An explicit member: its rows in order. */
     void member(uint64_t index, const Entry *rows, uint64_t count) {
-        while (!vals.empty()) pop();
+        while ((int64_t)vals.size() > nctx) pop();
         cur.clear();
         dead_level = UINT64_MAX;
-        bool alive = true;
+        bool alive = context_alive;
         uint64_t j = 0;
         for (; j < count && alive; ++j) {
             uint64_t x = rows[j];
@@ -1068,9 +1092,9 @@ struct Walker {
             alive = push(j, x);
             if (alive) finish(j + 1);
         }
-        if (mode == Mode::Integer) acc.integer(index, measure[j]);
+        if (mode == Mode::Integer) acc.integer(index, meas(j));
         else acc.booleans(index, 1, alive);
-        while (!vals.empty()) pop();
+        while ((int64_t)vals.size() > nctx) pop();
     }
 };
 
@@ -1142,7 +1166,7 @@ void fill_cum(Problem &P) {
 }
 
 uint32_t thread_budget(const Problem &P, uint32_t requested) {
-    uint64_t per_thread = Walker::bytes_per_thread(P.k, P.amb.W, P.m);
+    uint64_t per_thread = Walker::bytes_per_thread(P.k, P.context.size(), P.amb.W, P.m);
     return std::max<uint32_t>(1, std::min<uint64_t>(requested, MEMORY_BUDGET / per_thread));
 }
 
@@ -1251,7 +1275,9 @@ bool exists_in(Op op, uint64_t length, uint64_t t, uint64_t L, const std::vector
     P.op = op; P.length = length; P.k = t; P.m = L + 1; P.dict = dict.data();
     P.amb = make_ambient(0, L);
     P.spans = G;
-    P.spans.resize(t + 1, G[t - 1] + 1);
+    /* The ladder asks about L only after every shorter span failed, so a t-element set in
+     * [0, L] has span exactly L: the bound pins its first element to 0 and its last to L. */
+    P.spans.resize(t + 1, L);
     P.mirror = t >= 3;
     finish_problem(P);
     fill_cum(P);
@@ -1260,22 +1286,66 @@ bool exists_in(Op op, uint64_t length, uint64_t t, uint64_t L, const std::vector
     return shared.best.load() != INDEX_MAX;
 }
 
-/* G(0..tmax), exact. G(t) is found by asking for a t-element set in [0, L] for increasing L
- * starting from the best lower bound; the failed searches are exhaustive but heavily pruned
- * by the entries below. */
+/* Least spans settled in the literature, used as the head of the span table so that a search
+ * at the frontier does not first redo every rung below it. Each entry is a theorem someone
+ * else proved by exhaustive computation; the pruning built on it is exactly as sound as the
+ * entry, so the sources are named and the module's invariants recompute the head of each
+ * table with this backend's own search.
+ *
+ * Sidon: OEIS A003022, the lengths of the optimal Golomb rulers with 2..28 marks; 26-28 are
+ * distributed.net's OGR-26 (2009), OGR-27 (2014) and OGR-28 (2022).
+ * 3-AP-free: derived from OEIS A003002 (r_3(n), the largest 3-AP-free subset of [1, n]),
+ * whose b-file (Cariboni, 2024) reaches n = 211 with r_3(211) = 43; G(t) is the least n with
+ * r_3(n) >= t, less one, so the table gives G(1..43) and says G(44) >= 211. Gasarch, Glenn and
+ * Kruskal (arXiv:2501.01634) confirm r_3(n) for n <= 186 independently. */
+struct KnownSpans {
+    std::vector<uint64_t> exact; /* G(0..T) */
+    uint64_t next_lower;         /* G(T+1) >= next_lower */
+};
+/* LK_SUM_FREE_SPANS=search makes the ladder ignore the tables, so the module's invariants can
+ * recompute their heads with this backend alone. */
+bool use_known_spans() {
+    static const bool use = [] { const char *e = getenv("LK_SUM_FREE_SPANS"); return !(e && std::string(e) == "search"); }();
+    return use;
+}
+KnownSpans known_spans(Op op, uint64_t length) {
+    if (!use_known_spans()) return {{0, 0}, 1};
+    if (op == Op::IsSidon)
+        return {{0, 0, 1, 3, 6, 11, 17, 25, 34, 44, 55, 72, 85, 106, 127, 151, 177, 199, 216, 246, 283, 333,
+                 356, 372, 425, 480, 492, 553, 585}, 586};
+    if (op == Op::IsApFree && length == 3)
+        return {{0, 0, 1, 3, 4, 8, 10, 12, 13, 19, 23, 25, 29, 31, 35, 39, 40, 50, 53, 57, 62, 70, 73, 81, 83,
+                 91, 94, 99, 103, 110, 113, 120, 121, 136, 144, 149, 156, 162, 164, 168, 173, 193, 203, 208}, 211};
+    return {{0, 0}, 1};
+}
+
+/* The best lower bound on G(t) from G(0..t-1) and the known tables. */
+uint64_t span_lower(Op op, uint64_t length, uint64_t t, const std::vector<uint64_t> &G) {
+    uint64_t L = G[t - 1] + 1;
+    if (op == Op::IsSidon) L = std::max(L, t * (t - 1) / 2); /* t-1 distinct positive gaps */
+    KnownSpans known = known_spans(op, length);
+    if (t < known.exact.size()) L = std::max(L, known.exact[t]);
+    else if (t == known.exact.size()) L = std::max(L, known.next_lower);
+    return L;
+}
+
+/* G(0..tmax), exact. Beyond the known table, G(t) is found by asking for a t-element set in
+ * [0, L] for increasing L starting from the best lower bound; the failed searches are
+ * exhaustive but heavily pruned by the entries below. */
 std::vector<uint64_t> span_table(Op op, uint64_t length, uint64_t tmax, uint32_t threads) {
     std::lock_guard<std::mutex> lock(span_mutex);
     auto &G = span_cache[{(int)op, length}];
-    if (G.empty()) G = {0, 0};
+    if (G.empty()) G = known_spans(op, length).exact;
     while (G.size() <= tmax) {
         uint64_t t = G.size();
-        uint64_t L = G[t - 1] + 1;
-        if (op == Op::IsSidon) L = std::max(L, t * (t - 1) / 2); /* t-1 distinct positive gaps */
+        uint64_t L = span_lower(op, length, t, G);
         while (!exists_in(op, length, t, L, G, threads)) ++L;
         G.push_back(L);
     }
     return std::vector<uint64_t>(G.begin(), G.begin() + tmax + 1);
 }
+
+uint64_t modulus_of(const Request &req) { return req.int_args.at("modulus"); }
 
 R run(const Request &req) {
     const Family &fam = *req.family;
@@ -1284,11 +1354,28 @@ R run(const Request &req) {
         return R::failure(INVALID, "sum_free_and_additive is defined on explicit, subsets and subsets_of families only");
     if (fam.prime() != NATURALS)
         return R::failure(INVALID, "sum_free_and_additive members must be lk.naturals");
-    auto parsed = parse_op(req.op);
+    bool with_context = false;
+    auto parsed = parse_op(req.op, with_context);
     if (!parsed.ok) return R::failure(parsed.error.status, parsed.error.message);
     Op op = parsed.value;
+    std::vector<uint64_t> context;
+    if (with_context) {
+        auto it = req.handle_args.find("context");
+        if (it == req.handle_args.end() || !it->second->matrix)
+            return R::failure(INVALID, "`context` must be an lk.naturals vector");
+        const Matrix &cm = *it->second->matrix;
+        if (cm.p != NATURALS || cm.count != 1 || cm.rows != 1)
+            return R::failure(INVALID, "`context` must be one row of natural numbers");
+        context.assign(cm.entries.begin(), cm.entries.end());
+        std::sort(context.begin(), context.end());
+        for (size_t i = 0; i < context.size(); ++i) {
+            if (modulus_of(req) && context[i] >= modulus_of(req))
+                return R::failure(INVALID, "`context` has an element that is not below the modulus");
+            if (i && context[i] == context[i - 1]) return R::failure(INVALID, "`context` contains a duplicate element");
+        }
+    }
 
-    uint64_t modulus = req.int_args.at("modulus");
+    uint64_t modulus = modulus_of(req);
     uint64_t length = req.int_args.count("length") ? req.int_args.at("length") : 0;
     uint64_t bound_num = req.int_args.count("bound_num") ? req.int_args.at("bound_num") : 0;
     uint64_t bound_den = req.int_args.count("bound_den") ? req.int_args.at("bound_den") : 1;
@@ -1297,16 +1384,25 @@ R run(const Request &req) {
     if (op == Op::IsSmallDoubling && bound_den < 1)
         return R::failure(INVALID, "is_small_doubling needs bound_den >= 1");
 
-    uint64_t largest = 0;
+    uint64_t largest = context.empty() ? 0 : context.back();
     auto scanned = scan(fam, modulus, largest);
     if (!scanned.ok) return R::failure(scanned.error.status, scanned.error.message);
     Problem P;
     P.op = op; P.length = length; P.bound_num = bound_num; P.bound_den = bound_den;
+    P.context = context;
     P.amb = make_ambient(modulus, largest);
     if (P.amb.span > MAX_SPAN)
         return R::failure(INVALID, "the generic backend needs a modulus below 2^22, or elements below 2^21 when the modulus is 0");
     auto distinct = check_distinct(fam, P.amb.span);
     if (!distinct.ok) return R::failure(distinct.error.status, distinct.error.message);
+    if (!context.empty()) {
+        std::vector<uint8_t> in_context(P.amb.span, 0);
+        for (uint64_t v : context) in_context[v] = 1;
+        const Matrix &data = *fam.data;
+        for (uint64_t i = 0; i < data.count * data.rows; ++i)
+            if (in_context[data.entries[i]])
+                return R::failure(INVALID, std::string("the ") + set_name(fam) + " shares an element with `context`");
+    }
 
     auto size_r = fam.size();
     if (!size_r.ok) return R::failure(size_r.error.status, size_r.error.message);
@@ -1321,7 +1417,7 @@ R run(const Request &req) {
     P.m = is_explicit ? 0 : fam.data->count;
     P.dict = fam.data->entries.data();
     finish_problem(P);
-    if (Walker::bytes_per_thread(P.k, P.amb.W, P.m) > MEMORY_BUDGET)
+    if (Walker::bytes_per_thread(P.k, P.context.size(), P.amb.W, P.m) > MEMORY_BUDGET)
         return R::failure(INVALID, "the generic backend needs (subset size) x (ambient group size) below 2^33 bits");
     uint32_t threads = thread_budget(P, req.threads);
 
@@ -1345,11 +1441,11 @@ R run(const Request &req) {
 
     if (P.sorted && spannable(op, length) && P.k >= 2) {
         P.spans = span_table(op, length, P.k - 1, threads);
-        P.spans.push_back(P.spans.back() + 1);
+        P.spans.push_back(span_lower(op, length, P.k, P.spans));
         bool symmetric = P.k >= 3 && reduction == Reduction::Count;
         for (uint64_t i = 0; i < P.m && symmetric; ++i)
             symmetric = P.dict[i] + P.dict[P.m - 1 - i] == P.dict[0] + P.dict[P.m - 1];
-        P.mirror = symmetric;
+        P.mirror = symmetric && context.empty();
         finish_problem(P);
     }
     fill_cum(P);

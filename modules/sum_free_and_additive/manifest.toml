@@ -41,6 +41,27 @@ families = ["explicit", "subsets", "subsets_of"]
 summary = "No arithmetic progression a, a+d, ..., a+(length-1)d with d != 0 lies in the set. Only d != 0 is required, not distinct terms, so {0, 3} in Z/6 is not 3-AP-free. `length` must be at least 2."
 
 [[operations]]
+name = "extends_sum_free"
+value = "boolean"
+args = { context = "vector", modulus = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "The member together with the fixed set `context` (an lk.naturals row) is sum-free. The context must be a set of the ambient group disjoint from every member; the search then explores the completions of a given partial set."
+
+[[operations]]
+name = "extends_sidon"
+value = "boolean"
+args = { context = "vector", modulus = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "The member together with the fixed set `context` is Sidon; the context must be disjoint from every member."
+
+[[operations]]
+name = "extends_ap_free"
+value = "boolean"
+args = { context = "vector", length = "int", modulus = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "The member together with the fixed set `context` has no `length`-term arithmetic progression; the context must be disjoint from every member."
+
+[[operations]]
 name = "sumset_size"
 value = "integer"
 args = { modulus = "int" }
@@ -79,7 +100,7 @@ summary = "Doubling constant at most bound_num / bound_den, as the exact integer
 name = "generic"
 sources = ["backends/generic/sum_free_and_additive_generic.cpp"]
 accepts = "explicit, subsets and subsets_of families of one-column lk.naturals members; modulus < 2^22, and elements below 2^21 when modulus is 0"
-summary = "Portable C++ over bitsets of the ambient group: a prefix carries its sumset, difference set and forbidden set, so extending it is a few shifted ORs and the candidates of a node are read off at once; dead subtrees are found by candidate count and leaves are a popcount. Over an increasing integer dictionary, Sidon and progression-free searches also use the least span of a t-element set (computed by the same search, cached per process), the reflection symmetry for counts, and the sum of the smallest unused differences; a proof that no 12-mark Golomb ruler is shorter than 85 takes well under a second."
+summary = "Portable C++ over bitsets of the ambient group: a prefix carries its sumset, difference set and forbidden set, so extending it is a few shifted ORs and the candidates of a node are read off at once; dead subtrees are found by candidate count and leaves are a popcount. Over an increasing integer dictionary, Sidon and progression-free searches also use the least span of a t-element set (seeded from the optimal Golomb ruler lengths to 28 marks and r_3(n) to n = 211, then computed by the same search and cached per process; LK_SUM_FREE_SPANS=search ignores the seeds), the reflection symmetry for counts, and the sum of the smallest unused differences; a proof that no 12-mark Golomb ruler is shorter than 85 takes well under a second. The extends_* operations push the context below the first level of the walk, so a search can be split by its leading elements across processes."
 
 # Requests the runtime must refuse. `case` names a case in cases.py.
 [[rejections]]
@@ -109,3 +130,19 @@ error = "length"
 [[rejections]]
 case = "zero denominator"
 error = "bound_den"
+
+[[rejections]]
+case = "context meeting the dictionary"
+error = "shares an element"
+
+[[rejections]]
+case = "context meeting a member"
+error = "shares an element"
+
+[[rejections]]
+case = "context with a repeat"
+error = "duplicate"
+
+[[rejections]]
+case = "context outside Z/7"
+error = "below the modulus"

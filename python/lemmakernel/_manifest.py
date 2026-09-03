@@ -3179,10 +3179,14 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                            'difference set and forbidden set, so extending it is a few shifted ORs and the '
                            'candidates of a node are read off at once; dead subtrees are found by candidate '
                            'count and leaves are a popcount. Over an increasing integer dictionary, Sidon '
-                           'and progression-free searches also use the least span of a t-element set '
-                           '(computed by the same search, cached per process), the reflection symmetry for '
-                           'counts, and the sum of the smallest unused differences; a proof that no 12-mark '
-                           'Golomb ruler is shorter than 85 takes well under a second.'}],
+                           'and progression-free searches also use the least span of a t-element set (seeded '
+                           'from the optimal Golomb ruler lengths to 28 marks and r_3(n) to n = 211, then '
+                           'computed by the same search and cached per process; LK_SUM_FREE_SPANS=search '
+                           'ignores the seeds), the reflection symmetry for counts, and the sum of the '
+                           'smallest unused differences; a proof that no 12-mark Golomb ruler is shorter '
+                           'than 85 takes well under a second. The extends_* operations push the context '
+                           'below the first level of the walk, so a search can be split by its leading '
+                           'elements across processes.'}],
   'module': {'cases': 'cases.py',
              'contract': 'lean/Sum_free_and_additive/Contract.lean',
              'lean': 'lean',
@@ -3214,6 +3218,25 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'summary': 'No arithmetic progression a, a+d, ..., a+(length-1)d with d != 0 lies in the '
                              'set. Only d != 0 is required, not distinct terms, so {0, 3} in Z/6 is not '
                              '3-AP-free. `length` must be at least 2.',
+                  'value': 'boolean'},
+                 {'args': {'context': 'vector', 'modulus': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'extends_sum_free',
+                  'summary': 'The member together with the fixed set `context` (an lk.naturals row) is '
+                             'sum-free. The context must be a set of the ambient group disjoint from every '
+                             'member; the search then explores the completions of a given partial set.',
+                  'value': 'boolean'},
+                 {'args': {'context': 'vector', 'modulus': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'extends_sidon',
+                  'summary': 'The member together with the fixed set `context` is Sidon; the context must be '
+                             'disjoint from every member.',
+                  'value': 'boolean'},
+                 {'args': {'context': 'vector', 'length': 'int', 'modulus': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'extends_ap_free',
+                  'summary': 'The member together with the fixed set `context` has no `length`-term '
+                             'arithmetic progression; the context must be disjoint from every member.',
                   'value': 'boolean'},
                  {'args': {'modulus': 'int'},
                   'families': ['explicit', 'subsets', 'subsets_of'],
@@ -3253,7 +3276,11 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'repeated element', 'error': 'duplicate'},
                  {'case': 'element outside Z/7', 'error': 'below the modulus'},
                  {'case': 'progression shorter than two', 'error': 'length'},
-                 {'case': 'zero denominator', 'error': 'bound_den'}]},
+                 {'case': 'zero denominator', 'error': 'bound_den'},
+                 {'case': 'context meeting the dictionary', 'error': 'shares an element'},
+                 {'case': 'context meeting a member', 'error': 'shares an element'},
+                 {'case': 'context with a repeat', 'error': 'duplicate'},
+                 {'case': 'context outside Z/7', 'error': 'below the modulus'}]},
  {'backends': [{'accepts': 'simple undirected F_2 adjacency matrices on 1 to 10 vertices from explicit or '
                            'graph families',
                 'name': 'generic',
