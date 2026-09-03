@@ -12,12 +12,12 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | spreads_and_partitions | pg32_first_spread | 324,632 | 38.9 s~ | 7.92e-05 s | 491,135× | 21,189× |
 | words_and_growth | free group F2 geodesic prefix | 10 | 2.06 s | 1.88e-05 s | 109,456× | 179,308× |
 | perm_groups | S9 Schreier-Sims order | 1 | 1.36 s | 2.68e-05 s | 50,921× | 61,176× |
+| sum_free_and_additive | sum_free_10_subsets_of_30 | 30,045,015 | 106 s~ | 0.00231 s | 45,697× | 230,050× |
 | residues | primitive_roots_mod_10007 | 10,006 | 23.5 s~ | 0.000824 s | 28,580× | 48,774× |
 | polynomials_fq | first_primitive_degree_14_F2 | 16,384 | 17.2 s | 0.000718 s | 23,927× | 18,976× |
 | sieve_ranges | omega_distribution | 2,000,000 | 865 s~ | 0.0407 s | 21,228× | 221,551× |
 | code_equivalence | binary [6,3] classes | 1,395 | 10 s | 0.000539 s | 18,612× | 6,841× |
 | orbits | bracelets_burnside | 32 | 0.127 s | 7.78e-06 s | 16,320× | 198× |
-| sum_free_and_additive | sum_free_10_subsets_of_30 | 30,045,015 | 141 s~ | 0.00947 s | 14,872× | 38,300× |
 | difference_sets | C31 (31,6,1) search | 736,281 | 1,076 s~ | 0.0779 s | 13,816× | 72,721× |
 | permutation_statistics | S8 Mahonian | 40,320 | 10.9 s~ | 0.00108 s | 10,050× | 5,490× |
 | cayley_iso | C4xC2 fixed-size census | 1 | 0.305 s | 3.13e-05 s | 9,742× | 10,754× |
@@ -165,8 +165,8 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | strongly_regular | six-vertex graph census | count labelled strongly regular graphs among all 2^21 symmetric 6x6 binary matrices | 2,097,152 | 16.8 s~ | 0.229 s | 0.0556 s | 73× | 302× |
 | subgroups | S5 subgroup census | all 156 subgroups of S5, a parent group of order 120 | 1 | 0.363 s | 0.044 s | 0.044 s | 8.3× | 8.3× |
 | subspace_orbits | PG(4,2) line orbits | canonical indices for the 155 lines of PG(4,2) under the Singer normaliser | 155 | 0.958 s | 0.0148 s | 0.00307 s | 65× | 312× |
-| sum_free_and_additive | sum_free_10_subsets_of_30 | how many of the 30 million 10-subsets of [1,30] are sum-free | 30,045,015 | 141 s~ | 0.00947 s | 0.00368 s | 14,872× | 38,300× |
-| sum_free_and_additive | sumset_sizes_6_subsets_of_40 | the distribution of |S+S| over every 6-subset of [1,40] | 3,838,380 | 13.9 s~ | 0.125 s | 0.0389 s | 111× | 358× |
+| sum_free_and_additive | sum_free_10_subsets_of_30 | how many of the 30 million 10-subsets of [1,30] are sum-free | 30,045,015 | 106 s~ | 0.00231 s | 0.00046 s | 45,697× | 230,050× |
+| sum_free_and_additive | sumset_sizes_6_subsets_of_40 | the distribution of |S+S| over every 6-subset of [1,40] | 3,838,380 | 8.4 s | 0.0612 s | 0.00467 s | 137× | 1,800× |
 | vertex_transitive | all_graphs_6_vertex_transitive | count vertex-transitive isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.145 s | 0.0029 s | 0.00155 s | 50× | 94× |
 | vertex_transitive | all_graphs_6_arc_transitive | count arc-transitive isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.149 s | 0.003 s | 0.00102 s | 50× | 146× |
 | vertex_transitive | all_graphs_6_cayley | count Cayley isomorphism classes among all 156 simple graphs on six vertices | 156 | 0.322 s | 0.00316 s | 0.000945 s | 102× | 341× |

@@ -52,6 +52,31 @@ def cases(ctx, rng):
         Case("quadruples in Z/8", z8, "max_difference_multiplicity", {"modulus": 8}, reductions=["max"]),
     ]
 
+    # Dictionaries that take the other code paths of the generic backend: increasing but with
+    # gaps (the span table applies, the allowed set is kept by index), increasing and symmetric
+    # under reflection (the mirror rule counts each set with its reflection), and unsorted
+    # (nothing about order can be assumed). Then longer progressions over an interval, where
+    # only the last term of a progression is ever new.
+    gapped = ctx.subsets(elements([0, 1, 3, 4, 6, 9, 10, 12]), 4)
+    for op in BOOLEAN_OPS:
+        out.append(Case("quadruples with gaps", gapped, op, iargs, reductions=["count", "hits", "first"]))
+    symmetric = ctx.subsets(elements([0, 1, 3, 8, 10, 11]), 3)
+    for op in ["is_sidon", "is_ap_free"]:
+        out.append(Case("triples of a symmetric set", symmetric, op, iargs, reductions=["count", "all"]))
+    unsorted = ctx.subsets(elements([5, 2, 7, 1, 4, 3, 6]), 3)
+    for op in OPS:
+        out.append(Case("triples, unsorted dictionary", unsorted, op, iargs,
+                        reductions=["all", "first"] if op in BOOLEAN_OPS else ["all", "max"]))
+    twelve = ctx.subsets_of(ctx.range(0, 12), 5)
+    out += [
+        Case("quintuples in 0..11", twelve, "is_ap_free", {"modulus": 0, "length": 4, "limit": 2},
+             reductions=["count", "hits"]),
+        Case("quintuples in 0..11", twelve, "is_ap_free", {"modulus": 0, "length": 5, "limit": 2},
+             reductions=["count"]),
+        Case("quintuples in 0..11", twelve, "is_sidon", {"modulus": 0, "limit": 2}, reductions=["count", "first"]),
+        Case("quintuples in 0..11", twelve, "is_sum_free", {"modulus": 0, "limit": 2}, reductions=["count", "hits"]),
+    ]
+
     # Refusals: the family kind, the member shape, the dictionary, and the arguments.
     reject = {"modulus": 7, "length": 3, "bound_num": 5, "bound_den": 1}
     out += [

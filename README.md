@@ -49,7 +49,7 @@ non-existence answer.
 ## Build and test
 
 ```
-cmake -S . -B build -G Ninja && ninja -C build      # liblemmakernel.so
+cmake -S . -B build -G Ninja && ninja -C build      # liblemmakernel.so, -march=native; -DLEMMAKERNEL_MARCH=x86-64-v3 for a portable binary
 pytest -n auto tests                                # every module's cases against every backend, naive, and Lean
 tools/bench.py                                      # kernel vs naive; reruns only modules whose sources changed
 ```

@@ -29,7 +29,14 @@ endif()
 target_include_directories(lemmakernel PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/runtime/include>
   $<INSTALL_INTERFACE:include>)
+# Backends lean on popcount, ctz and wide ORs; without an ISA baseline gcc emits library calls
+# for them. `native` targets the build machine; set a level such as x86-64-v3 for a binary that
+# must run elsewhere, or an empty string for the compiler default.
+set(LEMMAKERNEL_MARCH "native" CACHE STRING "-march value for the library")
 target_compile_options(lemmakernel PRIVATE -O3 -Wall -Wextra -fno-plt)
+if(LEMMAKERNEL_MARCH)
+  target_compile_options(lemmakernel PRIVATE -march=${LEMMAKERNEL_MARCH})
+endif()
 find_package(Threads REQUIRED)
 target_link_libraries(lemmakernel PRIVATE Threads::Threads)
 set_target_properties(lemmakernel PROPERTIES VERSION 0.1.0 SOVERSION 0)
