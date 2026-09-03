@@ -2,6 +2,8 @@
 
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/automorphisms/backends/generic/automorphisms_generic.cpp)
 # module automorphisms: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/boolean_functions/backends/generic/boolean_functions_generic.cpp)
+# module boolean_functions: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/burnside/backends/generic/burnside_generic.cpp)
 # module burnside: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/cayley/backends/generic/cayley_generic.cpp)

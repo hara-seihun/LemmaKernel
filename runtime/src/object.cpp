@@ -810,6 +810,20 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->u64_vectors = v;
         return R::success(o);
     }
+    if (h.kind == "lk.signed_matrices") {
+        auto count = need(h, "count"), rows = need(h, "rows"), cols = need(h, "cols");
+        for (auto *r : {&count, &rows, &cols}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        unsigned __int128 total = (unsigned __int128)count.value * rows.value * cols.value;
+        if (total * 8 != h.payload_len) return R::failure(INVALID, "lk.signed_matrices payload length does not match count*rows*cols");
+        auto m = std::make_shared<I64Matrices>();
+        m->count = count.value; m->rows = rows.value; m->cols = cols.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        m->entries.reserve((size_t)total);
+        for (uint64_t i = 0; i < (uint64_t)total; ++i) m->entries.push_back(r.i64());
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "lk.signed_matrices payload length mismatch");
+        o->i64_matrices = m;
+        return R::success(o);
+    }
     if (h.kind == "perm_groups.partition") {
         auto count = need(h, "count"), n = need(h, "n");
         for (auto *q : {&count, &n}) if (!q->ok) return R::failure(q->error.status, q->error.message);
@@ -998,6 +1012,7 @@ std::map<std::string, uint64_t> Object::params() const {
     if (spectra) return {{"n", spectra->n}, {"count", spectra->count}};
     if (u64_matrices) return {{"count", u64_matrices->count}, {"rows", u64_matrices->rows}, {"cols", u64_matrices->cols}};
     if (u64_vectors) return {{"count", u64_vectors->count}, {"length", u64_vectors->length}};
+    if (i64_matrices) return {{"count", i64_matrices->count}, {"rows", i64_matrices->rows}, {"cols", i64_matrices->cols}};
     if (partitions) return {{"count", partitions->count}, {"n", partitions->n}};
     if (bsgs) return {{"count", bsgs->count}, {"n", bsgs->n}};
     if (character_table) return {{"order", character_table->order}, {"classes", character_table->classes},
@@ -1094,6 +1109,9 @@ std::vector<uint8_t> encode(const Object &o) {
     } else if (o.u64_vectors) {
         w.u64s(o.u64_vectors->entries);
         write_header(out, "polytopes_small.vectors", o.params(), w.out);
+    } else if (o.i64_matrices) {
+        w.i64s(o.i64_matrices->entries);
+        write_header(out, "lk.signed_matrices", o.params(), w.out);
     } else if (o.partitions) {
         w.entries(o.partitions->labels, 4);
         write_header(out, "perm_groups.partition", o.params(), w.out);

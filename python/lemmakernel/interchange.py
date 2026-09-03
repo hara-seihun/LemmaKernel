@@ -512,6 +512,27 @@ class U64Vectors:
 
 
 @dataclass
+class SignedMatrices:
+    """A batch of fixed-shape signed 64-bit integer matrices."""
+    count: int
+    rows: int
+    cols: int
+    entries: object
+
+    def member(self, i: int):
+        n = self.rows * self.cols
+        flat = self.entries[i * n:(i + 1) * n]
+        return [[int(flat[r * self.cols + c]) for c in range(self.cols)] for r in range(self.rows)]
+
+    def tolist(self):
+        return [self.member(i) for i in range(self.count)]
+
+    def encode(self) -> bytes:
+        payload = struct.pack(f"<{len(self.entries)}q", *map(int, self.entries))
+        return encode("lk.signed_matrices", {"count": self.count, "rows": self.rows, "cols": self.cols}, payload)
+
+
+@dataclass
 class Partitions:
     count: int
     n: int
@@ -904,7 +925,7 @@ KINDS = {"gfp.matrix": Matrix, "lattices.gram": Matrix, "orbits.perms": Perms, "
          "characters.table": CharacterTable, "characters.indicators": CharacterIndicators,
          "characters.multiplicities": CharacterMultiplicities, "circulants.spectra": Spectra,
          "designs.matrix": U64Matrices,
-         "polytopes_small.vectors": U64Vectors,
+         "polytopes_small.vectors": U64Vectors, "lk.signed_matrices": SignedMatrices,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
          "automorphisms.generators": PermutationGenerators, "posets.mobius": MobiusMatrices,
          "young.characters": Characters, "young.rsk_pairs": RskPairs,
@@ -1022,6 +1043,11 @@ def decode_at(buf: bytes, offset: int):
         if len(pl) != n * 8:
             raise ValueError("polytopes_small.vectors payload length mismatch")
         return U64Vectors(q["count"], q["length"], list(struct.unpack_from(f"<{n}Q", pl, 0))), end
+    if k == "lk.signed_matrices":
+        n = q["count"] * q["rows"] * q["cols"]
+        if len(pl) != n * 8:
+            raise ValueError("lk.signed_matrices payload length mismatch")
+        return SignedMatrices(q["count"], q["rows"], q["cols"], list(struct.unpack_from(f"<{n}q", pl, 0))), end
     if k == "perm_groups.partition":
         return Partitions(q["count"], q["n"], unpack_entries(pl, 0, q["count"] * q["n"])), end
     if k == "perm_groups.bsgs":

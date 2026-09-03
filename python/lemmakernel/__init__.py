@@ -21,8 +21,8 @@ from .interchange import (GRAMS, NATURALS, Basis, Bsgs, BurnsideCounts, Characte
                           CharacterMultiplicities, CharacterTable, Characters, Coefficients, Count, CurveGroups,
                           CycleIndex, Degrees, DegreeSequences, Elements, Extremum, Family, First, GraphGroups,
                           Histogram, Hits, Integers, Inverses, Matrix, MobiusMatrices, Partitions, Perms,
-                          PermutationGenerators, RskPairs, ShortVectors, Solutions, Spectra, ThetaSeries, U64Matrices,
-                          U64Vectors, WeightEnumerators, Witness, gram, matrix, naturals, perms)
+                          PermutationGenerators, RskPairs, ShortVectors, SignedMatrices, Solutions, Spectra,
+                          ThetaSeries, U64Matrices, U64Vectors, WeightEnumerators, Witness, gram, matrix, naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "gram", "perms", "naturals", "interchange", "MODULES",
@@ -30,8 +30,8 @@ __all__ = ["Context", "Handle", "Error", "describe", "matrix", "gram", "perms", 
            "CycleIndex", "Spectra", "U64Matrices", "U64Vectors", "Partitions", "Bsgs", "CharacterTable",
            "CharacterIndicators", "CharacterMultiplicities", "PermutationGenerators", "MobiusMatrices", "Characters",
            "RskPairs", "CurveGroups", "Elements", "Degrees", "DegreeSequences", "Coefficients", "ThetaSeries",
-           "ShortVectors", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family", "GraphGroups",
-           "NATURALS", "GRAMS"]
+           "ShortVectors", "SignedMatrices", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family",
+           "GraphGroups", "NATURALS", "GRAMS"]
 
 
 class Error(RuntimeError):
@@ -181,7 +181,7 @@ _PARAM_NAMES = {
     "perm_groups.bsgs": ["count", "n"], "automorphisms.generators": ["count", "order"],
     "posets.mobius": ["count"], "young.characters": ["count"], "young.rsk_pairs": ["count", "length"],
     "elliptic_curves_fp.group": ["count"], "polynomials_fq.elements": ["p", "count"],
-    "polynomials_fq.degrees": ["count"], "integers": ["count"],
+    "polynomials_fq.degrees": ["count"], "lk.signed_matrices": ["count", "rows", "cols"], "integers": ["count"],
     "count": ["value", "visited", "family_size"], "histogram": ["visited", "family_size", "bins"],
     "hits": ["p", "rows", "cols", "total", "visited", "family_size", "count", "materialised"],
     "lk.naturals": ["count", "rows", "cols"], "lattices.gram": ["count", "n"],

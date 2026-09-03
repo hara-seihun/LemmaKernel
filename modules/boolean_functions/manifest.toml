@@ -1,0 +1,89 @@
+# Boolean and vectorial Boolean functions represented by truth tables over F_2.
+
+[module]
+name = "boolean_functions"
+version = 1
+summary = "Spectral and algebraic invariants and domain-affine canonical forms of Boolean truth tables. Columns are inputs 0..2^n-1 in binary order, with variable x_i the i-th low bit. Build every degree-at-most-d scalar function by transforming all_matrices(2, 1, sum_{k<=d} binomial(n,k)) through the degree-then-lex monomial evaluation matrix; omit the constant monomial for zero-constant quadratic forms."
+lean = "lean"
+contract = "lean/Boolean_functions/Contract.lean"
+reference = "lean/Boolean_functions/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "nonlinearity"
+value = "integer"
+summary = "For a scalar truth table, its minimum Hamming distance from an affine Boolean function, equal to 2^(n-1) minus half the largest absolute Walsh coefficient."
+
+[[operations]]
+name = "algebraic_degree"
+value = "integer"
+summary = "The largest square-free ANF monomial degree among all coordinate functions. The zero function has degree 0."
+
+[[operations]]
+name = "walsh_spectrum"
+value = "lk.signed_matrices"
+summary = "For a scalar truth table f, the signed list W_f(u) = sum_x (-1)^(f(x)+u dot x), with u and x in binary numeric order."
+
+[[operations]]
+name = "is_bent"
+value = "boolean"
+summary = "Whether a scalar truth table has even input dimension n and every Walsh coefficient has absolute value 2^(n/2). The n=0 constant functions are bent by this definition."
+
+[[operations]]
+name = "is_apn"
+value = "boolean"
+summary = "Whether a vectorial truth table F has differential uniformity at most 2: for every nonzero a and every b, F(x+a)+F(x)=b has at most two solutions. Rows are output coordinate bits."
+
+[[operations]]
+name = "affine_class"
+value = "gfp.matrix"
+summary = "The row-major lexicographically least scalar truth table f(Ax+b), over every invertible binary matrix A and translation b. This is the canonical representative for affine equivalence by changes of input variables; output complementation and adding affine functions are not part of this relation."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/boolean_functions_generic.cpp"]
+accepts = "F_2 matrix families whose positive column count is a power of two; scalar operations require one row"
+summary = "Portable C++ using in-place fast Walsh and Mobius transforms, direct derivative counting for APN tests, and prefix-pruned enumeration of affine input bases for canonical forms; members are threaded."
+
+[[rejections]]
+case = "ternary truth table"
+op = "algebraic_degree"
+error = "no available backend accepts"
+
+[[rejections]]
+case = "three-value truth table"
+op = "algebraic_degree"
+error = "power of two"
+
+[[rejections]]
+case = "vectorial scalar operation"
+op = "nonlinearity"
+error = "one output row"
+
+[[rejections]]
+case = "vectorial scalar operation"
+op = "walsh_spectrum"
+error = "one output row"
+
+[[rejections]]
+case = "vectorial scalar operation"
+op = "is_bent"
+error = "one output row"
+
+[[rejections]]
+case = "vectorial scalar operation"
+op = "affine_class"
+error = "one output row"
+
+[[rejections]]
+case = "spectrum with count"
+op = "walsh_spectrum"
+reduction = "count"
+error = "does not accept"
+
+[[rejections]]
+case = "affine class with count"
+op = "affine_class"
+reduction = "count"
+error = "does not accept"

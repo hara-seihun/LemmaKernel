@@ -34,6 +34,7 @@ Runtime kinds (not module-specific):
 | `first` | p, rows, cols, found, index, visited, family_size | found·rows·cols entries (the hit, if any) |
 | `extremum` | p, rows, cols, value, index, visited, family_size | rows·cols entries (the member attaining the value) |
 | `lk.naturals` | count, rows, cols | count·rows·cols 4-byte entries |
+| `lk.signed_matrices` | count, rows, cols | count·rows·cols signed 8-byte entries |
 | `family.<name>` | the family's integer parameters | the nested objects (matrices, inner family) as concatenated blobs, in the order the manifest lists them |
 
 `sum` returns kind `count` with the sum as its value. `first` reports `visited` as index + 1 when

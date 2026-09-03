@@ -12,6 +12,13 @@ payload = "count*rows*cols u32 natural numbers"
 lean = "naturals"
 summary = "A batch of natural-number matrices with entries below 2^32."
 
+[[kinds]]
+name = "lk.signed_matrices"
+params = ["count", "rows", "cols"]
+payload = "count*rows*cols little-endian i64 entries"
+lean = "spectrum"
+summary = "A batch of fixed-shape signed 64-bit integer matrices."
+
 [[families]]
 name = "explicit"
 member = "matrix"

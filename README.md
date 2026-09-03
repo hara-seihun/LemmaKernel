@@ -85,6 +85,7 @@ and committed; the build refuses to configure if they are stale.
 | module | what it computes | backends |
 |---|---|---|
 | [automorphisms](modules/automorphisms/manifest.toml) | automorphism groups of finite groups: order, canonical generators, holomorph order, and outer automorphism group order | `generic` (propagated partial table isomorphisms, portable C++) |
+| [boolean_functions](modules/boolean_functions/manifest.toml) | nonlinearity, algebraic degree, Walsh spectra, bent and APN tests, and domain-affine canonical forms for Boolean truth tables | `generic` (fast Walsh and Mobius transforms, prefix-pruned affine canonicalisation, portable C++) |
 | [burnside](modules/burnside/manifest.toml) | orbit counts, fixed counts, and canonical cycle indices for permutation groups on subsets and words, without enumerating the acted-on family | `generic` (cycle-type formulas, portable C++) |
 | [cayley](modules/cayley/manifest.toml) | simple undirected Cayley graphs of finite permutation groups: connectivity, regularity, girth, diameter, graph automorphism order, and the CI property of a connection set | `generic` (exact group closure, graph search, partition refinement and individualisation, portable C++) |
 | [char_poly](modules/char_poly/manifest.toml) | characteristic and minimal polynomials, rational canonical form, GL conjugacy labels, regularity, semisimplicity, and element order | `generic` (portable C++; bounded rational-form factor search and element orders) |

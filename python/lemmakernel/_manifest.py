@@ -112,7 +112,12 @@ RUNTIME = {'families': [{'lean': 'explicit',
             'name': 'lk.naturals',
             'params': ['count', 'rows', 'cols'],
             'payload': 'count*rows*cols u32 natural numbers',
-            'summary': 'A batch of natural-number matrices with entries below 2^32.'}],
+            'summary': 'A batch of natural-number matrices with entries below 2^32.'},
+           {'lean': 'spectrum',
+            'name': 'lk.signed_matrices',
+            'params': ['count', 'rows', 'cols'],
+            'payload': 'count*rows*cols little-endian i64 entries',
+            'summary': 'A batch of fixed-shape signed 64-bit integer matrices.'}],
  'reductions': [{'accepts': ['*'],
                  'name': 'all',
                  'summary': 'Materialise the per-member value for every member, in family order. Integers '
@@ -188,6 +193,69 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'summary': 'The index [Aut(G) : Inn(G)] = |Out(G)|, computed as |Aut(G)| * |Z(G)| / |G|.',
                   'value': 'integer'}],
   'rejections': [{'case': 'matrix is not a group family', 'error': 'group_tables'}]},
+ {'backends': [{'accepts': 'F_2 matrix families whose positive column count is a power of two; scalar '
+                           'operations require one row',
+                'name': 'generic',
+                'sources': ['backends/generic/boolean_functions_generic.cpp'],
+                'summary': 'Portable C++ using in-place fast Walsh and Mobius transforms, direct derivative '
+                           'counting for APN tests, and prefix-pruned enumeration of affine input bases for '
+                           'canonical forms; members are threaded.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Boolean_functions/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'boolean_functions',
+             'reference': 'lean/Boolean_functions/Reference.lean',
+             'summary': 'Spectral and algebraic invariants and domain-affine canonical forms of Boolean '
+                        'truth tables. Columns are inputs 0..2^n-1 in binary order, with variable x_i the '
+                        'i-th low bit. Build every degree-at-most-d scalar function by transforming '
+                        'all_matrices(2, 1, sum_{k<=d} binomial(n,k)) through the degree-then-lex monomial '
+                        'evaluation matrix; omit the constant monomial for zero-constant quadratic forms.',
+             'version': 1},
+  'operations': [{'name': 'nonlinearity',
+                  'summary': 'For a scalar truth table, its minimum Hamming distance from an affine Boolean '
+                             'function, equal to 2^(n-1) minus half the largest absolute Walsh coefficient.',
+                  'value': 'integer'},
+                 {'name': 'algebraic_degree',
+                  'summary': 'The largest square-free ANF monomial degree among all coordinate functions. '
+                             'The zero function has degree 0.',
+                  'value': 'integer'},
+                 {'name': 'walsh_spectrum',
+                  'summary': 'For a scalar truth table f, the signed list W_f(u) = sum_x (-1)^(f(x)+u dot '
+                             'x), with u and x in binary numeric order.',
+                  'value': 'lk.signed_matrices'},
+                 {'name': 'is_bent',
+                  'summary': 'Whether a scalar truth table has even input dimension n and every Walsh '
+                             'coefficient has absolute value 2^(n/2). The n=0 constant functions are bent by '
+                             'this definition.',
+                  'value': 'boolean'},
+                 {'name': 'is_apn',
+                  'summary': 'Whether a vectorial truth table F has differential uniformity at most 2: for '
+                             'every nonzero a and every b, F(x+a)+F(x)=b has at most two solutions. Rows are '
+                             'output coordinate bits.',
+                  'value': 'boolean'},
+                 {'name': 'affine_class',
+                  'summary': 'The row-major lexicographically least scalar truth table f(Ax+b), over every '
+                             'invertible binary matrix A and translation b. This is the canonical '
+                             'representative for affine equivalence by changes of input variables; output '
+                             'complementation and adding affine functions are not part of this relation.',
+                  'value': 'gfp.matrix'}],
+  'rejections': [{'case': 'ternary truth table',
+                  'error': 'no available backend accepts',
+                  'op': 'algebraic_degree'},
+                 {'case': 'three-value truth table', 'error': 'power of two', 'op': 'algebraic_degree'},
+                 {'case': 'vectorial scalar operation', 'error': 'one output row', 'op': 'nonlinearity'},
+                 {'case': 'vectorial scalar operation', 'error': 'one output row', 'op': 'walsh_spectrum'},
+                 {'case': 'vectorial scalar operation', 'error': 'one output row', 'op': 'is_bent'},
+                 {'case': 'vectorial scalar operation', 'error': 'one output row', 'op': 'affine_class'},
+                 {'case': 'spectrum with count',
+                  'error': 'does not accept',
+                  'op': 'walsh_spectrum',
+                  'reduction': 'count'},
+                 {'case': 'affine class with count',
+                  'error': 'does not accept',
+                  'op': 'affine_class',
+                  'reduction': 'count'}]},
  {'backends': [{'accepts': 'permutation groups on subsets, subsets_of, and words; group closure up to 2^26 '
                            'elements',
                 'name': 'generic',

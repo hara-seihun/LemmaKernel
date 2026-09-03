@@ -2,7 +2,7 @@
 # Lk is the runtime's reference (families, reductions) and contract; then one library
 # per module: its executable reference and contract (against Mathlib).
 name = "LemmaKernel"
-defaultTargets = ["Lk", "Automorphisms", "Burnside", "Cayley", "Char_poly", "Characters", "Circulants", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Graph_polynomials", "Graphs", "Hadamard", "Hypergraphs", "Integer_partitions", "Lattice_of_subspaces", "Lattices_small", "Linear_codes", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Polytopes_small", "Posets", "Projective_sets", "Quantum_codes", "Residues", "Set_systems", "Simplicial_complexes", "Spreads_and_partitions", "Strongly_regular", "Subspace_orbits", "Sum_free_and_additive", "Words_and_growth", "Young"]
+defaultTargets = ["Lk", "Automorphisms", "Boolean_functions", "Burnside", "Cayley", "Char_poly", "Characters", "Circulants", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Graph_polynomials", "Graphs", "Hadamard", "Hypergraphs", "Integer_partitions", "Lattice_of_subspaces", "Lattices_small", "Linear_codes", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Polytopes_small", "Posets", "Projective_sets", "Quantum_codes", "Residues", "Set_systems", "Simplicial_complexes", "Spreads_and_partitions", "Strongly_regular", "Subspace_orbits", "Sum_free_and_additive", "Words_and_growth", "Young"]
 
 [[require]]
 name = "mathlib"
@@ -18,6 +18,11 @@ roots = ["Lk"]
 name = "Automorphisms"
 srcDir = "modules/automorphisms/lean"
 roots = ["Automorphisms"]
+
+[[lean_lib]]
+name = "Boolean_functions"
+srcDir = "modules/boolean_functions/lean"
+roots = ["Boolean_functions"]
 
 [[lean_lib]]
 name = "Burnside"

@@ -116,6 +116,11 @@ struct U64Vectors {
     std::vector<uint64_t> entries;
 };
 
+struct I64Matrices {
+    uint64_t count = 0, rows = 0, cols = 0;
+    std::vector<int64_t> entries;
+};
+
 struct Partitions {
     uint64_t count = 0, n = 0;
     std::vector<Entry> labels;
@@ -255,6 +260,7 @@ struct Object {
     std::shared_ptr<Spectra> spectra;
     std::shared_ptr<U64Matrices> u64_matrices;
     std::shared_ptr<U64Vectors> u64_vectors;
+    std::shared_ptr<I64Matrices> i64_matrices;
     std::shared_ptr<Partitions> partitions;
     std::shared_ptr<Bsgs> bsgs;
     std::shared_ptr<CharacterTable> character_table;
