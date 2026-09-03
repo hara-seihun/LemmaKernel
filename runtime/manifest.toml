@@ -7,15 +7,15 @@
 
 [[families]]
 name = "explicit"
-member = "gfp.matrix"
+member = "matrix"
 lean = "explicit"
-summary = "One member per matrix of the batch, in batch order."
+summary = "One member per matrix or permutation of the batch, in batch order."
 
 [[families]]
 name = "subsets"
-member = "gfp.matrix"
+member = "matrix"
 lean = "subsets"
-summary = "Every k-row matrix formed by choosing k rows of the dictionary, indices increasing; lexicographic order of the index tuple."
+summary = "Every k-row matrix formed by choosing k rows of a matrix or permutation dictionary, indices increasing; lexicographic order of the index tuple."
 
 [[families]]
 name = "grassmannian"

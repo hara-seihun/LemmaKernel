@@ -136,8 +136,10 @@ def L(x) -> str:
     return str(int(x))
 
 
-def vectors_of(m: ic.Matrix) -> list:
-    """A batch of 1 x n rows, or one k x n matrix, as a list of vectors."""
+def vectors_of(m: ic.Matrix | ic.Perms) -> list:
+    """A batch of 1 x n rows, one k x n matrix, or a permutation batch as vectors."""
+    if isinstance(m, ic.Perms):
+        return m.tolist()
     return [r[0] for r in m.tolist()] if m.rows == 1 else m.member(0)
 
 
@@ -145,12 +147,13 @@ def lean_family(f: ic.Family) -> str:
     q, ctor = f.params, RUNTIME_FAMILIES[f.kind]["lean"]
     if f.kind == "explicit":
         (b,) = f.children
+        if isinstance(b, ic.Perms):
+            return f"(.{ctor} 0 {L([[g] for g in b.tolist()])})"
         return f"(.{ctor} {b.p} {L(b.tolist())})"
     if f.kind == "subsets":
         (d,) = f.children
         p = 0 if isinstance(d, ic.Perms) else d.p
-        vectors = d.tolist() if isinstance(d, ic.Perms) else vectors_of(d)
-        return f"(.{ctor} {p} {L(vectors)} {q['k']})"
+        return f"(.{ctor} {p} {L(vectors_of(d))} {q['k']})"
     if f.kind == "grassmannian":
         return f"(.{ctor} {q['p']} {q['n']} {q['h']})"
     if f.kind == "all_matrices":

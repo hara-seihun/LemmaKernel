@@ -17,13 +17,14 @@ import os
 from pathlib import Path
 
 from . import interchange
-from .interchange import (NATURALS, Basis, BurnsideCounts, Count, CycleIndex, Extremum, Family, First, Histogram, Hits,
-                          Integers, Inverses, Matrix, Perms, Solutions, U64Matrices, Witness, matrix, naturals, perms)
+from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, Count, CycleIndex, Extremum, Family, First, Histogram,
+                          Hits, Integers, Inverses, Matrix, Partitions, Perms, Solutions, U64Matrices, Witness, matrix,
+                          naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
            "Matrix", "Basis", "Solutions", "Inverses", "Witness", "BurnsideCounts", "CycleIndex", "U64Matrices",
-           "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family", "NATURALS"]
+           "Partitions", "Bsgs", "Integers", "Count", "Histogram", "Hits", "First", "Extremum", "Family", "NATURALS"]
 
 
 class Error(RuntimeError):
@@ -155,7 +156,7 @@ _PARAM_NAMES = {
     "gfp.solutions": ["p", "count", "length"], "gfp.inverses": ["p", "count", "n"],
     "gfp.witness": ["p", "count", "rows", "cols"], "burnside.counts": ["count"],
     "burnside.cycle_index": ["degree", "count", "denominator"], "designs.matrix": ["count", "rows", "cols"],
-    "integers": ["count"],
+    "perm_groups.partition": ["count", "n"], "perm_groups.bsgs": ["count", "n"], "integers": ["count"],
     "count": ["value", "visited", "family_size"], "histogram": ["visited", "family_size", "bins"],
     "hits": ["p", "rows", "cols", "total", "visited", "family_size", "count", "materialised"],
     "lk.naturals": ["count", "rows", "cols"],

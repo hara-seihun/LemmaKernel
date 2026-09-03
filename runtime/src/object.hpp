@@ -73,6 +73,17 @@ struct U64Matrices {
     std::vector<uint64_t> entries;
 };
 
+struct Partitions {
+    uint64_t count = 0, n = 0;
+    std::vector<Entry> labels;
+};
+
+struct Bsgs {
+    uint64_t count = 0, n = 0;
+    std::vector<uint64_t> base_offsets, strong_offsets;
+    std::vector<Entry> bases, strong;
+};
+
 struct Integers {
     std::vector<uint64_t> values;
 };
@@ -116,6 +127,8 @@ struct Object {
     std::shared_ptr<Witness> witness;
     std::shared_ptr<CycleIndex> cycle_index;
     std::shared_ptr<U64Matrices> u64_matrices;
+    std::shared_ptr<Partitions> partitions;
+    std::shared_ptr<Bsgs> bsgs;
     std::shared_ptr<Integers> integers;
     std::shared_ptr<Count> count;
     std::shared_ptr<Histogram> histogram;

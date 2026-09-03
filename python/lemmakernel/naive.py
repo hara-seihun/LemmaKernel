@@ -48,7 +48,9 @@ def perm_closure(gens: list[list[int]]) -> list[list[int]]:
 
 # ---- families -----------------------------------------------------------------------------------
 
-def batch_members(m: Matrix):
+def batch_members(m: Matrix | Perms):
+    if isinstance(m, Perms):
+        return [[m.member(i)] for i in range(m.count)]
     return [m.member(i) for i in range(m.count)]
 
 

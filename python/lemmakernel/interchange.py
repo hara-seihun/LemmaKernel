@@ -326,6 +326,43 @@ class U64Matrices:
 
 
 @dataclass
+class Partitions:
+    count: int
+    n: int
+    labels: object
+
+    def member(self, i: int):
+        return [int(x) for x in self.labels[i * self.n:(i + 1) * self.n]]
+
+    def encode(self) -> bytes:
+        return encode("perm_groups.partition", {"count": self.count, "n": self.n},
+                      pack_entries(self.labels, 0))
+
+
+@dataclass
+class Bsgs:
+    count: int
+    n: int
+    base_offsets: list[int]
+    strong_offsets: list[int]
+    bases: object
+    strong: object
+
+    def member(self, i: int):
+        base = [int(x) for x in self.bases[self.base_offsets[i]:self.base_offsets[i + 1]]]
+        generators = []
+        for j in range(self.strong_offsets[i], self.strong_offsets[i + 1]):
+            generators.append([int(x) for x in self.strong[j * self.n:(j + 1) * self.n]])
+        return base, generators
+
+    def encode(self) -> bytes:
+        offsets = struct.pack(f"<{len(self.base_offsets)}Q", *self.base_offsets)
+        offsets += struct.pack(f"<{len(self.strong_offsets)}Q", *self.strong_offsets)
+        return encode("perm_groups.bsgs", {"count": self.count, "n": self.n},
+                      offsets + pack_entries(self.bases, 0) + pack_entries(self.strong, 0))
+
+
+@dataclass
 class Integers:
     values: list[int]
 
@@ -422,7 +459,8 @@ class Family:
 
 KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "gfp.basis": Basis, "gfp.solutions": Solutions,
          "gfp.inverses": Inverses, "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
-         "burnside.cycle_index": CycleIndex, "designs.matrix": U64Matrices, "integers": Integers,
+         "burnside.cycle_index": CycleIndex, "designs.matrix": U64Matrices,
+         "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs, "integers": Integers,
          "count": Count, "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
 
 
@@ -489,6 +527,18 @@ def decode_at(buf: bytes, offset: int):
         if len(pl) != n * 8:
             raise ValueError("designs.matrix payload length mismatch")
         return U64Matrices(q["count"], q["rows"], q["cols"], list(struct.unpack_from(f"<{n}Q", pl, 0))), end
+    if k == "perm_groups.partition":
+        return Partitions(q["count"], q["n"], unpack_entries(pl, 0, q["count"] * q["n"])), end
+    if k == "perm_groups.bsgs":
+        count, n = q["count"], q["n"]
+        width = 8 * (count + 1)
+        base_offsets = list(struct.unpack_from(f"<{count + 1}Q", pl, 0))
+        strong_offsets = list(struct.unpack_from(f"<{count + 1}Q", pl, width))
+        pos = 2 * width
+        base_bytes = base_offsets[-1] * 4
+        bases = unpack_entries(pl[pos:pos + base_bytes], 0, base_offsets[-1])
+        strong = unpack_entries(pl[pos + base_bytes:], 0, strong_offsets[-1] * n)
+        return Bsgs(count, n, base_offsets, strong_offsets, bases, strong), end
     if k == "integers":
         return Integers(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "count":

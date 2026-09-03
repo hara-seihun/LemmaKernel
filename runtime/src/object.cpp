@@ -1,6 +1,7 @@
 #include "object.hpp"
 #include "family.hpp"
 
+#include <algorithm>
 #include <cstring>
 
 namespace lk {
@@ -197,7 +198,7 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         return o;
     };
     if (sub == "explicit") {
-        auto b = child_object("gfp.matrix");
+        auto b = child_object("matrix");
         if (!b.ok) return R::failure(b.error.status, b.error.message);
         return make_explicit(b.value->matrix);
     }
@@ -454,6 +455,50 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         o->u64_matrices = m;
         return R::success(o);
     }
+    if (h.kind == "perm_groups.partition") {
+        auto count = need(h, "count"), n = need(h, "n");
+        for (auto *q : {&count, &n}) if (!q->ok) return R::failure(q->error.status, q->error.message);
+        auto part = std::make_shared<Partitions>();
+        part->count = count.value; part->n = n.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        r.entries(part->labels, count.value * n.value, 4);
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "perm_groups.partition payload length mismatch");
+        for (Entry label : part->labels)
+            if (label >= n.value) return R::failure(INVALID, "perm_groups.partition label is outside 0..n-1");
+        o->partitions = part;
+        return R::success(o);
+    }
+    if (h.kind == "perm_groups.bsgs") {
+        auto count = need(h, "count"), n = need(h, "n");
+        for (auto *q : {&count, &n}) if (!q->ok) return R::failure(q->error.status, q->error.message);
+        if (n.value == 0) return R::failure(INVALID, "perm_groups.bsgs needs n >= 1");
+        auto b = std::make_shared<Bsgs>();
+        b->count = count.value; b->n = n.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        for (uint64_t i = 0; i <= count.value; ++i) b->base_offsets.push_back(r.u64());
+        for (uint64_t i = 0; i <= count.value; ++i) b->strong_offsets.push_back(r.u64());
+        auto offsets_valid = [count = count.value](const std::vector<uint64_t> &xs) {
+            return xs.size() == count + 1 && xs.front() == 0 && std::is_sorted(xs.begin(), xs.end());
+        };
+        if (r.bad || !offsets_valid(b->base_offsets) || !offsets_valid(b->strong_offsets))
+            return R::failure(INVALID, "perm_groups.bsgs offsets are malformed");
+        r.entries(b->bases, b->base_offsets.back(), 4);
+        r.entries(b->strong, b->strong_offsets.back() * n.value, 4);
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "perm_groups.bsgs payload length mismatch");
+        for (Entry point : b->bases)
+            if (point >= n.value) return R::failure(INVALID, "perm_groups.bsgs base point is outside 0..n-1");
+        for (uint64_t i = 0; i < b->strong_offsets.back(); ++i) {
+            std::vector<bool> seen(n.value, false);
+            for (uint64_t j = 0; j < n.value; ++j) {
+                Entry point = b->strong[i * n.value + j];
+                if (point >= n.value || seen[point])
+                    return R::failure(INVALID, "perm_groups.bsgs strong generator is not a permutation");
+                seen[point] = true;
+            }
+        }
+        o->bsgs = b;
+        return R::success(o);
+    }
     return R::failure(INVALID, "unknown object kind " + h.kind);
 }
 
@@ -506,6 +551,8 @@ std::map<std::string, uint64_t> Object::params() const {
     if (cycle_index) return {{"degree", cycle_index->degree}, {"count", cycle_index->multiplicities.size()},
                              {"denominator", cycle_index->denominator}};
     if (u64_matrices) return {{"count", u64_matrices->count}, {"rows", u64_matrices->rows}, {"cols", u64_matrices->cols}};
+    if (partitions) return {{"count", partitions->count}, {"n", partitions->n}};
+    if (bsgs) return {{"count", bsgs->count}, {"n", bsgs->n}};
     if (integers) return {{"count", integers->values.size()}};
     if (count) return {{"value", count->value}, {"visited", count->visited}, {"family_size", count->family_size}};
     if (histogram) return {{"visited", histogram->visited}, {"family_size", histogram->family_size}, {"bins", histogram->bins.size()}};
@@ -563,6 +610,15 @@ std::vector<uint8_t> encode(const Object &o) {
     } else if (o.u64_matrices) {
         w.u64s(o.u64_matrices->entries);
         write_header(out, "designs.matrix", o.params(), w.out);
+    } else if (o.partitions) {
+        w.entries(o.partitions->labels, 4);
+        write_header(out, "perm_groups.partition", o.params(), w.out);
+    } else if (o.bsgs) {
+        w.u64s(o.bsgs->base_offsets);
+        w.u64s(o.bsgs->strong_offsets);
+        w.entries(o.bsgs->bases, 4);
+        w.entries(o.bsgs->strong, 4);
+        write_header(out, "perm_groups.bsgs", o.params(), w.out);
     } else if (o.integers) {
         w.u64s(o.integers->values);
         write_header(out, o.kind == "burnside.counts" ? "burnside.counts" : "integers", o.params(), w.out);
