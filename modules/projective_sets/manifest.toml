@@ -1,0 +1,93 @@
+# projective_sets: predicates and line statistics for point sets in finite projective space.
+
+[module]
+name = "projective_sets"
+version = 1
+summary = "Point sets in PG(n,p), given as subsets of distinct normalised nonzero coordinate rows over F_p. Arc means every n+1 points are independent; cap means no three are collinear. Secant, tangent and passant counts range over every projective line."
+lean = "lean"
+contract = "lean/Projective_sets/Contract.lean"
+reference = "lean/Projective_sets/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "is_arc"
+value = "boolean"
+families = ["subsets"]
+summary = "Whether every n+1 selected points of PG(n,p) are linearly independent, equivalently every hyperplane contains at most n points."
+
+[[operations]]
+name = "is_cap"
+value = "boolean"
+families = ["subsets"]
+summary = "Whether no projective line contains three selected points."
+
+[[operations]]
+name = "is_blocking_set"
+value = "boolean"
+families = ["subsets"]
+summary = "Whether the set meets every projective hyperplane."
+
+[[operations]]
+name = "is_hyperoval"
+value = "boolean"
+families = ["subsets"]
+summary = "Whether the set is a 4-point cap in PG(2,2), the only even field supported by the prime-field runtime."
+
+[[operations]]
+name = "is_ovoid"
+value = "boolean"
+families = ["subsets"]
+summary = "Whether the set is a cap of p^2+1 points in PG(3,p)."
+
+[[operations]]
+name = "max_collinear"
+value = "integer"
+families = ["subsets"]
+summary = "The largest intersection with a projective line; 0 when the ambient space has no lines."
+
+[[operations]]
+name = "spanned_rank"
+value = "integer"
+families = ["subsets"]
+summary = "Vector-space rank of the selected homogeneous coordinate rows, one more than the projective dimension of a nonempty span."
+
+[[operations]]
+name = "secant_count"
+value = "integer"
+families = ["subsets"]
+summary = "Number of projective lines containing exactly two selected points."
+
+[[operations]]
+name = "tangent_count"
+value = "integer"
+families = ["subsets"]
+summary = "Number of projective lines containing exactly one selected point."
+
+[[operations]]
+name = "passant_count"
+value = "integer"
+families = ["subsets"]
+summary = "Number of projective lines containing no selected point."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/projective_sets_generic.cpp"]
+accepts = "subsets of coordinate rows over any prime p < 2^32; line and hyperplane incidence is precomputed once per request"
+summary = "Portable C++: precomputes dictionary incidence with every line or hyperplane, then evaluates members in parallel."
+
+[[rejections]]
+case = "explicit point set"
+error = "subsets"
+
+[[rejections]]
+case = "zero projective point"
+error = "contains zero"
+
+[[rejections]]
+case = "unnormalised projective point"
+error = "not normalised"
+
+[[rejections]]
+case = "duplicate projective point"
+error = "contains a duplicate"
