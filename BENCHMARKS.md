@@ -14,6 +14,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | perm_groups | S9 Schreier-Sims order | 1 | 1.36 s | 2.68e-05 s | 50,921× | 61,176× |
 | residues | primitive_roots_mod_10007 | 10,006 | 23.5 s~ | 0.000824 s | 28,580× | 48,774× |
 | polynomials_fq | first_primitive_degree_14_F2 | 16,384 | 17.2 s | 0.000718 s | 23,927× | 18,976× |
+| code_equivalence | binary [6,3] classes | 1,395 | 10 s | 0.000539 s | 18,612× | 6,841× |
 | orbits | bracelets_burnside | 32 | 0.127 s | 7.78e-06 s | 16,320× | 198× |
 | sum_free_and_additive | sum_free_10_subsets_of_30 | 30,045,015 | 141 s~ | 0.00947 s | 14,872× | 38,300× |
 | difference_sets | C31 (31,6,1) search | 736,281 | 1,076 s~ | 0.0779 s | 13,816× | 72,721× |
@@ -66,6 +67,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | char_poly | explicit_6x6_charpoly | characteristic polynomials of 10,000 dense and structured 6x6 matrices over F_251 | 10,000 | 26.1 s~ | 0.00697 s | 0.00123 s | 3,745× | 21,203× |
 | circulants | canonical 5-subsets on Z31 | multiplier-isomorphism classes of valency-five circulant digraphs on 31 vertices | 142,506 | 0.888 s | 0.0776 s | 0.0317 s | 11× | 28× |
 | circulants | spectra of pairs on Z101 | exact character spectra of every valency-two circulant digraph on 101 vertices | 4,950 | 0.214 s | 0.00518 s | 0.0027 s | 41× | 79× |
+| code_equivalence | binary [6,3] classes | how many inequivalent binary [6,3] codes there are, out of 1395 subspaces | 1,395 | 10 s | 0.000539 s | 0.00147 s | 18,612× | 6,841× |
 | continued_fractions_and_pell | periods_to_200000 | the period length of sqrt(d) for every d below 200000 | 200,000 | 2.83 s | 0.135 s | 0.054 s | 21× | 52× |
 | continued_fractions_and_pell | negative_pell_to_200000 | for how many d below 200000 the equation x^2 - d y^2 = -1 is solvable | 200,000 | 3 s | 0.126 s | 0.00662 s | 24× | 454× |
 | continued_fractions_and_pell | largest_partial_quotient | the largest partial quotient in any period of sqrt(d) for d below 200000 | 200,000 | 2.37 s | 0.124 s | 0.00911 s | 19× | 260× |

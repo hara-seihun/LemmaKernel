@@ -1,0 +1,36 @@
+{
+ "module": "code_equivalence",
+ "fingerprint": {
+  "module": "068821a62a515974bfe535844e42381653b436531a6dec7122bc938ec7eac80f",
+  "runtime": "97342c8cd2cc66540c1675c5f17e9c0badf656342e454d4e7cb0628fe0989dd5",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "eee6026245390e606d16654f43657116a2b03d711457fa5569ab3311ed1a5323"
+ },
+ "measured_at": "2026-09-03T06:06:18+00:00",
+ "commit": "f6e11035112b82a4ea0a34e09e3402dd3cbfce8f",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "binary [6,3] classes",
+   "what": "how many inequivalent binary [6,3] codes there are, out of 1395 subspaces",
+   "op": "code_equivalence.is_canonical",
+   "reduction": "count",
+   "members": 1395,
+   "naive_s": 10.032106384867802,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.000539001077413559,
+   "kernel_all_threads_s": 0.0014664980117231607,
+   "threads": 32,
+   "speedup_1_thread": 18612.405067922482,
+   "speedup_all_threads": 6840.859179263327,
+   "answer": "Count(value=22, visited=1395, family_size=1395)"
+  }
+ ]
+}

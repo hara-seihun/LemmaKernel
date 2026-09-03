@@ -634,6 +634,113 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'connection set containing zero', 'error': 'identity-free'},
                  {'case': 'zero order spectrum', 'error': 'n must satisfy'},
                  {'case': 'is_ci on connection sets', 'error': 'range families only'}]},
+ {'backends': [{'accepts': "prime fields p < 2^32; the Grassmannian size at the member's dimension and the "
+                           'group order (p-1)^n n! must fit u64',
+                'name': 'generic',
+                'sources': ['backends/generic/code_equivalence_generic.cpp'],
+                'summary': 'Portable C++: the class representative is always systematic, so the search runs '
+                           'over ordered information sets rather than the whole group; each one fixes [I | '
+                           'A] up to a row monomial map, and the free columns are normalised and sorted. '
+                           'Automorphisms are counted from the maps that reach the representative. Families '
+                           'are split across threads.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Code_equivalence/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'code_equivalence',
+             'reference': 'lean/Code_equivalence/Reference.lean',
+             'summary': 'Linear codes over prime fields up to monomial equivalence. A member denotes its row '
+                        'span, so redundant and zero generator rows do not change the answer. The group is '
+                        'the monomial group of F_q^n, of order (q-1)^n n!; set scalars=1 for it and '
+                        'scalars=0 for coordinate permutations alone. The canonical representative of a '
+                        "class is the code of least index in grassmannian(p, n, k) at the code's dimension "
+                        'k; that code is always in systematic form, so canonical_form returns [I_k | A] with '
+                        'A the least row-major digit string in the class. aut_order counts the monomial maps '
+                        'that fix the code, including the q-1 scalar matrices, and orbit_size times '
+                        'aut_order is the group order.',
+             'version': 1},
+  'operations': [{'args': {'scalars': 'int'},
+                  'families': ['explicit',
+                               'subsets',
+                               'subsets_of',
+                               'grassmannian',
+                               'all_matrices',
+                               'symmetric_matrices',
+                               'transform',
+                               'stack'],
+                  'name': 'is_canonical',
+                  'summary': "Whether the member's code is the least of its equivalence class. Counting this "
+                             'over grassmannian(p, n, k) is the number of inequivalent [n, k] codes over '
+                             'F_p.',
+                  'value': 'boolean'},
+                 {'args': {'scalars': 'int'},
+                  'families': ['explicit',
+                               'subsets',
+                               'subsets_of',
+                               'grassmannian',
+                               'all_matrices',
+                               'symmetric_matrices',
+                               'transform',
+                               'stack'],
+                  'name': 'canonical_index',
+                  'summary': 'Index of the class representative in grassmannian(p, n, k), where k is this '
+                             "member's dimension. Equivalent members share it, so a histogram counts the "
+                             'class sizes met.',
+                  'value': 'integer'},
+                 {'args': {'scalars': 'int'},
+                  'families': ['explicit',
+                               'subsets',
+                               'subsets_of',
+                               'grassmannian',
+                               'all_matrices',
+                               'symmetric_matrices',
+                               'transform',
+                               'stack'],
+                  'name': 'canonical_form',
+                  'summary': 'The rref basis of the class representative: k rows [I_k | A], where A is the '
+                             'least row-major digit string over the class. The zero code returns no rows.',
+                  'value': 'gfp.basis'},
+                 {'args': {'scalars': 'int'},
+                  'families': ['explicit',
+                               'subsets',
+                               'subsets_of',
+                               'grassmannian',
+                               'all_matrices',
+                               'symmetric_matrices',
+                               'transform',
+                               'stack'],
+                  'name': 'orbit_size',
+                  'summary': "Number of distinct codes equivalent to the member's, that is the size of its "
+                             'orbit under the selected group.',
+                  'value': 'integer'},
+                 {'args': {'scalars': 'int'},
+                  'families': ['explicit',
+                               'subsets',
+                               'subsets_of',
+                               'grassmannian',
+                               'all_matrices',
+                               'symmetric_matrices',
+                               'transform',
+                               'stack'],
+                  'name': 'aut_order',
+                  'summary': 'Order of the stabilizer of the code in the selected group: (p-1)^n n! / '
+                             'orbit_size with scalars=1, or n! / orbit_size with scalars=0. With scalars=0 '
+                             'this is linear_codes.aut_order.',
+                  'value': 'integer'}],
+  'rejections': [{'case': 'words are not generator matrices', 'error': 'families only'},
+                 {'case': 'invalid scalar flag', 'error': 'scalars'},
+                 {'case': 'explicit binary is canonical',
+                  'error': 'does not accept',
+                  'op': 'is_canonical',
+                  'reduction': 'histogram'},
+                 {'case': 'explicit binary canonical index',
+                  'error': 'does not accept integer',
+                  'op': 'canonical_index',
+                  'reduction': 'count'},
+                 {'case': 'explicit binary canonical form',
+                  'error': 'does not accept',
+                  'op': 'canonical_form',
+                  'reduction': 'count'}]},
  {'backends': [{'accepts': 'families of 1 x 1 natural-number members (range, or explicit over lk.naturals)',
                 'name': 'generic',
                 'sources': ['backends/generic/continued_fractions_and_pell_generic.cpp'],

@@ -102,6 +102,7 @@ and committed; the build refuses to configure if they are stale.
 | [char_poly](modules/char_poly/manifest.toml) | characteristic and minimal polynomials, rational canonical form, GL conjugacy labels, regularity, semisimplicity, and element order | `generic` (portable C++; bounded rational-form factor search and element orders) |
 | [characters](modules/characters/manifest.toml) | exact ordinary character tables, induction, restriction, and Frobenius-Schur indicators for finite abelian permutation groups | `generic` (group closure and exact enumeration of the dual group, portable C++) |
 | [circulants](modules/circulants/manifest.toml) | exact character spectra of circulant graphs and digraphs, isomorphism at corrected-Adam orders, canonical connection sets, and the cyclic CI/DCI classification | `generic` (unit multipliers and character sums, portable C++) |
+| [code_equivalence](modules/code_equivalence/manifest.toml) | linear codes up to monomial equivalence: canonical form, canonical index, class representatives, orbit sizes, and monomial automorphism orders | `generic` (search over information sets rather than over the group, portable C++) |
 | [continued_fractions_and_pell](modules/continued_fractions_and_pell/manifest.toml) | continued fractions of `sqrt(d)`, their period statistics, fundamental units of `Z[sqrt d]`, fundamental Pell solutions, solvability of the negative Pell equation, and class numbers of imaginary quadratic orders, over ranges of naturals | `generic` (one continued-fraction walk per member with 128-bit convergents, portable C++) |
 | [designs](modules/designs/manifest.toml) | whole-family tests and data for finite block designs: t-design multiplicities, resolutions, dual 2-designs, intersections, and Kramer-Mesner matrices | `generic` (portable C++) |
 | [difference_sets](modules/difference_sets/manifest.toml) | difference sets, difference multisets, regular partial difference sets, and relative difference sets in finite permutation groups | `generic` (depth-first multiplicity pruning, portable C++) |
@@ -184,6 +185,15 @@ number of columns, so `all_matrices(q, 1, d)` is every monic polynomial of degre
 `transform`, `subsets` and `explicit` give the derived families. `order` is Lidl and
 Niederreiter's: for `f = x^h g` with `g(0)` nonzero it is the least `e` with `g` dividing
 `x^e - 1`.
+
+`code_equivalence` reads a member as a generator matrix and asks which codes it cannot be told
+apart from. The group is the monomial group of `F_q^n`, of order `(q-1)^n n!`: `scalars=1` allows
+a nonzero scalar on each coordinate as well as permuting them, `scalars=0` permutes only, and
+over `F_2` the two coincide. A class is named by its least code in Grassmannian order, which is
+always systematic, so `canonical_form` returns `[I_k | A]` with `A` the least row-major digit
+string in the class. Counting `is_canonical` over `grassmannian(p, n, k)` is the number of
+inequivalent `[n,k]` codes: 22 binary `[6,3]` codes, 43 `[7,3]`, and 705 `[10,5]` from the 109
+million subspaces of `F_2^10`, in 14 seconds.
 
 `subspace_orbits` treats each matrix as a row space, so it also handles transforms and stacks that
 change the displayed basis or its rank. Set `projective=0` to retain the generated GL group order,

@@ -1,0 +1,87 @@
+# code_equivalence: linear codes up to monomial equivalence.
+# A member is a generator matrix; it denotes its row span. Two codes are equivalent when a
+# monomial map (a coordinate permutation composed with a nonzero scalar per coordinate) carries
+# one onto the other. The canonical representative of a class is the code whose rref basis has
+# the least index in the runtime's Grassmannian order at the code's dimension, which is the
+# convention subspace_orbits uses.
+
+[module]
+name = "code_equivalence"
+version = 1
+summary = "Linear codes over prime fields up to monomial equivalence. A member denotes its row span, so redundant and zero generator rows do not change the answer. The group is the monomial group of F_q^n, of order (q-1)^n n!; set scalars=1 for it and scalars=0 for coordinate permutations alone. The canonical representative of a class is the code of least index in grassmannian(p, n, k) at the code's dimension k; that code is always in systematic form, so canonical_form returns [I_k | A] with A the least row-major digit string in the class. aut_order counts the monomial maps that fix the code, including the q-1 scalar matrices, and orbit_size times aut_order is the group order."
+lean = "lean"
+contract = "lean/Code_equivalence/Contract.lean"
+reference = "lean/Code_equivalence/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+# `scalars` selects the acting group: 1 is the full monomial group (permutations and nonzero
+# scalars per coordinate), 0 is coordinate permutations only. Over F_2 the two agree.
+# Prime fields have no nontrivial field automorphism, so semilinear equivalence adds nothing.
+
+[[operations]]
+name = "is_canonical"
+value = "boolean"
+args = { scalars = "int" }
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+summary = "Whether the member's code is the least of its equivalence class. Counting this over grassmannian(p, n, k) is the number of inequivalent [n, k] codes over F_p."
+
+[[operations]]
+name = "canonical_index"
+value = "integer"
+args = { scalars = "int" }
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+summary = "Index of the class representative in grassmannian(p, n, k), where k is this member's dimension. Equivalent members share it, so a histogram counts the class sizes met."
+
+[[operations]]
+name = "canonical_form"
+value = "gfp.basis"
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+args = { scalars = "int" }
+summary = "The rref basis of the class representative: k rows [I_k | A], where A is the least row-major digit string over the class. The zero code returns no rows."
+
+[[operations]]
+name = "orbit_size"
+value = "integer"
+args = { scalars = "int" }
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+summary = "Number of distinct codes equivalent to the member's, that is the size of its orbit under the selected group."
+
+[[operations]]
+name = "aut_order"
+value = "integer"
+args = { scalars = "int" }
+families = ["explicit", "subsets", "subsets_of", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack"]
+summary = "Order of the stabilizer of the code in the selected group: (p-1)^n n! / orbit_size with scalars=1, or n! / orbit_size with scalars=0. With scalars=0 this is linear_codes.aut_order."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/code_equivalence_generic.cpp"]
+accepts = "prime fields p < 2^32; the Grassmannian size at the member's dimension and the group order (p-1)^n n! must fit u64"
+summary = "Portable C++: the class representative is always systematic, so the search runs over ordered information sets rather than the whole group; each one fixes [I | A] up to a row monomial map, and the free columns are normalised and sorted. Automorphisms are counted from the maps that reach the representative. Families are split across threads."
+
+[[rejections]]
+case = "words are not generator matrices"
+error = "families only"
+
+[[rejections]]
+case = "invalid scalar flag"
+error = "scalars"
+
+[[rejections]]
+case = "explicit binary is canonical"
+op = "is_canonical"
+reduction = "histogram"
+error = "does not accept"
+
+[[rejections]]
+case = "explicit binary canonical index"
+op = "canonical_index"
+reduction = "count"
+error = "does not accept integer"
+
+[[rejections]]
+case = "explicit binary canonical form"
+op = "canonical_form"
+reduction = "count"
+error = "does not accept"

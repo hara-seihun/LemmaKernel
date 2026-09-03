@@ -16,6 +16,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/characters/backen
 # module characters: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/circulants/backends/generic/circulants_generic.cpp)
 # module circulants: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/code_equivalence/backends/generic/code_equivalence_generic.cpp)
+# module code_equivalence: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/continued_fractions_and_pell/backends/generic/continued_fractions_and_pell_generic.cpp)
 # module continued_fractions_and_pell: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/designs/backends/generic/designs_generic.cpp)
