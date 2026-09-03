@@ -1,0 +1,71 @@
+# lattice_of_subspaces: counts and incidence tests in finite vector spaces.
+
+[module]
+name = "lattice_of_subspaces"
+version = 1
+summary = "Counts in subspace lattices: Gaussian binomials, flags, subspaces above or below a row space, and incidence with a fixed row space."
+lean = "lean"
+contract = "lean/Lattice_of_subspaces/Contract.lean"
+reference = "lean/Lattice_of_subspaces/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "gaussian_binomial"
+value = "integer"
+args = { q = "int", n = "int" }
+families = ["range"]
+summary = "For each k in a range, the Gaussian binomial [n choose k]_q, with value 0 for k > n. q must be at least 2."
+
+[[operations]]
+name = "flag_count"
+value = "integer"
+args = { q = "int", n = "int" }
+families = ["words"]
+summary = "For each dimension word d_1,...,d_s, the Gaussian product for strict flags with dim V_i = d_i. When q is a prime power this counts such flags in an n-space over F_q. The value is 0 unless the dimensions strictly increase and are at most n; q must be at least 2."
+
+[[operations]]
+name = "contained_subspace_count"
+value = "integer"
+args = { h = "int" }
+families = ["explicit", "subsets", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack", "subsets_of"]
+summary = "Number of h-dimensional subspaces contained in the member's row space. A member denotes its row space, even when its rows are dependent."
+
+[[operations]]
+name = "containing_subspace_count"
+value = "integer"
+args = { h = "int" }
+families = ["explicit", "subsets", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack", "subsets_of"]
+summary = "Number of h-dimensional subspaces of the ambient F_p^n that contain the member's row space. A member denotes its row space, even when its rows are dependent."
+
+[[operations]]
+name = "contains"
+value = "boolean"
+args = { subspace = "vectors" }
+families = ["explicit", "subsets", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack", "subsets_of"]
+summary = "Whether the member's row space contains the row space spanned by `subspace`."
+
+[[operations]]
+name = "is_contained_in"
+value = "boolean"
+args = { subspace = "vectors" }
+families = ["explicit", "subsets", "grassmannian", "all_matrices", "symmetric_matrices", "transform", "stack", "subsets_of"]
+summary = "Whether the member's row space is contained in the row space spanned by `subspace`."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/lattice_of_subspaces_generic.cpp"]
+accepts = "q >= 2 for formula operations; any matrix family over p < 2^32 for row-space operations; integer answers must fit in u64"
+summary = "Portable C++: checked Gaussian-binomial dynamic programming and per-member incremental row reduction, threaded over canonical member ranges."
+
+[[rejections]]
+case = "q below two"
+error = "q must be at least 2"
+
+[[rejections]]
+case = "flag count on a range"
+error = "defined on words families only"
+
+[[rejections]]
+case = "wrong subspace width"
+error = "same number of columns"
