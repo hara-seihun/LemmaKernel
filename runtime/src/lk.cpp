@@ -305,6 +305,13 @@ lk_status lk_family_compositions(lk_context *ctx, uint64_t total, uint64_t parts
     FAMILY_RESULT(make_compositions(total, parts, max_part));
 }
 
+lk_status lk_family_standard_tableaux(lk_context *ctx, lk_handle shape, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    auto m = ctx->get_matrix(shape, "shape");
+    if (!m.ok) return ctx->set_error(m.error);
+    FAMILY_RESULT(make_standard_tableaux(m.value));
+}
+
 lk_status lk_run(lk_context *ctx, const char *op, lk_handle family, const char *reduction,
                  const lk_arg *args, size_t nargs, lk_handle *out) {
     if (!ctx || !op || !reduction || !out) return LK_INVALID_ARGUMENT;

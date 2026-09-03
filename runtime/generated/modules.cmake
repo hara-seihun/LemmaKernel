@@ -36,3 +36,5 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/set_systems/backe
 # module set_systems: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/subspace_orbits/backends/generic/subspace_orbits_generic.cpp)
 # module subspace_orbits: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/young/backends/generic/young_generic.cpp)
+# module young: backends ['generic']

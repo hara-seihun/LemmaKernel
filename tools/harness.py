@@ -134,7 +134,8 @@ def L(x) -> str:
         return "[" + ", ".join(L(v) for v in x) + "]"
     if hasattr(x, "tolist"):
         return L(x.tolist())
-    return str(int(x))
+    value = int(x)
+    return f"({value})" if value < 0 else str(value)
 
 
 def vectors_of(m: ic.Matrix | ic.Perms) -> list:
@@ -185,6 +186,9 @@ def lean_family(f: ic.Family) -> str:
                 f"{q['distinct']} {q['odd']})")
     if f.kind == "compositions":
         return f"(.{ctor} {q['total']} {q['parts']} {q['max_part']})"
+    if f.kind == "standard_tableaux":
+        (shape,) = f.children
+        return f"(.{ctor} {L(shape.member(0)[0])})"
     raise ValueError(f.kind)
 
 

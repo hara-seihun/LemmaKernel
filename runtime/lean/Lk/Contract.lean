@@ -95,6 +95,28 @@ theorem words_spec (q len : ℕ) :
     ms.Nodup ∧ ms.length = q ^ len ∧ ∀ w : List ℕ, w.length = len → (∀ x ∈ w, x < q) → [w] ∈ ms := by
   sorry
 
+def IsPaddedPartition (n : Nat) (m : Mat) : Prop :=
+  ∃ shape : Vec, shape.SortedGE ∧ (∀ x ∈ shape, 0 < x) ∧ shape.sum = n ∧
+    m = [shape ++ List.replicate (n - shape.length) 0]
+
+/-- Every partition of `n` appears once, in descending lexicographic order, padded to length
+`n`. -/
+theorem partitions_spec (n : Nat) :
+    let ms := (Family.partitions n 0 0 0 0 0).members
+    ms.Nodup ∧ ∀ m, m ∈ ms ↔ IsPaddedPartition n m := by
+  sorry
+
+/-- Positive decreasing row lengths are the parts of a Mathlib natural-number partition. -/
+theorem partition_to_mathlib (n : Nat) (shape : Vec) (hdec : shape.SortedGE)
+    (hpos : ∀ x ∈ shape, 0 < x) (hsum : shape.sum = n) :
+    ∃ p : n.Partition, p.parts = (shape : Multiset Nat) := by
+  sorry
+
+/-- The executable family order removes the largest label from corners in top-to-bottom order. -/
+theorem standardTableaux_order (shape : Vec) :
+    (Family.standardTableaux shape).members = standardTableauMembers shape := by
+  rfl
+
 /-- `permElements` is the generated subgroup of `Equiv.Perm (Fin n)`, each element once. -/
 theorem permElements_spec (gens : List Perm) (n : ℕ) (h : gens.all (·.length = n) = true) :
     (permElements gens).Nodup ∧ (permElements gens).length = Nat.card (Subgroup.closure

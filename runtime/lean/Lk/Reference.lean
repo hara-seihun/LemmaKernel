@@ -150,6 +150,37 @@ def compositionLists (maxPart rem : Nat) : Nat → List Vec
     (descending (min maxPart rem)).flatMap fun x =>
       (compositionLists maxPart (rem - x) parts).map (x :: ·)
 
+def cornerRows (shape : Vec) : List Nat :=
+  (List.range shape.length).filter fun i => shape.getD i 0 > shape.getD (i + 1) 0
+
+def decRow (shape : Vec) (i : Nat) : Vec := shape.set i (shape.getD i 0 - 1)
+
+abbrev Filling := List ((Nat × Nat) × Nat)
+
+/-- Standard tableaux as chains of diagrams. At each step the current largest label occupies a
+removable corner; corner rows are tried from top to bottom. -/
+def tableauFillings : Nat → Vec → List Filling
+  | 0, shape => if shape.foldl (· + ·) 0 = 0 then [[]] else []
+  | fuel + 1, shape =>
+    let label := shape.foldl (· + ·) 0
+    if label = 0 then [[]]
+    else (cornerRows shape).flatMap fun i =>
+      let j := shape.getD i 0 - 1
+      (tableauFillings fuel (decRow shape i)).map fun rest => (((i, j), label) :: rest)
+
+def fillingEntry (f : Filling) (i j : Nat) : Nat :=
+  match f.find? fun x => x.1 = (i, j) with
+  | some x => x.2
+  | none => 0
+
+def renderTableau (shape : Vec) (f : Filling) : Mat :=
+  (List.range shape.length).map fun i =>
+    (List.range (shape.headD 0)).map fun j => if j < shape.getD i 0 then fillingEntry f i j else 0
+
+/-- Standard tableaux of `shape`, in the recursive removable-corner order above. -/
+def standardTableauMembers (shape : Vec) : List Mat :=
+  (tableauFillings (shape.foldl (· + ·) 0) shape).map (renderTableau shape)
+
 inductive Family
   | explicit (p : Nat) (batch : List Mat)
   | subsets (p : Nat) (dictionary : List Vec) (k : Nat)
@@ -165,12 +196,14 @@ inductive Family
   | words (alphabet length : Nat)
   | partitions (total maxPart maxParts maxMultiplicity distinct odd : Nat)
   | compositions (total parts maxPart : Nat)
+  | standardTableaux (shape : Vec)
 
 /-- The prime of a matrix family; 0 for permutations and for natural-number members. -/
 def Family.p : Family → Nat
   | .explicit p _ | .subsets p _ _ | .grassmannian p _ _ | .allMatrices p _ _ | .symmetricMatrices p _ => p
   | .transform f _ | .stack f _ | .subsetsOf f _ => f.p
-  | .groupElements _ | .groupTables _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ | .compositions _ _ _ => 0
+  | .groupElements _ | .groupTables _ | .range _ _ | .words _ _ | .partitions _ _ _ _ _ _ |
+    .compositions _ _ _ | .standardTableaux _ => 0
 
 /-- Members in canonical order. A permutation is a one-row matrix; so is a word, and an integer
 is a `1 x 1` matrix. -/
@@ -195,6 +228,7 @@ def Family.members : Family → List Mat
     let lengths := if parts = 0 then (List.range total).map (· + 1) else [parts]
     lengths.flatMap fun k => (compositionLists maximum total k).map fun xs =>
       [((xs ++ List.replicate total 0).take total)]
+  | .standardTableaux shape => standardTableauMembers shape
 
 /-- The dictionary a `subsets` or `subsets_of` family draws from, for modules whose groups act
 on dictionary positions. -/

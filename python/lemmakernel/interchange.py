@@ -381,6 +381,46 @@ class PermutationGenerators:
 
 
 @dataclass
+class Characters:
+    values: list[int]
+
+    @property
+    def count(self):
+        return len(self.values)
+
+    def member(self, i: int):
+        return int(self.values[i])
+
+    def encode(self) -> bytes:
+        return encode("young.characters", {"count": self.count}, struct.pack(f"<{self.count}q", *self.values))
+
+
+@dataclass
+class RskPairs:
+    count: int
+    length: int
+    shapes: object
+    insertion: object
+    recording: object
+
+    def member(self, i: int):
+        n = self.length
+        shape = [int(x) for x in self.shapes[i * n:(i + 1) * n]]
+
+        def tableau(entries):
+            flat = entries[i * n * n:(i + 1) * n * n]
+            return [[int(flat[r * n + c]) for c in range(n)] for r in range(n)]
+
+        return shape, tableau(self.insertion), tableau(self.recording)
+
+    def encode(self) -> bytes:
+        payload = pack_entries(self.shapes, NATURALS)
+        payload += pack_entries(self.insertion, NATURALS)
+        payload += pack_entries(self.recording, NATURALS)
+        return encode("young.rsk_pairs", {"count": self.count, "length": self.length}, payload)
+
+
+@dataclass
 class Integers:
     values: list[int]
 
@@ -479,8 +519,9 @@ KINDS = {"gfp.matrix": Matrix, "orbits.perms": Perms, "gfp.basis": Basis, "gfp.s
          "gfp.inverses": Inverses, "gfp.witness": Witness, "burnside.counts": BurnsideCounts,
          "burnside.cycle_index": CycleIndex, "designs.matrix": U64Matrices,
          "perm_groups.partition": Partitions, "perm_groups.bsgs": Bsgs,
-         "automorphisms.generators": PermutationGenerators, "integers": Integers,
-         "count": Count, "histogram": Histogram, "hits": Hits, "first": First, "extremum": Extremum}
+         "automorphisms.generators": PermutationGenerators, "young.characters": Characters,
+         "young.rsk_pairs": RskPairs, "integers": Integers, "count": Count, "histogram": Histogram,
+         "hits": Hits, "first": First, "extremum": Extremum}
 
 
 def kind_of(obj) -> str:
@@ -563,6 +604,15 @@ def decode_at(buf: bytes, offset: int):
         offsets = list(struct.unpack_from(f"<{noff}Q", pl, 0))
         entries = unpack_entries(pl[8 * noff:], 0, offsets[-1] * q["order"])
         return PermutationGenerators(q["count"], q["order"], offsets, entries), end
+    if k == "young.characters":
+        return Characters(list(struct.unpack_from(f"<{q['count']}q", pl, 0))), end
+    if k == "young.rsk_pairs":
+        n = q["count"] * q["length"]
+        square = q["count"] * q["length"] * q["length"]
+        shapes = unpack_entries(pl[:4 * n], NATURALS, n)
+        insertion = unpack_entries(pl[4 * n:4 * (n + square)], NATURALS, square)
+        recording = unpack_entries(pl[4 * (n + square):], NATURALS, square)
+        return RskPairs(q["count"], q["length"], shapes, insertion, recording), end
     if k == "integers":
         return Integers(list(struct.unpack_from(f"<{q['count']}Q", pl, 0))), end
     if k == "count":

@@ -123,8 +123,32 @@ def composition_members(total, parts, max_part):
         yield from exact(total, length, [])
 
 
+def standard_tableaux(shape):
+    """Standard tableaux ordered by the row of each removable corner, top row first."""
+    shape = list(shape)
+    rows, cols, label = len(shape), shape[0], sum(shape)
+    tableau = [[0] * cols for _ in range(rows)]
+
+    def fill(current, value):
+        if value == 0:
+            yield [list(row) for row in tableau]
+            return
+        for i, width in enumerate(current):
+            below = current[i + 1] if i + 1 < rows else 0
+            if width == below:
+                continue
+            col = width - 1
+            current[i] -= 1
+            tableau[i][col] = value
+            yield from fill(current, value - 1)
+            tableau[i][col] = 0
+            current[i] += 1
+
+    yield from fill(shape, label)
+
+
 def prime(f: Family) -> int:
-    if f.kind in ("group_tables", "range", "words", "partitions", "compositions"):
+    if f.kind in ("group_tables", "range", "words", "partitions", "compositions", "standard_tableaux"):
         return NATURALS
     if f.kind == "group_elements":
         return 0
@@ -188,6 +212,10 @@ def iter_members(f: Family):
                                      f.params["max_multiplicity"], f.params["distinct"], f.params["odd"])
     elif f.kind == "compositions":
         yield from composition_members(f.params["total"], f.params["parts"], f.params["max_part"])
+    elif f.kind == "standard_tableaux":
+        (shape_obj,) = f.children
+        shape = shape_obj.member(0)[0]
+        yield from standard_tableaux(shape)
     else:
         raise ValueError(f"unknown family {f.kind}")
 

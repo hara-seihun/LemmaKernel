@@ -2,6 +2,7 @@
 #include "family.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cstring>
 
 namespace lk {
@@ -26,6 +27,7 @@ struct Writer {
         }
     }
     void u64s(const std::vector<uint64_t> &v) { for (uint64_t x : v) u64(x); }
+    void i64s(const std::vector<int64_t> &v) { for (int64_t x : v) u64((uint64_t)x); }
     void bytes(const std::vector<uint8_t> &b) { out.insert(out.end(), b.begin(), b.end()); }
 };
 
@@ -46,6 +48,7 @@ struct Reader {
         p += 8;
         return v;
     }
+    int64_t i64() { return std::bit_cast<int64_t>(u64()); }
     std::string str() {
         uint32_t n = u32();
         if (bad || (size_t)(end - p) < n) { bad = true; return {}; }
@@ -244,6 +247,11 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         for (auto *r : {&total, &parts, &max_part}) if (!r->ok) return R::failure(r->error.status, r->error.message);
         return make_compositions(total.value, parts.value, max_part.value);
     }
+    if (sub == "standard_tableaux") {
+        auto shape = child_object("matrix");
+        if (!shape.ok) return R::failure(shape.error.status, shape.error.message);
+        return make_standard_tableaux(shape.value->matrix);
+    }
     if (sub == "grassmannian") {
         auto p = need(h, "p"), n = need(h, "n"), hh = need(h, "h");
         for (auto *r : {&p, &n, &hh}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -309,6 +317,9 @@ std::vector<uint8_t> encode_family(const Family &f) {
         break;
     case Family::Kind::Compositions:
         params = {{"total", f.n}, {"parts", f.k}, {"max_part", f.m}};
+        break;
+    case Family::Kind::StandardTableaux:
+        payload.bytes(encode_matrix(*f.data));
         break;
     case Family::Kind::GroupElements:
     case Family::Kind::GroupTables:
@@ -424,6 +435,31 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
         r.entries(e->member, rows.value * cols.value, entry_width(p.value));
         if (r.bad || r.p != r.end) return R::failure(INVALID, "extremum payload length mismatch");
         o->extremum = e;
+        return R::success(o);
+    }
+    if (h.kind == "young.characters") {
+        auto count = need(h, "count");
+        if (!count.ok) return R::failure(count.error.status, count.error.message);
+        if (count.value * 8 != h.payload_len) return R::failure(INVALID, "young.characters payload length mismatch");
+        Reader r{h.payload, h.payload + h.payload_len};
+        o->characters = std::make_shared<Characters>();
+        for (uint64_t i = 0; i < count.value; ++i) o->characters->values.push_back(r.i64());
+        return R::success(o);
+    }
+    if (h.kind == "young.rsk_pairs") {
+        auto count = need(h, "count"), length = need(h, "length");
+        for (auto *r : {&count, &length}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+        unsigned __int128 entries = (unsigned __int128)count.value * length.value *
+                                    (1 + 2 * (unsigned __int128)length.value);
+        if (entries * 4 != h.payload_len) return R::failure(INVALID, "young.rsk_pairs payload length mismatch");
+        auto pairs = std::make_shared<RskPairs>();
+        pairs->count = count.value; pairs->length = length.value;
+        Reader r{h.payload, h.payload + h.payload_len};
+        r.entries(pairs->shapes, count.value * length.value, 4);
+        r.entries(pairs->insertion, count.value * length.value * length.value, 4);
+        r.entries(pairs->recording, count.value * length.value * length.value, 4);
+        if (r.bad || r.p != r.end) return R::failure(INVALID, "young.rsk_pairs payload length mismatch");
+        o->rsk_pairs = pairs;
         return R::success(o);
     }
     if (h.kind == "gfp.basis") {
@@ -605,6 +641,8 @@ std::map<std::string, uint64_t> Object::params() const {
     if (partitions) return {{"count", partitions->count}, {"n", partitions->n}};
     if (bsgs) return {{"count", bsgs->count}, {"n", bsgs->n}};
     if (permutation_generators) return {{"count", permutation_generators->count}, {"order", permutation_generators->order}};
+    if (characters) return {{"count", characters->values.size()}};
+    if (rsk_pairs) return {{"count", rsk_pairs->count}, {"length", rsk_pairs->length}};
     if (integers) return {{"count", integers->values.size()}};
     if (count) return {{"value", count->value}, {"visited", count->visited}, {"family_size", count->family_size}};
     if (histogram) return {{"visited", histogram->visited}, {"family_size", histogram->family_size}, {"bins", histogram->bins.size()}};
@@ -675,6 +713,14 @@ std::vector<uint8_t> encode(const Object &o) {
         w.u64s(o.permutation_generators->offsets);
         w.entries(o.permutation_generators->entries, 4);
         write_header(out, "automorphisms.generators", o.params(), w.out);
+    } else if (o.characters) {
+        w.i64s(o.characters->values);
+        write_header(out, "young.characters", o.params(), w.out);
+    } else if (o.rsk_pairs) {
+        w.entries(o.rsk_pairs->shapes, 4);
+        w.entries(o.rsk_pairs->insertion, 4);
+        w.entries(o.rsk_pairs->recording, 4);
+        write_header(out, "young.rsk_pairs", o.params(), w.out);
     } else if (o.integers) {
         w.u64s(o.integers->values);
         write_header(out, o.kind == "burnside.counts" ? "burnside.counts" : "integers", o.params(), w.out);

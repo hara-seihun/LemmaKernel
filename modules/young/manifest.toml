@@ -1,0 +1,69 @@
+# young: partitions, tableaux, RSK, Kostka numbers and symmetric-group characters.
+
+[module]
+name = "young"
+version = 1
+summary = "Partitions and standard Young tableaux with hook-length counts, Kostka numbers, row-insertion RSK, and signed S_n character values from Murnaghan-Nakayama. Partitions are descending lexicographically; tableaux recursively place the largest entry in removable corners from top to bottom; RSK bumps the first strictly larger row entry."
+lean = "lean"
+contract = "lean/Young/Contract.lean"
+reference = "lean/Young/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[kinds]]
+name = "young.characters"
+params = ["count"]
+payload = "count signed i64 character values"
+lean = "character"
+summary = "One signed Murnaghan-Nakayama character value per member."
+
+[[kinds]]
+name = "young.rsk_pairs"
+params = ["count", "length"]
+payload = "count*length u32 row lengths, then two count*length*length u32 padded tableaux"
+lean = "rsk"
+summary = "For each word, its common shape padded to length entries, followed by the insertion and recording tableaux padded to length x length squares."
+
+[[operations]]
+name = "kostka"
+value = "integer"
+args = { weight = "vector" }
+families = ["partitions"]
+summary = "Kostka number K_shape,weight: semistandard tableaux with weak rows, strict columns, and weight[i] copies of i."
+
+[[operations]]
+name = "rsk"
+value = "young.rsk_pairs"
+families = ["words"]
+summary = "Robinson-Schensted-Knuth row insertion. Letters retain their 0-based values; recording entries are 1..length; the first row entry strictly greater than the inserted letter is bumped."
+
+[[operations]]
+name = "murnaghan_nakayama"
+value = "young.characters"
+args = { cycle_type = "vector" }
+families = ["partitions"]
+summary = "The irreducible S_n character indexed by each shape at the positive weakly decreasing cycle type, computed by Murnaghan-Nakayama. Signed values use little-endian two's-complement i64."
+
+[[operations]]
+name = "hook_length_count"
+value = "integer"
+families = ["partitions", "standard_tableaux"]
+summary = "Number of standard Young tableaux of the member's shape. On a standard_tableaux family, every member has the family's fixed shape."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/young_generic.cpp"]
+accepts = "partition operations through n=30; RSK when its materialised output has at most 2^31 u32 entries; any representable standard_tableaux family"
+summary = "Portable C++: hook products, row-insertion RSK, recursive semistandard fillings, and memoised Murnaghan-Nakayama over subpartitions. Members run in parallel."
+
+[[rejections]]
+case = "bad Kostka weight"
+error = "weight must sum"
+
+[[rejections]]
+case = "bad cycle type"
+error = "cycle_type must be a positive weakly decreasing partition"
+
+[[rejections]]
+case = "RSK on partitions"
+error = "words families only"

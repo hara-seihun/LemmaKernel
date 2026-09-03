@@ -74,7 +74,13 @@ RUNTIME = {'families': [{'lean': 'explicit',
                'name': 'compositions',
                'summary': 'Positive compositions of total with optional exact length and largest-part bound; '
                           'one row padded to total entries with zeros. Lengths increase first, then rows are '
-                          'descending lexicographic. A zero bound or length is unrestricted.'}],
+                          'descending lexicographic. A zero bound or length is unrestricted.'},
+              {'lean': 'standardTableaux',
+               'member': 'lk.naturals',
+               'name': 'standard_tableaux',
+               'summary': 'Every standard Young tableau of a fixed positive partition shape, padded with '
+                          'zeros to its bounding rectangle. Order recursively places the largest entry in '
+                          'removable corners from the top row down.'}],
  'kinds': [{'lean': 'naturals',
             'name': 'lk.naturals',
             'params': ['count', 'rows', 'cols'],
@@ -1159,4 +1165,61 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'all matrices are not a subspace family', 'error': 'families only'},
                  {'case': 'wrong group dimension', 'error': 'n x n'},
                  {'case': 'singular generator', 'error': 'invertible'},
-                 {'case': 'invalid projective flag', 'error': 'projective'}]}]
+                 {'case': 'invalid projective flag', 'error': 'projective'}]},
+ {'backends': [{'accepts': 'partition operations through n=30; RSK when its materialised output has at most '
+                           '2^31 u32 entries; any representable standard_tableaux family',
+                'name': 'generic',
+                'sources': ['backends/generic/young_generic.cpp'],
+                'summary': 'Portable C++: hook products, row-insertion RSK, recursive semistandard fillings, '
+                           'and memoised Murnaghan-Nakayama over subpartitions. Members run in parallel.'}],
+  'kinds': [{'lean': 'character',
+             'name': 'young.characters',
+             'params': ['count'],
+             'payload': 'count signed i64 character values',
+             'summary': 'One signed Murnaghan-Nakayama character value per member.'},
+            {'lean': 'rsk',
+             'name': 'young.rsk_pairs',
+             'params': ['count', 'length'],
+             'payload': 'count*length u32 row lengths, then two count*length*length u32 padded tableaux',
+             'summary': 'For each word, its common shape padded to length entries, followed by the insertion '
+                        'and recording tableaux padded to length x length squares.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Young/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'young',
+             'reference': 'lean/Young/Reference.lean',
+             'summary': 'Partitions and standard Young tableaux with hook-length counts, Kostka numbers, '
+                        'row-insertion RSK, and signed S_n character values from Murnaghan-Nakayama. '
+                        'Partitions are descending lexicographically; tableaux recursively place the largest '
+                        'entry in removable corners from top to bottom; RSK bumps the first strictly larger '
+                        'row entry.',
+             'version': 1},
+  'operations': [{'args': {'weight': 'vector'},
+                  'families': ['partitions'],
+                  'name': 'kostka',
+                  'summary': 'Kostka number K_shape,weight: semistandard tableaux with weak rows, strict '
+                             'columns, and weight[i] copies of i.',
+                  'value': 'integer'},
+                 {'families': ['words'],
+                  'name': 'rsk',
+                  'summary': 'Robinson-Schensted-Knuth row insertion. Letters retain their 0-based values; '
+                             'recording entries are 1..length; the first row entry strictly greater than the '
+                             'inserted letter is bumped.',
+                  'value': 'young.rsk_pairs'},
+                 {'args': {'cycle_type': 'vector'},
+                  'families': ['partitions'],
+                  'name': 'murnaghan_nakayama',
+                  'summary': 'The irreducible S_n character indexed by each shape at the positive weakly '
+                             'decreasing cycle type, computed by Murnaghan-Nakayama. Signed values use '
+                             "little-endian two's-complement i64.",
+                  'value': 'young.characters'},
+                 {'families': ['partitions', 'standard_tableaux'],
+                  'name': 'hook_length_count',
+                  'summary': "Number of standard Young tableaux of the member's shape. On a "
+                             "standard_tableaux family, every member has the family's fixed shape.",
+                  'value': 'integer'}],
+  'rejections': [{'case': 'bad Kostka weight', 'error': 'weight must sum'},
+                 {'case': 'bad cycle type',
+                  'error': 'cycle_type must be a positive weakly decreasing partition'},
+                 {'case': 'RSK on partitions', 'error': 'words families only'}]}]

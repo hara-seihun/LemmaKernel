@@ -96,6 +96,12 @@ member = "lk.naturals"
 lean = "compositions"
 summary = "Positive compositions of total with optional exact length and largest-part bound; one row padded to total entries with zeros. Lengths increase first, then rows are descending lexicographic. A zero bound or length is unrestricted."
 
+[[families]]
+name = "standard_tableaux"
+member = "lk.naturals"
+lean = "standardTableaux"
+summary = "Every standard Young tableau of a fixed positive partition shape, padded with zeros to its bounding rectangle. Order recursively places the largest entry in removable corners from the top row down."
+
 [[reductions]]
 name = "all"
 accepts = ["*"]

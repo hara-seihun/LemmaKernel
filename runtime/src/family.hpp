@@ -14,10 +14,11 @@ struct PivotTable;
 
 struct Family {
     enum class Kind { Explicit, Subsets, Grassmannian, AllMatrices, Transform, Stack, GroupElements,
-                      GroupTables, SubsetsOf, SymmetricMatrices, Range, Words, Partitions, Compositions };
+                      GroupTables, SubsetsOf, SymmetricMatrices, Range, Words, Partitions, Compositions,
+                      StandardTableaux };
     Kind kind;
-    /* batch, group tables, dictionary (Subsets, and the materialised inner family for SubsetsOf),
-     * C, stacked rows, or group generators */
+    /* Batch, group tables, dictionary (Subsets, and the materialised inner family for SubsetsOf),
+     * C, stacked rows, group generators, or the shape of a StandardTableaux family. */
     std::shared_ptr<Matrix> data;
     std::shared_ptr<Family> child;
     uint64_t p = 0, k = 0, n = 0, h = 0, m = 0; /* Words: p is the alphabet size, n the length */
@@ -30,7 +31,6 @@ struct Family {
     /* Grassmannian: pivot sets and offsets, computed on first use. */
     mutable std::shared_ptr<const PivotTable> pivots;
     mutable std::atomic<const PivotTable *> pivots_ready{nullptr};
-
     uint64_t prime() const; /* 0 for permutation members, NATURALS for integer members */
     uint64_t rows() const; /* rows of one member */
     uint64_t cols() const;
@@ -84,6 +84,7 @@ Result<std::shared_ptr<Family>> make_partitions(uint64_t total, uint64_t max_par
 /* Positive compositions of total, padded to total entries. `parts == 0` allows every length;
  * `max_part == 0` does not bound a part. */
 Result<std::shared_ptr<Family>> make_compositions(uint64_t total, uint64_t parts, uint64_t max_part);
+Result<std::shared_ptr<Family>> make_standard_tableaux(std::shared_ptr<Matrix> shape);
 
 /* Closure of a set of permutations (count x n, p == 0) under composition: every element of the
  * generated group, sorted lexicographically. Fails above `limit` elements. */

@@ -31,7 +31,7 @@ Vocabulary, in the order a request is built:
   of a dictionary, `subsets_of` another family, `grassmannian`, `all_matrices`,
   `symmetric_matrices`, the `transform`/`stack` wrappers, `group_elements` of a permutation
   group, `group_tables` from stored Cayley tables or permutation generators, `range`/`words` of
-  natural numbers, constrained `partitions`, and `compositions`). Family sizes in the hundreds of
+  natural numbers, constrained `partitions`, `compositions`, and `standard_tableaux`). Family sizes in the hundreds of
   millions are normal.
 - **operation**: what to compute per member (`gfp.rank`, `gfp.in_span`, `gfp.rref`, ...).
 - **reduction**: what to bring back. For booleans: `count`, `hits`, `first` (the least hit,
@@ -101,6 +101,7 @@ and committed; the build refuses to configure if they are stale.
 | [projective_sets](modules/projective_sets/manifest.toml) | arcs, caps, blocking sets, hyperovals, ovoids, span rank, maximum collinearity, and secant, tangent and passant counts for point sets in `PG(n,p)` | `generic` (precomputed line and hyperplane incidence, portable C++) |
 | [set_systems](modules/set_systems/manifest.toml) | extremal predicates on finite set systems: intersecting families, antichains, sunflowers, maximum degree, lower shadows, and exact EKR/Sperner extremality | `generic` (prefix-pruned enumeration, portable C++) |
 | [subspace_orbits](modules/subspace_orbits/manifest.toml) | GL, PGL and PGammaL orbits of row spaces from Grassmannians and their transform/stack derivatives; canonical indices use the least rref in Grassmannian order | `generic` (per-member rref orbit search, portable C++) |
+| [young](modules/young/manifest.toml) | partitions and standard Young tableaux, hook-length counts, Kostka numbers, RSK, and irreducible S_n character values by Murnaghan-Nakayama | `generic` (portable C++) |
 
 `ctx.group_tables(lk.naturals(tables))` builds a family from stored Cayley tables;
 `ctx.generated_group(permutations)` builds one from permutation generators.

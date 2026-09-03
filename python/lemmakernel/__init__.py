@@ -17,14 +17,15 @@ import os
 from pathlib import Path
 
 from . import interchange
-from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, Count, CycleIndex, Extremum, Family, First, Histogram,
-                          Hits, Integers, Inverses, Matrix, Partitions, Perms, PermutationGenerators, Solutions,
-                          U64Matrices, Witness, matrix, naturals, perms)
+from .interchange import (NATURALS, Basis, Bsgs, BurnsideCounts, Characters, Count, CycleIndex, Extremum, Family,
+                          First, Histogram, Hits, Integers, Inverses, Matrix, Partitions, Perms, PermutationGenerators,
+                          RskPairs, Solutions, U64Matrices, Witness, matrix, naturals, perms)
 from ._manifest import MODULES
 
 __all__ = ["Context", "Handle", "Error", "describe", "matrix", "perms", "naturals", "interchange", "MODULES", "Perms",
            "Matrix", "Basis", "Solutions", "Inverses", "Witness", "BurnsideCounts", "CycleIndex", "U64Matrices",
-           "Partitions", "Bsgs", "PermutationGenerators", "Integers", "Count", "Histogram", "Hits", "First",
+           "Partitions", "Bsgs", "PermutationGenerators", "Characters", "RskPairs", "Integers", "Count",
+           "Histogram", "Hits", "First",
            "Extremum", "Family", "NATURALS"]
 
 
@@ -84,6 +85,7 @@ _lib.lk_family_words.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.PO
 _lib.lk_family_partitions.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64,
                                       ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_family_compositions.argtypes = [_P, ctypes.c_uint64, ctypes.c_uint64, ctypes.c_uint64, ctypes.POINTER(_H)]
+_lib.lk_family_standard_tableaux.argtypes = [_P, _H, ctypes.POINTER(_H)]
 _lib.lk_family_size.argtypes = [_P, _H, ctypes.POINTER(ctypes.c_uint64)]
 _lib.lk_family_member.argtypes = [_P, _H, ctypes.c_uint64, ctypes.POINTER(_H)]
 _lib.lk_run.argtypes = [_P, ctypes.c_char_p, _H, ctypes.c_char_p, ctypes.POINTER(_Arg), ctypes.c_size_t, ctypes.POINTER(_H)]
@@ -163,7 +165,8 @@ _PARAM_NAMES = {
     "gfp.witness": ["p", "count", "rows", "cols"], "burnside.counts": ["count"],
     "burnside.cycle_index": ["degree", "count", "denominator"], "designs.matrix": ["count", "rows", "cols"],
     "perm_groups.partition": ["count", "n"], "perm_groups.bsgs": ["count", "n"],
-    "automorphisms.generators": ["count", "order"], "integers": ["count"],
+    "automorphisms.generators": ["count", "order"], "young.characters": ["count"],
+    "young.rsk_pairs": ["count", "length"], "integers": ["count"],
     "count": ["value", "visited", "family_size"], "histogram": ["visited", "family_size", "bins"],
     "hits": ["p", "rows", "cols", "total", "visited", "family_size", "count", "materialised"],
     "lk.naturals": ["count", "rows", "cols"],
@@ -325,6 +328,15 @@ class Context:
         """Positive compositions of `total`, padded with zeros. Zero `parts` allows every length."""
         out = _H()
         self._check(_lib.lk_family_compositions(self._ptr, total, parts, max_part, ctypes.byref(out)))
+        return self._wrap(out)
+
+    def standard_tableaux(self, shape) -> Handle:
+        """Every standard Young tableau of a positive weakly decreasing row-length list."""
+        out = _H()
+        if not isinstance(shape, Handle) and not hasattr(shape, "encode"):
+            shape = naturals([list(shape)])
+        s = self._keep(shape)
+        self._check(_lib.lk_family_standard_tableaux(self._ptr, s._h, ctypes.byref(out)))
         return self._wrap(out)
 
     def size(self, family) -> int:

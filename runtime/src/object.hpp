@@ -92,6 +92,15 @@ struct PermutationGenerators {
     std::vector<Entry> entries;
 };
 
+struct Characters {
+    std::vector<int64_t> values;
+};
+
+struct RskPairs {
+    uint64_t count = 0, length = 0;
+    std::vector<Entry> shapes, insertion, recording;
+};
+
 struct Integers {
     std::vector<uint64_t> values;
 };
@@ -138,6 +147,8 @@ struct Object {
     std::shared_ptr<Partitions> partitions;
     std::shared_ptr<Bsgs> bsgs;
     std::shared_ptr<PermutationGenerators> permutation_generators;
+    std::shared_ptr<Characters> characters;
+    std::shared_ptr<RskPairs> rsk_pairs;
     std::shared_ptr<Integers> integers;
     std::shared_ptr<Count> count;
     std::shared_ptr<Histogram> histogram;

@@ -1,6 +1,7 @@
 #include "family.hpp"
 
 #include <algorithm>
+#include <boost/multiprecision/cpp_int.hpp>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
@@ -135,6 +136,24 @@ struct PivotTable {
 
 namespace {
 
+Result<uint64_t> standard_tableau_count(const std::vector<uint64_t> &shape) {
+    using boost::multiprecision::cpp_int;
+    uint64_t total = 0;
+    for (uint64_t row : shape) total += row;
+    cpp_int count = 1;
+    for (uint64_t k = 2; k <= total; ++k) count *= k;
+    for (uint64_t i = 0; i < shape.size(); ++i) {
+        for (uint64_t j = 0; j < shape[i]; ++j) {
+            uint64_t below = 0;
+            for (uint64_t r = i + 1; r < shape.size(); ++r) below += shape[r] > j;
+            count /= shape[i] - j + below;
+        }
+    }
+    if (count > UINT64_MAX)
+        return Result<uint64_t>::failure(INVALID, "standard tableaux family size does not fit in 64 bits");
+    return Result<uint64_t>::success(count.convert_to<uint64_t>());
+}
+
 Result<PivotTable> build_pivot_table(uint64_t p, uint64_t n, uint64_t h) {
     PivotTable t{n, h, p, {}, {0}, {}};
     std::vector<uint32_t> c(h);
@@ -210,12 +229,14 @@ const char *family_kind_name(Family::Kind k) {
     case Family::Kind::Words: return "words";
     case Family::Kind::Partitions: return "partitions";
     case Family::Kind::Compositions: return "compositions";
+    case Family::Kind::StandardTableaux: return "standard_tableaux";
     }
     return "?";
 }
 
 uint64_t Family::prime() const {
-    if (kind == Kind::Range || kind == Kind::Words || kind == Kind::Partitions || kind == Kind::Compositions)
+    if (kind == Kind::Range || kind == Kind::Words || kind == Kind::Partitions ||
+        kind == Kind::Compositions || kind == Kind::StandardTableaux)
         return NATURALS;
     return child ? child->prime() : p;
 }
@@ -236,6 +257,7 @@ uint64_t Family::rows() const {
     case Kind::Words: return 1;
     case Kind::Partitions: return 1;
     case Kind::Compositions: return 1;
+    case Kind::StandardTableaux: return data->cols;
     }
     return 0;
 }
@@ -256,6 +278,7 @@ uint64_t Family::cols() const {
     case Kind::Words: return n;
     case Kind::Partitions: return n;
     case Kind::Compositions: return n;
+    case Kind::StandardTableaux: return data->entries[0];
     }
     return 0;
 }
@@ -298,6 +321,10 @@ Result<uint64_t> Family::size() const {
         if (counter.overflow) return Result<uint64_t>::failure(INVALID, "family size does not fit in 64 bits");
         return Result<uint64_t>::success(total);
     }
+    case Kind::StandardTableaux: {
+        std::vector<uint64_t> shape(data->entries.begin(), data->entries.end());
+        return standard_tableau_count(shape);
+    }
     case Kind::Transform:
     case Kind::Stack: return child->size();
     case Kind::GroupElements: {
@@ -322,6 +349,7 @@ Result<uint64_t> Family::top_count() const {
     case Kind::Range: return size();
     case Kind::Partitions: return Result<uint64_t>::success(effective_bound(m, n));
     case Kind::Compositions: return Result<uint64_t>::success(k ? 1 : n);
+    case Kind::StandardTableaux: return size();
     case Kind::Transform:
     case Kind::Stack: return child->top_count();
     case Kind::GroupElements: return size();
@@ -469,6 +497,32 @@ Status Family::member_into(uint64_t index, Matrix &out) const {
             if (!selected) return fail(INTERNAL, "composition unranking failed");
         }
         if (rem != 0 || index != 0) return fail(INTERNAL, "composition unranking failed");
+        break;
+    }
+    case Kind::StandardTableaux: {
+        std::vector<uint64_t> shape(data->entries.begin(), data->entries.end());
+        uint64_t total = 0;
+        for (uint64_t row : shape) total += row;
+        out.entries.assign(out.rows * out.cols, 0);
+        for (uint64_t label = total; label >= 1; --label) {
+            bool found = false;
+            for (uint64_t row = 0; row < shape.size(); ++row) {
+                uint64_t next = row + 1 < shape.size() ? shape[row + 1] : 0;
+                if (shape[row] == next) continue;
+                uint64_t col = shape[row] - 1;
+                --shape[row];
+                auto below = standard_tableau_count(shape);
+                if (!below.ok) return fail(below.error.status, below.error.message);
+                if (index < below.value) {
+                    out.entries[row * out.cols + col] = (Entry)label;
+                    found = true;
+                    break;
+                }
+                index -= below.value;
+                ++shape[row];
+            }
+            if (!found) return fail(INTERNAL, "standard tableau unranking failed");
+        }
         break;
     }
     case Kind::Transform: {
@@ -846,6 +900,25 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
         for (uint64_t t = top_begin; t < top_end; ++t) descend(descend, n, k ? k : t + 1, 0);
         return ok();
     }
+    case Kind::StandardTableaux: {
+        Matrix member;
+        for (uint64_t i = top_begin; i < top_end; ++i) {
+            auto st = member_into(i, member);
+            if (!st.ok) return st;
+            uint64_t pushed = 0;
+            Step step = Step::Descend;
+            for (uint64_t row = 0; row < member.rows; ++row) {
+                step = v.push(member.entries.data() + row * member.cols, i, 1);
+                ++pushed;
+                if (step != Step::Descend) break;
+            }
+            if (step == Step::Descend) v.leaf(i);
+            else if (step == Step::TakeAll) v.take_all(i, 1);
+            else v.skip_all(i, 1);
+            for (uint64_t row = 0; row < pushed; ++row) v.pop();
+        }
+        return ok();
+    }
     case Kind::AllMatrices:
     case Kind::Words: {
         auto per_row = pow_checked(p, n);
@@ -1161,6 +1234,27 @@ Result<std::shared_ptr<Family>> make_compositions(uint64_t total, uint64_t parts
     auto sz = f->size();
     if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
     if (sz.value == 0) return R::failure(INVALID, "compositions: constraints admit no composition");
+    return R::success(f);
+}
+
+Result<std::shared_ptr<Family>> make_standard_tableaux(std::shared_ptr<Matrix> shape) {
+    using R = Result<std::shared_ptr<Family>>;
+    if (shape->p != NATURALS || shape->count != 1 || shape->rows != 1 || shape->cols == 0)
+        return R::failure(INVALID, "standard_tableaux: shape must be one nonempty row of natural numbers");
+    uint64_t total = 0;
+    for (uint64_t i = 0; i < shape->cols; ++i) {
+        uint64_t row = shape->entries[i];
+        if (row == 0) return R::failure(INVALID, "standard_tableaux: shape parts must be positive");
+        if (i && row > shape->entries[i - 1])
+            return R::failure(INVALID, "standard_tableaux: shape must be weakly decreasing");
+        total += row;
+    }
+    if (total > 4096) return R::failure(INVALID, "standard_tableaux: shape has more than 4096 cells");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::StandardTableaux;
+    f->data = std::move(shape);
+    auto sz = f->size();
+    if (!sz.ok) return R::failure(sz.error.status, sz.error.message);
     return R::success(f);
 }
 
