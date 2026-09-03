@@ -18,6 +18,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/integer_partition
 # module integer_partitions: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/lattice_of_subspaces/backends/generic/lattice_of_subspaces_generic.cpp)
 # module lattice_of_subspaces: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/matrix_groups/backends/generic/matrix_groups_generic.cpp)
+# module matrix_groups: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/orbits/backends/generic/orbits_generic.cpp)
 # module orbits: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/perm_groups/backends/generic/perm_groups_generic.cpp)
