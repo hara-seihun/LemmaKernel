@@ -14,6 +14,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/gfq/backends/gene
 # module gfq: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/hadamard/backends/generic/hadamard_generic.cpp)
 # module hadamard: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/hypergraphs/backends/generic/hypergraphs_generic.cpp)
+# module hypergraphs: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/integer_partitions/backends/generic/integer_partitions_generic.cpp)
 # module integer_partitions: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/lattice_of_subspaces/backends/generic/lattice_of_subspaces_generic.cpp)

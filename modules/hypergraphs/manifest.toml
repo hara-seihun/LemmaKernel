@@ -1,0 +1,83 @@
+# hypergraphs: predicates and invariants of finite uniform hypergraphs.
+# A member is a natural-number matrix. Its strictly increasing rows are the edges, and the rows
+# themselves are in strict lexicographic order. The vertex set is supplied as {0, ..., vertices-1}.
+# The standard generated family is
+#   subsets_of(subsets_of(range(0, vertices), uniformity), edge_count).
+
+[module]
+name = "hypergraphs"
+version = 1
+summary = "Finite uniform hypergraphs on {0,...,n-1}: linearity, weak colouring number, exact Berge-cycle tests and girth, clique-free Turan searches, and two-colour Ramsey searches. Edges and vertices use increasing order; Berge girth is 0 when no cycle exists."
+lean = "lean"
+contract = "lean/Hypergraphs/Contract.lean"
+reference = "lean/Hypergraphs/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "is_linear"
+value = "boolean"
+args = { vertices = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Whether every two distinct edges intersect in at most one vertex. Equivalently, there is no Berge cycle of length 2."
+
+[[operations]]
+name = "colouring_number"
+value = "integer"
+args = { vertices = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Weak vertex colouring number: the least positive number of colours for which no edge is monochromatic."
+
+[[operations]]
+name = "has_berge_cycle"
+value = "boolean"
+args = { vertices = "int", length = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Whether there are `length` distinct vertices and distinct edges in cyclic alternating order, each edge containing its two adjacent cycle vertices. Length 2 is allowed."
+
+[[operations]]
+name = "berge_girth"
+value = "integer"
+args = { vertices = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "The least Berge-cycle length, including length 2; 0 when the hypergraph has no Berge cycle."
+
+[[operations]]
+name = "is_clique_free"
+value = "boolean"
+args = { vertices = "int", clique_size = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Whether no `clique_size` vertices contain every edge of the member's uniformity. Searching fixed edge counts with `first` or `hits` gives exact finite Turan bounds."
+
+[[operations]]
+name = "is_ramsey_colouring"
+value = "boolean"
+args = { vertices = "int", red_clique = "int", blue_clique = "int" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Treat the member's edges as red and every other edge of the same uniformity as blue; true exactly when it has neither a red `red_clique` nor a blue `blue_clique`."
+
+[[backends]]
+name = "generic"
+sources = ["backends/generic/hypergraphs_generic.cpp"]
+accepts = "natural-number edge matrices with 2 <= uniformity <= vertices <= 64"
+summary = "Portable C++: bit-set intersections, backtracking colourings and Berge paths, and subset clique tests, threaded over family members."
+
+[[rejections]]
+case = "finite-field edges"
+error = "natural-number"
+
+[[rejections]]
+case = "noncanonical edges"
+error = "strictly increasing"
+
+[[rejections]]
+case = "too many vertices"
+error = "at most 64"
+
+[[rejections]]
+case = "Berge length one"
+error = "at least 2"
+
+[[rejections]]
+case = "clique below uniformity"
+error = "at least the uniformity"

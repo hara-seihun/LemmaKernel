@@ -544,6 +544,66 @@ MODULES = [{'backends': [{'accepts': 'permutation groups on subsets, subsets_of,
                   'error': 'does not accept',
                   'op': 'canonical_form',
                   'reduction': 'count'}]},
+ {'backends': [{'accepts': 'natural-number edge matrices with 2 <= uniformity <= vertices <= 64',
+                'name': 'generic',
+                'sources': ['backends/generic/hypergraphs_generic.cpp'],
+                'summary': 'Portable C++: bit-set intersections, backtracking colourings and Berge paths, '
+                           'and subset clique tests, threaded over family members.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Hypergraphs/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'hypergraphs',
+             'reference': 'lean/Hypergraphs/Reference.lean',
+             'summary': 'Finite uniform hypergraphs on {0,...,n-1}: linearity, weak colouring number, exact '
+                        'Berge-cycle tests and girth, clique-free Turan searches, and two-colour Ramsey '
+                        'searches. Edges and vertices use increasing order; Berge girth is 0 when no cycle '
+                        'exists.',
+             'version': 1},
+  'operations': [{'args': {'vertices': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'is_linear',
+                  'summary': 'Whether every two distinct edges intersect in at most one vertex. '
+                             'Equivalently, there is no Berge cycle of length 2.',
+                  'value': 'boolean'},
+                 {'args': {'vertices': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'colouring_number',
+                  'summary': 'Weak vertex colouring number: the least positive number of colours for which '
+                             'no edge is monochromatic.',
+                  'value': 'integer'},
+                 {'args': {'length': 'int', 'vertices': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'has_berge_cycle',
+                  'summary': 'Whether there are `length` distinct vertices and distinct edges in cyclic '
+                             'alternating order, each edge containing its two adjacent cycle vertices. '
+                             'Length 2 is allowed.',
+                  'value': 'boolean'},
+                 {'args': {'vertices': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'berge_girth',
+                  'summary': 'The least Berge-cycle length, including length 2; 0 when the hypergraph has no '
+                             'Berge cycle.',
+                  'value': 'integer'},
+                 {'args': {'clique_size': 'int', 'vertices': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'is_clique_free',
+                  'summary': "Whether no `clique_size` vertices contain every edge of the member's "
+                             'uniformity. Searching fixed edge counts with `first` or `hits` gives exact '
+                             'finite Turan bounds.',
+                  'value': 'boolean'},
+                 {'args': {'blue_clique': 'int', 'red_clique': 'int', 'vertices': 'int'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'is_ramsey_colouring',
+                  'summary': "Treat the member's edges as red and every other edge of the same uniformity as "
+                             'blue; true exactly when it has neither a red `red_clique` nor a blue '
+                             '`blue_clique`.',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'finite-field edges', 'error': 'natural-number'},
+                 {'case': 'noncanonical edges', 'error': 'strictly increasing'},
+                 {'case': 'too many vertices', 'error': 'at most 64'},
+                 {'case': 'Berge length one', 'error': 'at least 2'},
+                 {'case': 'clique below uniformity', 'error': 'at least the uniformity'}]},
  {'backends': [{'accepts': 'partition and composition families whose size fits in 64 bits',
                 'name': 'generic',
                 'sources': ['backends/generic/integer_partitions_generic.cpp'],
