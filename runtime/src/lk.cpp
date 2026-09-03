@@ -240,10 +240,18 @@ lk_status lk_family_member(lk_context *ctx, lk_handle family, uint64_t index, lk
     auto m = f.value->member(index);
     if (!m.ok) return ctx->set_error(m.error);
     auto o = std::make_shared<Object>();
-    o->kind = "gfp.matrix";
+    o->kind = matrix_kind(m.value);
     o->matrix = std::make_shared<Matrix>(std::move(m.value));
     *out = ctx->put(o);
     return LK_OK;
+}
+
+lk_status lk_family_group_elements(lk_context *ctx, lk_handle generators, lk_handle *out) {
+    if (!ctx || !out) return LK_INVALID_ARGUMENT;
+    auto o = ctx->get(generators);
+    if (!o.ok) return ctx->set_error(o.error);
+    if (!o.value->matrix || o.value->matrix->p != 0) return ctx->set_error(LK_INVALID_ARGUMENT, "generators must be an orbits.perms batch");
+    FAMILY_RESULT(make_group_elements(o.value->matrix));
 }
 
 lk_status lk_run(lk_context *ctx, const char *op, lk_handle family, const char *reduction,
@@ -268,14 +276,21 @@ lk_status lk_run(lk_context *ctx, const char *op, lk_handle family, const char *
         if (req.reduction == r.name) mred = &r;
     if (!mred) return ctx->set_error(LK_INVALID_ARGUMENT, "unknown reduction " + req.reduction);
     bool accepted = false;
-    for (const char *const *a = mred->accepts; *a; ++a) accepted |= req.value_type == *a;
+    for (const char *const *a = mred->accepts; *a; ++a) accepted |= req.value_type == *a || std::string("*") == *a;
     if (!accepted) return ctx->set_error(LK_INVALID_ARGUMENT, "reduction " + req.reduction + " does not accept " + req.value_type + " values (operation " + full + ")");
 
     auto f = ctx->get_family(family);
     if (!f.ok) return ctx->set_error(f.error);
     req.family = f.value;
-    if (mop->explicit_only && !f.value->is_explicit())
-        return ctx->set_error(LK_INVALID_ARGUMENT, full + " is defined on explicit families only");
+    if (*mop->families) {
+        bool allowed = false;
+        std::string allowed_names;
+        for (const char *const *fk = mop->families; *fk; ++fk) {
+            allowed |= std::string(family_kind_name(f.value->kind)) == *fk;
+            allowed_names += (allowed_names.empty() ? "" : ", ") + std::string(*fk);
+        }
+        if (!allowed) return ctx->set_error(LK_INVALID_ARGUMENT, full + " is defined on " + allowed_names + " families only");
+    }
 
     std::vector<std::string> expected;
     for (const char *const *a = mop->args; *a; ++a) expected.push_back(*a);

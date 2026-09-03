@@ -26,6 +26,8 @@ inline Status fail(int status, std::string msg) { return Status::failure(status,
 
 using Entry = uint32_t;
 
+/* A batch of count rows x cols matrices. p is the prime, or 0 for a batch of permutations
+ * (rows == 1, each entry a point index < cols; interchange kind "orbits.perms"). */
 struct Matrix {
     uint64_t p = 0, count = 0, rows = 0, cols = 0;
     std::vector<Entry> entries;
@@ -92,7 +94,8 @@ struct Object {
     std::map<std::string, uint64_t> params() const;
 };
 
-unsigned entry_width(uint64_t p);
+unsigned entry_width(uint64_t p); /* 4 when p == 0 (permutations) */
+inline const char *matrix_kind(const Matrix &m) { return m.p == 0 ? "orbits.perms" : "gfp.matrix"; }
 bool is_prime(uint64_t p);
 
 Result<std::shared_ptr<Object>> decode(const uint8_t *bytes, size_t len);

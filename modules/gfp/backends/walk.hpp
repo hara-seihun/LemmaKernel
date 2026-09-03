@@ -26,11 +26,9 @@
  * last row and shrinks by the last row, so a stack of "was this push appended" is enough to
  * keep it in step with the walk. */
 #pragma once
-#include "../../../runtime/src/registry.hpp"
+#include "../../../runtime/src/reduce.hpp"
 
 #include <algorithm>
-#include <atomic>
-#include <thread>
 
 namespace lk::gfp {
 
@@ -38,7 +36,6 @@ constexpr int INVALID = 1;
 constexpr int INTERNAL = 4;
 
 enum class Query { Rank, Nullity, FullRowRank, FullColRank, InSpan, Rref, Nullspace };
-enum class Reduction { All, Count, Histogram, Hits };
 
 /* Names from the manifest to enums; false if `op` is not a walk operation. */
 inline bool parse_query(const std::string &op, Query &q) {
@@ -50,12 +47,6 @@ inline bool parse_query(const std::string &op, Query &q) {
     if (it == table.end()) return false;
     q = it->second;
     return true;
-}
-
-inline Reduction parse_reduction(const std::string &r) {
-    static const std::map<std::string, Reduction> table{
-        {"all", Reduction::All}, {"count", Reduction::Count}, {"histogram", Reduction::Histogram}, {"hits", Reduction::Hits}};
-    return table.at(r);
 }
 
 struct Outputs {
@@ -73,14 +64,13 @@ template <class Basis> struct Walker : Family::Visitor {
     std::vector<uint8_t> added;
     std::vector<typename Basis::Target> target_stack; /* one per depth, level 0 = the target itself */
     Outputs *out;
-    uint64_t visited = 0, count = 0;
-    std::vector<uint64_t> hist;
-    std::vector<uint64_t> hit_indices;
+    Accumulator acc;
     std::vector<Entry> rref_buf;
     std::vector<uint32_t> piv_buf;
 
     Walker(Basis b, Query q, Reduction r, uint64_t prime, uint64_t c, uint64_t rows, const Entry *target, Outputs *o)
-        : query(q), reduction(r), p(prime), cols(c), member_rows(rows), prune(r != Reduction::All), basis(std::move(b)), out(o) {
+        : query(q), reduction(r), p(prime), cols(c), member_rows(rows), prune(r != Reduction::All), basis(std::move(b)),
+          out(o), acc(r, &o->integers) {
         if (target) target_stack.push_back(basis.pack(target));
     }
 
@@ -125,37 +115,19 @@ template <class Basis> struct Walker : Family::Visitor {
         }
     }
 
-    void record_true(uint64_t first, uint64_t n) {
-        switch (reduction) {
-        case Reduction::Count: count += n; break;
-        case Reduction::Hits:
-            for (uint64_t i = 0; i < n; ++i) hit_indices.push_back(first + i);
-            break;
-        case Reduction::All:
-            for (uint64_t i = 0; i < n; ++i) out->integers[first + i] = 1;
-            break;
-        case Reduction::Histogram: break;
-        }
-    }
-
     void leaf(uint64_t index) override {
-        ++visited;
         switch (query) {
         case Query::Rank:
-        case Query::Nullity: {
-            uint64_t v = query == Query::Rank ? basis.rank() : cols - basis.rank();
-            if (reduction == Reduction::Histogram) {
-                if (hist.size() <= v) hist.resize(v + 1, 0);
-                ++hist[v];
-            } else out->integers[index] = v;
+        case Query::Nullity:
+            acc.integer(index, query == Query::Rank ? basis.rank() : cols - basis.rank());
             break;
-        }
         case Query::FullRowRank:
         case Query::FullColRank:
         case Query::InSpan:
-            if (boolean_value()) record_true(index, 1);
+            acc.boolean(index, boolean_value());
             break;
         case Query::Rref: {
+            ++acc.visited;
             basis.rref(rref_buf, piv_buf);
             Entry *dst = out->matrices.data() + index * member_rows * cols;
             std::fill(dst, dst + member_rows * cols, 0);
@@ -163,6 +135,7 @@ template <class Basis> struct Walker : Family::Visitor {
             break;
         }
         case Query::Nullspace: {
+            ++acc.visited;
             basis.rref(rref_buf, piv_buf);
             std::vector<Entry> &vecs = out->ragged[index];
             vecs.clear();
@@ -182,11 +155,8 @@ template <class Basis> struct Walker : Family::Visitor {
         }
     }
 
-    void take_all(uint64_t first, uint64_t n) override {
-        visited += n;
-        record_true(first, n);
-    }
-    void skip_all(uint64_t, uint64_t n) override { visited += n; }
+    void take_all(uint64_t first, uint64_t n) override { acc.booleans(first, n, true); }
+    void skip_all(uint64_t first, uint64_t n) override { acc.booleans(first, n, false); }
 };
 
 /* Run a walk operation. `make_basis(p, cols)` builds a fresh Basis for one thread. */
@@ -226,69 +196,22 @@ Result<std::shared_ptr<Object>> run_walk(const Request &req, Query query, Reduct
     walkers.reserve(threads);
     for (uint32_t t = 0; t < threads; ++t)
         walkers.emplace_back(make_basis(p, cols), query, reduction, p, cols, rows, target, &out);
-    std::atomic<uint64_t> next_branch{0};
-    std::vector<Status> statuses(threads, ok());
-    uint64_t chunk = std::max<uint64_t>(1, tops / (threads * 16));
-    auto work = [&](uint32_t t) {
-        for (;;) {
-            uint64_t begin = next_branch.fetch_add(chunk);
-            if (begin >= tops) break;
-            Status st = fam.enumerate(walkers[t], begin, std::min(tops, begin + chunk));
-            if (!st.ok) { statuses[t] = st; break; }
-        }
-    };
-    if (threads == 1) work(0);
-    else {
-        std::vector<std::thread> pool;
-        for (uint32_t t = 0; t < threads; ++t) pool.emplace_back(work, t);
-        for (auto &th : pool) th.join();
-    }
+    auto statuses = parallel_ranges(tops, threads, [&](uint32_t t, uint64_t begin, uint64_t end) {
+        return fam.enumerate(walkers[t], begin, end);
+    });
     for (const auto &st : statuses)
         if (!st.ok) return R::failure(st.error.status, st.error.message);
 
-    uint64_t visited = 0, count = 0;
-    std::vector<uint64_t> hist, hits;
-    for (auto &w : walkers) {
-        visited += w.visited;
-        count += w.count;
-        if (hist.size() < w.hist.size()) hist.resize(w.hist.size(), 0);
-        for (size_t i = 0; i < w.hist.size(); ++i) hist[i] += w.hist[i];
-        hits.insert(hits.end(), w.hit_indices.begin(), w.hit_indices.end());
-    }
-    if (visited != size)
-        return R::failure(INTERNAL, "enumeration visited " + std::to_string(visited) + " members of " + std::to_string(size));
-
-    auto o = std::make_shared<Object>();
-    switch (reduction) {
-    case Reduction::Count:
-        o->kind = "count";
-        o->count = std::make_shared<Count>(Count{count, visited, size});
-        break;
-    case Reduction::Histogram:
-        o->kind = "histogram";
-        o->histogram = std::make_shared<Histogram>(Histogram{visited, size, hist});
-        break;
-    case Reduction::Hits: {
-        std::sort(hits.begin(), hits.end());
-        uint64_t limit = req.int_args.count("limit") ? req.int_args.at("limit") : 0;
-        auto h = std::make_shared<Hits>();
-        h->p = p; h->rows = rows; h->cols = cols; h->total = hits.size(); h->visited = visited; h->family_size = size;
-        h->indices = hits;
-        uint64_t mat = std::min<uint64_t>(limit, hits.size());
-        for (uint64_t i = 0; i < mat; ++i) {
-            auto m = fam.member(hits[i]);
-            if (!m.ok) return R::failure(m.error.status, m.error.message);
-            h->members.insert(h->members.end(), m.value.entries.begin(), m.value.entries.end());
-        }
-        o->kind = "hits";
-        o->hits = h;
-        break;
-    }
-    case Reduction::All:
+    if (query == Query::Rref || query == Query::Nullspace) {
+        uint64_t visited = 0;
+        for (auto &w : walkers) visited += w.acc.visited;
+        if (visited != size)
+            return R::failure(INTERNAL, "enumeration visited " + std::to_string(visited) + " members of " + std::to_string(size));
+        auto o = std::make_shared<Object>();
         if (query == Query::Rref) {
             o->kind = "gfp.matrix";
             o->matrix = std::make_shared<Matrix>(Matrix{p, size, rows, cols, std::move(out.matrices)});
-        } else if (query == Query::Nullspace) {
+        } else {
             auto b = std::make_shared<lk::Basis>();
             b->p = p; b->count = size; b->cols = cols;
             b->offsets.push_back(0);
@@ -298,13 +221,12 @@ Result<std::shared_ptr<Object>> run_walk(const Request &req, Query query, Reduct
             }
             o->kind = "gfp.basis";
             o->basis = b;
-        } else {
-            o->kind = "integers";
-            o->integers = std::make_shared<Integers>(Integers{std::move(out.integers)});
         }
-        break;
+        return R::success(o);
     }
-    return R::success(o);
+    std::vector<Accumulator> accs;
+    for (auto &w : walkers) accs.push_back(w.acc);
+    return assemble(req, reduction, accs, std::move(out.integers));
 }
 
 } // namespace lk::gfp

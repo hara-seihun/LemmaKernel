@@ -37,7 +37,7 @@ struct BackendRegistration {
 struct ManifestOperation {
     const char *module, *name, *value;
     const char *const *args;
-    bool explicit_only;
+    const char *const *families; /* family kinds the operation is defined on; empty = any */
 };
 struct ManifestReduction {
     const char *name;

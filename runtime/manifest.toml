@@ -1,0 +1,24 @@
+# Runtime-level declarations shared by every module. Reductions are how a per-member value
+# comes back; `accepts` lists the value types (from module operations) each one takes, with "*"
+# for any. `visited` and `family_size` on every non-`all` result are the completeness check.
+
+[[reductions]]
+name = "all"
+accepts = ["*"]
+summary = "Materialise the per-member value for every member, in family order. Integers and booleans come back as kind `integers`."
+
+[[reductions]]
+name = "count"
+accepts = ["boolean"]
+summary = "Number of members whose value is true (kind `count`: value, visited, family_size)."
+
+[[reductions]]
+name = "histogram"
+accepts = ["integer"]
+summary = "Number of members per value (kind `histogram`: u64 bins[0..max])."
+
+[[reductions]]
+name = "hits"
+accepts = ["boolean"]
+args = ["limit"]
+summary = "Canonical indices of every member whose value is true, and the first `limit` of them materialised (kind `hits`)."

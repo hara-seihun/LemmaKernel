@@ -134,8 +134,31 @@ std::vector<uint8_t> encode_matrix(const Matrix &m) {
     Writer w;
     w.entries(m.entries, entry_width(m.p));
     Writer out;
-    write_header(out, "gfp.matrix", {{"p", m.p}, {"count", m.count}, {"rows", m.rows}, {"cols", m.cols}}, w.out);
+    if (m.p == 0) write_header(out, "orbits.perms", {{"n", m.cols}, {"count", m.count}}, w.out);
+    else write_header(out, "gfp.matrix", {{"p", m.p}, {"count", m.count}, {"rows", m.rows}, {"cols", m.cols}}, w.out);
     return out.out;
+}
+
+Result<std::shared_ptr<Matrix>> decode_perms(const Header &h) {
+    using R = Result<std::shared_ptr<Matrix>>;
+    auto n = need(h, "n"), count = need(h, "count");
+    for (auto *r : {&n, &count}) if (!r->ok) return R::failure(r->error.status, r->error.message);
+    if (n.value == 0 || n.value >= (1ULL << 32)) return R::failure(INVALID, "orbits.perms: need 1 <= n < 2^32");
+    auto m = std::make_shared<Matrix>();
+    m->p = 0; m->count = count.value; m->rows = 1; m->cols = n.value;
+    unsigned __int128 total = (unsigned __int128)count.value * n.value;
+    if (total * 4 != h.payload_len) return R::failure(INVALID, "orbits.perms payload length does not match count*n");
+    Reader r{h.payload, h.payload + h.payload_len};
+    r.entries(m->entries, (uint64_t)total, 4);
+    for (uint64_t g = 0; g < m->count; ++g) {
+        std::vector<bool> seen(m->cols, false);
+        for (uint64_t i = 0; i < m->cols; ++i) {
+            Entry e = m->entries[g * m->cols + i];
+            if (e >= m->cols || seen[e]) return R::failure(INVALID, "orbits.perms: element " + std::to_string(g) + " is not a permutation of 0..n-1");
+            seen[e] = true;
+        }
+    }
+    return R::success(m);
 }
 
 Result<std::shared_ptr<Family>> decode_family(const Header &h);
@@ -172,6 +195,11 @@ Result<std::shared_ptr<Family>> decode_family(const Header &h) {
         for (auto *r : {&p, &n, &hh}) if (!r->ok) return R::failure(r->error.status, r->error.message);
         return make_grassmannian(p.value, n.value, hh.value);
     }
+    if (sub == "group_elements") {
+        auto g = child_object("orbits.perms");
+        if (!g.ok) return R::failure(g.error.status, g.error.message);
+        return make_group_elements(g.value->matrix);
+    }
     if (sub == "all_matrices") {
         auto p = need(h, "p"), rows = need(h, "rows"), cols = need(h, "cols");
         for (auto *r : {&p, &rows, &cols}) if (!r->ok) return R::failure(r->error.status, r->error.message);
@@ -203,6 +231,9 @@ std::vector<uint8_t> encode_family(const Family &f) {
     case Family::Kind::AllMatrices:
         params = {{"p", f.p}, {"rows", f.m}, {"cols", f.n}};
         break;
+    case Family::Kind::GroupElements:
+        payload.bytes(encode_matrix(*f.data));
+        break;
     case Family::Kind::Transform:
     case Family::Kind::Stack:
         payload.bytes(encode_family(*f.child));
@@ -222,8 +253,8 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
     *next = h.next;
     auto o = std::make_shared<Object>();
     o->kind = h.kind;
-    if (h.kind == "gfp.matrix") {
-        auto m = decode_matrix(h);
+    if (h.kind == "gfp.matrix" || h.kind == "orbits.perms") {
+        auto m = h.kind == "gfp.matrix" ? decode_matrix(h) : decode_perms(h);
         if (!m.ok) return R::failure(m.error.status, m.error.message);
         o->matrix = m.value;
         return R::success(o);
@@ -320,6 +351,7 @@ Result<std::shared_ptr<Object>> decode_at(const uint8_t *bytes, size_t len, cons
 } // namespace
 
 unsigned entry_width(uint64_t p) {
+    if (p == 0) return 4; /* permutations: point indices */
     if (p < (1ULL << 8)) return 1;
     if (p < (1ULL << 16)) return 2;
     if (p < (1ULL << 32)) return 4;
@@ -355,6 +387,7 @@ bool is_prime(uint64_t n) {
 }
 
 std::map<std::string, uint64_t> Object::params() const {
+    if (matrix && matrix->p == 0) return {{"n", matrix->cols}, {"count", matrix->count}};
     if (matrix) return {{"p", matrix->p}, {"count", matrix->count}, {"rows", matrix->rows}, {"cols", matrix->cols}};
     if (basis) return {{"p", basis->p}, {"count", basis->count}, {"cols", basis->cols}};
     if (solutions) return {{"p", solutions->p}, {"count", solutions->count}, {"length", solutions->length}};

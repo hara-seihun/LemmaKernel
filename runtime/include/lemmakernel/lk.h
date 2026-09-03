@@ -54,6 +54,7 @@ lk_status lk_family_grassmannian(lk_context *ctx, uint64_t p, uint64_t n, uint64
 lk_status lk_family_all_matrices(lk_context *ctx, uint64_t p, uint64_t rows, uint64_t cols, lk_handle *out);
 lk_status lk_family_transform(lk_context *ctx, lk_handle family, lk_handle matrix, lk_handle *out);
 lk_status lk_family_stack(lk_context *ctx, lk_handle family, lk_handle rows, lk_handle *out);
+lk_status lk_family_group_elements(lk_context *ctx, lk_handle generators, lk_handle *out);
 lk_status lk_family_size(lk_context *ctx, lk_handle family, uint64_t *size);
 lk_status lk_family_member(lk_context *ctx, lk_handle family, uint64_t index, lk_handle *out);
 

@@ -1,6 +1,8 @@
 #include "family.hpp"
 
 #include <algorithm>
+#include <mutex>
+#include <unordered_set>
 
 namespace lk {
 
@@ -37,6 +39,8 @@ Result<uint64_t> pow_checked(uint64_t p, uint64_t e) {
     return Result<uint64_t>::success(r);
 }
 
+} // namespace
+
 /* Pivot sets of a Grassmannian in lexicographic order with the leaf count under each. */
 struct PivotTable {
     uint64_t n, h, p;
@@ -45,7 +49,9 @@ struct PivotTable {
     std::vector<std::vector<uint32_t>> free_counts; /* per set, per row */
 };
 
-Result<PivotTable> pivot_table(uint64_t p, uint64_t n, uint64_t h) {
+namespace {
+
+Result<PivotTable> build_pivot_table(uint64_t p, uint64_t n, uint64_t h) {
     PivotTable t{n, h, p, {}, {0}, {}};
     std::vector<uint32_t> c(h);
     for (uint64_t i = 0; i < h; ++i) c[i] = (uint32_t)i;
@@ -112,6 +118,7 @@ const char *family_kind_name(Family::Kind k) {
     case Family::Kind::AllMatrices: return "all_matrices";
     case Family::Kind::Transform: return "transform";
     case Family::Kind::Stack: return "stack";
+    case Family::Kind::GroupElements: return "group_elements";
     }
     return "?";
 }
@@ -126,6 +133,7 @@ uint64_t Family::rows() const {
     case Kind::AllMatrices: return m;
     case Kind::Transform: return child->rows();
     case Kind::Stack: return child->rows() + data->rows;
+    case Kind::GroupElements: return 1;
     }
     return 0;
 }
@@ -138,6 +146,7 @@ uint64_t Family::cols() const {
     case Kind::AllMatrices: return n;
     case Kind::Transform: return data->cols;
     case Kind::Stack: return child->cols();
+    case Kind::GroupElements: return data->cols;
     }
     return 0;
 }
@@ -151,13 +160,18 @@ Result<uint64_t> Family::size() const {
     case Kind::Explicit: return Result<uint64_t>::success(data->count);
     case Kind::Subsets: return binom(data->count, k);
     case Kind::Grassmannian: {
-        auto t = pivot_table(p, n, h);
+        auto t = pivot_table();
         if (!t.ok) return Result<uint64_t>::failure(t.error.status, t.error.message);
-        return Result<uint64_t>::success(t.value.offsets.back());
+        return Result<uint64_t>::success(t.value->offsets.back());
     }
     case Kind::AllMatrices: return pow_checked(p, m * n);
     case Kind::Transform:
     case Kind::Stack: return child->size();
+    case Kind::GroupElements: {
+        auto g = group_elements();
+        if (!g.ok) return Result<uint64_t>::failure(g.error.status, g.error.message);
+        return Result<uint64_t>::success(g.value->size() / data->cols);
+    }
     }
     return Result<uint64_t>::failure(INTERNAL, "unknown family kind");
 }
@@ -170,6 +184,7 @@ Result<uint64_t> Family::top_count() const {
     case Kind::AllMatrices: return pow_checked(p, n);
     case Kind::Transform:
     case Kind::Stack: return child->top_count();
+    case Kind::GroupElements: return size();
     }
     return Result<uint64_t>::failure(INTERNAL, "unknown family kind");
 }
@@ -204,13 +219,14 @@ Result<Matrix> Family::member(uint64_t index) const {
         break;
     }
     case Kind::Grassmannian: {
-        auto t = pivot_table(p, n, h);
-        if (!t.ok) return Result<Matrix>::failure(t.error.status, t.error.message);
-        auto it = std::upper_bound(t.value.offsets.begin(), t.value.offsets.end(), index);
-        uint64_t s = (uint64_t)(it - t.value.offsets.begin()) - 1;
-        uint64_t rem = index - t.value.offsets[s];
-        const auto &piv = t.value.sets[s];
-        const auto &fr = t.value.free_counts[s];
+        auto tr = pivot_table();
+        if (!tr.ok) return Result<Matrix>::failure(tr.error.status, tr.error.message);
+        const PivotTable &t = *tr.value;
+        auto it = std::upper_bound(t.offsets.begin(), t.offsets.end(), index);
+        uint64_t s = (uint64_t)(it - t.offsets.begin()) - 1;
+        uint64_t rem = index - t.offsets[s];
+        const auto &piv = t.sets[s];
+        const auto &fr = t.free_counts[s];
         out.entries.assign(h * n, 0);
         std::vector<uint64_t> radix(h);
         for (uint64_t j = 0; j < h; ++j) radix[j] = pow_checked(p, fr[j]).value;
@@ -261,8 +277,123 @@ Result<Matrix> Family::member(uint64_t index) const {
         out.entries.insert(out.entries.end(), data->entries.begin(), data->entries.end());
         break;
     }
+    case Kind::GroupElements: {
+        auto g = group_elements();
+        if (!g.ok) return Result<Matrix>::failure(g.error.status, g.error.message);
+        out.entries.assign(g.value->begin() + index * out.cols, g.value->begin() + (index + 1) * out.cols);
+        break;
+    }
     }
     return Result<Matrix>::success(std::move(out));
+}
+
+Result<const PivotTable *> Family::pivot_table() const {
+    using R = Result<const PivotTable *>;
+    if (kind != Kind::Grassmannian) return R::failure(INVALID, "not a grassmannian family");
+    static std::mutex mu;
+    std::lock_guard<std::mutex> lock(mu);
+    if (!pivots) {
+        auto t = build_pivot_table(p, n, h);
+        if (!t.ok) return R::failure(t.error.status, t.error.message);
+        pivots = std::make_shared<const PivotTable>(std::move(t.value));
+    }
+    return R::success(pivots.get());
+}
+
+Result<const std::vector<Entry> *> Family::group_elements() const {
+    using R = Result<const std::vector<Entry> *>;
+    if (kind != Kind::GroupElements) return R::failure(INVALID, "not a group_elements family");
+    static std::mutex mu;
+    std::lock_guard<std::mutex> lock(mu);
+    if (!elements) {
+        auto c = permutation_closure(*data, 1ULL << 26);
+        if (!c.ok) return R::failure(c.error.status, c.error.message);
+        elements = std::make_shared<const std::vector<Entry>>(std::move(c.value));
+    }
+    return R::success(elements.get());
+}
+
+Result<uint64_t> Family::index_of(const Matrix &mem) const {
+    using R = Result<uint64_t>;
+    if (mem.count != 1 || mem.rows != rows() || mem.cols != cols() || mem.p != prime())
+        return R::failure(INVALID, "index_of: member has the wrong shape for this family");
+    switch (kind) {
+    case Kind::Subsets: {
+        /* Rows must be dictionary rows; the dictionary must have no duplicate rows. */
+        uint64_t D = data->count, cols_ = data->cols;
+        std::vector<uint64_t> idx(k);
+        for (uint64_t j = 0; j < k; ++j) {
+            uint64_t found = D;
+            for (uint64_t c = 0; c < D; ++c)
+                if (std::equal(data->at(c), data->at(c) + cols_, mem.entries.begin() + j * cols_)) { found = c; break; }
+            if (found == D) return R::failure(INVALID, "index_of: row is not in the dictionary");
+            idx[j] = found;
+        }
+        for (uint64_t j = 1; j < k; ++j)
+            if (idx[j] <= idx[j - 1]) return R::failure(INVALID, "index_of: rows are not in increasing dictionary order");
+        uint64_t index = 0, prev = 0;
+        for (uint64_t j = 0; j < k; ++j) {
+            for (uint64_t c = prev; c < idx[j]; ++c) {
+                auto b = binom(D - 1 - c, k - 1 - j);
+                if (!b.ok) return b;
+                index += b.value;
+            }
+            prev = idx[j] + 1;
+        }
+        return R::success(index);
+    }
+    case Kind::Grassmannian: {
+        auto tr = pivot_table();
+        if (!tr.ok) return R::failure(tr.error.status, tr.error.message);
+        const PivotTable &t = *tr.value;
+        std::vector<uint32_t> piv(h);
+        for (uint64_t j = 0; j < h; ++j) {
+            const Entry *row = mem.entries.data() + j * n;
+            uint64_t lead = n;
+            for (uint64_t c = 0; c < n; ++c) if (row[c]) { lead = c; break; }
+            if (lead == n || row[lead] != 1 || (j > 0 && lead <= piv[j - 1]))
+                return R::failure(INVALID, "index_of: member is not in reduced row echelon form");
+            piv[j] = (uint32_t)lead;
+        }
+        auto it = std::lower_bound(t.sets.begin(), t.sets.end(), piv);
+        if (it == t.sets.end() || *it != piv) return R::failure(INTERNAL, "index_of: pivot set not found");
+        uint64_t s = (uint64_t)(it - t.sets.begin());
+        uint64_t index = t.offsets[s];
+        uint64_t rem = 0;
+        for (uint64_t j = 0; j < h; ++j) {
+            const Entry *row = mem.entries.data() + j * n;
+            for (uint64_t c = 0; c < n; ++c) {
+                bool is_piv = std::binary_search(piv.begin(), piv.end(), (uint32_t)c);
+                if (is_piv || c < piv[j]) {
+                    if (row[c] != (c == piv[j] ? 1u : 0u)) return R::failure(INVALID, "index_of: member is not in reduced row echelon form");
+                } else rem = rem * p + row[c];
+            }
+        }
+        return R::success(index + rem);
+    }
+    case Kind::AllMatrices: {
+        uint64_t index = 0;
+        for (Entry e : mem.entries) index = index * p + e;
+        return R::success(index);
+    }
+    case Kind::GroupElements: {
+        auto g = group_elements();
+        if (!g.ok) return R::failure(g.error.status, g.error.message);
+        uint64_t nn = data->cols, count = g.value->size() / nn;
+        uint64_t lo = 0, hi = count;
+        while (lo < hi) {
+            uint64_t mid = (lo + hi) / 2;
+            const Entry *e = g.value->data() + mid * nn;
+            if (std::lexicographical_compare(e, e + nn, mem.entries.begin(), mem.entries.end())) lo = mid + 1;
+            else hi = mid;
+        }
+        if (lo < count && std::equal(g.value->data() + lo * nn, g.value->data() + (lo + 1) * nn, mem.entries.begin()))
+            return R::success(lo);
+        return R::failure(INVALID, "index_of: permutation is not in the group");
+    }
+    default:
+        return R::failure(INVALID, std::string("index_of is not defined for ") + family_kind_name(kind) + " families");
+    }
 }
 
 Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const {
@@ -320,12 +451,13 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
         return ok();
     }
     case Kind::Grassmannian: {
-        auto t = pivot_table(p, n, h);
-        if (!t.ok) return fail(t.error.status, t.error.message);
+        auto tr = pivot_table();
+        if (!tr.ok) return fail(tr.error.status, tr.error.message);
+        const PivotTable &t = *tr.value;
         std::vector<Entry> row(n);
         for (uint64_t s = top_begin; s < top_end; ++s) {
-            const auto &piv = t.value.sets[s];
-            const auto &fr = t.value.free_counts[s];
+            const auto &piv = t.sets[s];
+            const auto &fr = t.free_counts[s];
             std::vector<uint64_t> radix(h), below(h);
             for (uint64_t j = 0; j < h; ++j) radix[j] = pow_checked(p, fr[j]).value;
             for (int64_t j = (int64_t)h - 1; j >= 0; --j) below[j] = (j + 1 < (int64_t)h) ? below[j + 1] * radix[j + 1] : 1;
@@ -355,7 +487,7 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
                     }
                 }
             };
-            descend(descend, 0, t.value.offsets[s]);
+            descend(descend, 0, t.offsets[s]);
         }
         return ok();
     }
@@ -392,6 +524,19 @@ Status Family::enumerate(Visitor &v, uint64_t top_begin, uint64_t top_end) const
     case Kind::Transform: {
         TransformVisitor tv(v, *data, prime(), child->cols());
         return child->enumerate(tv, top_begin, top_end);
+    }
+    case Kind::GroupElements: {
+        auto g = group_elements();
+        if (!g.ok) return fail(g.error.status, g.error.message);
+        uint64_t nn = data->cols;
+        for (uint64_t i = top_begin; i < top_end; ++i) {
+            Step step = v.push(g.value->data() + i * nn);
+            if (step == Step::Descend) v.leaf(i);
+            else if (step == Step::TakeAll) v.take_all(i, 1);
+            else v.skip_all(i, 1);
+            v.pop();
+        }
+        return ok();
     }
     case Kind::Stack: {
         /* Stacked rows are pushed first so the consumer reduces them once per enumerate call;
@@ -509,6 +654,68 @@ Result<std::shared_ptr<Family>> make_stack(std::shared_ptr<Family> inner, std::s
     f->kind = Family::Kind::Stack;
     f->child = std::move(inner);
     f->data = std::move(rows);
+    return Result<std::shared_ptr<Family>>::success(f);
+}
+
+Result<std::vector<Entry>> permutation_closure(const Matrix &generators, uint64_t limit) {
+    using R = Result<std::vector<Entry>>;
+    uint64_t n = generators.cols;
+    if (generators.p != 0 || generators.rows != 1) return R::failure(INVALID, "generators must be a batch of permutations");
+    for (uint64_t g = 0; g < generators.count; ++g) {
+        std::vector<bool> seen(n, false);
+        for (uint64_t i = 0; i < n; ++i) {
+            Entry e = generators.entries[g * n + i];
+            if (e >= n || seen[e]) return R::failure(INVALID, "generator " + std::to_string(g) + " is not a permutation of 0.." + std::to_string(n - 1));
+            seen[e] = true;
+        }
+    }
+    std::vector<Entry> store;
+    struct Hash {
+        const std::vector<Entry> *store; uint64_t n;
+        size_t operator()(uint64_t i) const {
+            uint64_t h = 1469598103934665603ULL;
+            for (uint64_t j = 0; j < n; ++j) { h ^= (*store)[i * n + j]; h *= 1099511628211ULL; }
+            return (size_t)h;
+        }
+    };
+    struct Eq {
+        const std::vector<Entry> *store; uint64_t n;
+        bool operator()(uint64_t a, uint64_t b) const { return std::equal(store->begin() + a * n, store->begin() + (a + 1) * n, store->begin() + b * n); }
+    };
+    std::unordered_set<uint64_t, Hash, Eq> seen(64, Hash{&store, n}, Eq{&store, n});
+    for (uint64_t i = 0; i < n; ++i) store.push_back((Entry)i); /* identity */
+    seen.insert(0);
+    std::vector<Entry> tmp(n);
+    for (uint64_t front = 0; front < store.size() / n; ++front) {
+        for (uint64_t g = 0; g < generators.count; ++g) {
+            const Entry *gen = generators.entries.data() + g * n;
+            for (uint64_t i = 0; i < n; ++i) tmp[i] = gen[store[front * n + i]]; /* x |-> gen(front(x)) */
+            uint64_t idx = store.size() / n;
+            store.insert(store.end(), tmp.begin(), tmp.end());
+            if (!seen.insert(idx).second) store.resize(idx * n);
+            else if (idx + 1 > limit) return R::failure(INVALID, "group has more than " + std::to_string(limit) + " elements");
+        }
+    }
+    uint64_t count = store.size() / n;
+    std::vector<uint64_t> order(count);
+    for (uint64_t i = 0; i < count; ++i) order[i] = i;
+    std::sort(order.begin(), order.end(), [&](uint64_t a, uint64_t b) {
+        return std::lexicographical_compare(store.begin() + a * n, store.begin() + (a + 1) * n, store.begin() + b * n, store.begin() + (b + 1) * n);
+    });
+    std::vector<Entry> sorted(store.size());
+    for (uint64_t i = 0; i < count; ++i) std::copy(store.begin() + order[i] * n, store.begin() + (order[i] + 1) * n, sorted.begin() + i * n);
+    return R::success(std::move(sorted));
+}
+
+Result<std::shared_ptr<Family>> make_group_elements(std::shared_ptr<Matrix> generators) {
+    if (generators->p != 0 || generators->rows != 1)
+        return Result<std::shared_ptr<Family>>::failure(INVALID, "group_elements: generators must be an orbits.perms batch");
+    if (generators->count == 0) return Result<std::shared_ptr<Family>>::failure(INVALID, "group_elements: need at least one generator");
+    auto f = std::make_shared<Family>();
+    f->kind = Family::Kind::GroupElements;
+    f->data = std::move(generators);
+    f->p = 0;
+    f->n = f->data->cols;
     return Result<std::shared_ptr<Family>>::success(f);
 }
 

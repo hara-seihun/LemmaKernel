@@ -77,28 +77,6 @@ name = "stack"
 member = "gfp.matrix"
 summary = "Each member M of the inner family with a fixed block of rows appended below it. Same order and indices."
 
-# Reductions. `visited` and `family_size` on every non-`all` result are the completeness check.
-[[reductions]]
-name = "all"
-accepts = ["integer", "boolean", "gfp.matrix", "gfp.basis", "gfp.solutions", "gfp.inverses", "gfp.witness"]
-summary = "Materialise the per-member value for every member, in family order. Integers and booleans come back as kind `integers`."
-
-[[reductions]]
-name = "count"
-accepts = ["boolean"]
-summary = "Number of members whose value is true (kind `count`: value, visited, family_size)."
-
-[[reductions]]
-name = "histogram"
-accepts = ["integer"]
-summary = "Number of members per value (kind `histogram`: u64 bins[0..max])."
-
-[[reductions]]
-name = "hits"
-accepts = ["boolean"]
-args = ["limit"]
-summary = "Canonical indices of every member whose value is true, and the first `limit` of them materialised (kind `hits`)."
-
 [[operations]]
 name = "rank"
 value = "integer"
@@ -139,19 +117,19 @@ summary = "Canonical basis of {x : M x^T = 0}: one vector per free column f of r
 name = "solve"
 value = "gfp.solutions"
 args = ["rhs"]
-explicit_only = true
+families = ["explicit"]
 summary = "For member A_i and rhs vector b_i (1 x rows): x with A_i x^T = b_i^T, free coordinates zero; flag 0 when none exists."
 
 [[operations]]
 name = "inverse"
 value = "gfp.inverses"
-explicit_only = true
+families = ["explicit"]
 summary = "Inverse of a square member; flag 0 when singular."
 
 [[operations]]
 name = "rref_witness"
 value = "gfp.witness"
-explicit_only = true
+families = ["explicit"]
 summary = "rref R and the transform T of Gauss-Jordan elimination with first-nonzero-row pivoting, so T*A = R with T invertible."
 
 [[backends]]

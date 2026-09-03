@@ -148,7 +148,7 @@ Result<std::shared_ptr<Object>> run(const Request &req) {
 BackendRegistration registration{Backend{
     "gfp", "generic",
     [] { return true; },
-    [](const Request &req) { return req.family->prime() < (1ULL << 32); },
+    [](const Request &req) { return req.family->prime() != 0 && req.family->prime() < (1ULL << 32); },
     run,
     0}};
 
