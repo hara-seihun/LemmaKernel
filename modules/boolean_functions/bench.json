@@ -1,0 +1,49 @@
+{
+ "module": "boolean_functions",
+ "fingerprint": {
+  "module": "6efb8ec28eb7f5c5dbe34c37f24aa5a20464a239b661c3e78a1630aec9c978c6",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "cd574bb5ec3f12e188aee790bcfe7d6ffaebc0326fed7c58a6b6bf42fd24dd10"
+ },
+ "measured_at": "2026-09-03T05:20:51+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "degree2_n5_nonlinearity",
+   "what": "largest nonlinearity among all 65,536 Boolean functions of degree at most two in five variables",
+   "op": "boolean_functions.nonlinearity",
+   "reduction": "max",
+   "members": 65536,
+   "naive_s": 2.7091246359050274,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.03495234902948141,
+   "kernel_all_threads_s": 0.006148086860775948,
+   "threads": 32,
+   "speedup_1_thread": 77.5090862596946,
+   "speedup_all_threads": 440.6451465721663,
+   "answer": "Extremum(p=2, rows=1, cols=32, value=12, index=12, visited=65536, family_size=65536, member=Matrix(p=2, count=1, rows=1,"
+  },
+  {
+   "case": "quadratic_n6_bent",
+   "what": "bent functions among all 2,097,152 zero-constant quadratic forms in six variables",
+   "op": "boolean_functions.is_bent",
+   "reduction": "count",
+   "members": 2097152,
+   "naive_s": 220.95927978515624,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 2.480510772904381,
+   "kernel_all_threads_s": 0.1873584280256182,
+   "threads": 32,
+   "speedup_1_thread": 89.07813753473015,
+   "speedup_all_threads": 1179.339953444441,
+   "answer": "Count(value=888832, visited=2097152, family_size=2097152)"
+  }
+ ]
+}

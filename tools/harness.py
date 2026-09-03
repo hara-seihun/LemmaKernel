@@ -15,15 +15,24 @@ From those this file derives everything the old per-module test and bench script
   `.invalid` by the reference where the request can be rendered;
 - thread invariance and interchange roundtrips on every case;
 - coverage: every (operation, reduction) pair the manifest allows must have an oracle case;
-- the benchmark: kernel (one thread, every core) against naive on cases that carry `bench`.
+- the benchmark: kernel (one thread, every core) against naive on cases that carry `bench`,
+  recorded in the module's `bench.json` together with a fingerprint of everything the numbers
+  depend on (the module tree, the module trees it includes, the runtime), so `tools/bench.py`
+  reruns only what changed.
 
 `tests/test_cases.py` is the pytest entry; `tools/bench.py` the benchmark entry.
 """
 from __future__ import annotations
 
+import datetime
+import hashlib
 import importlib.util
 import itertools
+import json
+import os
+import platform
 import re
+import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
@@ -120,6 +129,112 @@ def modules() -> list[Module]:
 
 def module(name: str) -> Module:
     return next(m for m in modules() if m.name == name)
+
+
+# ---- fingerprints and bench records -------------------------------------------------------------
+
+RUNTIME_INPUTS = ["runtime", "python/lemmakernel", "tools/harness.py", "tools/bench.py", "CMakeLists.txt",
+                  "lean-toolchain", "lake-manifest.json"]
+SKIP_DIRS = {"__pycache__", ".lake", ".pytest_cache"}
+MODULE_REF = re.compile(r"(?:modules/|\"modules\" / \"|(?:\.\./)+)([a-z][a-z0-9_]*)[/\"]")
+
+
+def _files(root: Path):
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        for f in sorted(filenames):
+            if not f.endswith(".pyc"):
+                yield Path(dirpath) / f
+
+
+def _digest(h: hashlib._Hash, paths) -> None:
+    for p in paths:
+        for f in (_files(p) if p.is_dir() else [p]):
+            if f.name == "bench.json" or not f.exists():
+                continue
+            h.update(str(f.relative_to(ROOT)).encode())
+            h.update(b"\0")
+            h.update(f.read_bytes())
+            h.update(b"\0")
+
+
+def module_dependencies(mod: Module) -> list[str]:
+    """Other modules whose files this one's sources name (C++ includes, naive imports), transitively."""
+    names = {m.name for m in modules()}
+    seen, todo = set(), [mod.name]
+    while todo:
+        name = todo.pop()
+        for f in _files(ROOT / "modules" / name):
+            if f.suffix not in {".py", ".cpp", ".hpp", ".h", ".lean", ".toml", ".cmake", ".txt"}:
+                continue
+            for ref in MODULE_REF.findall(f.read_text(errors="replace")):
+                if ref in names and ref != mod.name and ref not in seen:
+                    seen.add(ref)
+                    todo.append(ref)
+    return sorted(seen)
+
+
+def runtime_fingerprint() -> str:
+    h = hashlib.sha256()
+    _digest(h, [ROOT / p for p in RUNTIME_INPUTS])
+    return h.hexdigest()
+
+
+def module_fingerprint(mod: Module) -> dict:
+    """`module` covers the module tree and the trees it depends on; `combined` adds the runtime."""
+    h = hashlib.sha256()
+    deps = module_dependencies(mod)
+    _digest(h, [mod.dir] + [ROOT / "modules" / d for d in deps])
+    module = h.hexdigest()
+    runtime = runtime_fingerprint()
+    return {"module": module, "runtime": runtime, "dependencies": deps,
+            "combined": hashlib.sha256((module + runtime).encode()).hexdigest()}
+
+
+def bench_record_path(mod: Module) -> Path:
+    return mod.dir / "bench.json"
+
+
+def bench_record(mod: Module) -> dict | None:
+    p = bench_record_path(mod)
+    return json.loads(p.read_text()) if p.exists() else None
+
+
+def bench_staleness(mod: Module) -> str | None:
+    """None when bench.json matches the current tree; otherwise why it does not."""
+    rec = bench_record(mod)
+    if rec is None:
+        return "no bench.json"
+    fp = module_fingerprint(mod)
+    if rec["fingerprint"]["module"] != fp["module"]:
+        return "module or dependency sources changed"
+    if rec["fingerprint"]["runtime"] != fp["runtime"]:
+        return "runtime changed"
+    return None
+
+
+def machine_description(threads: int) -> dict:
+    cpu = ""
+    try:
+        cpu = next(l.split(":", 1)[1].strip() for l in open("/proc/cpuinfo") if l.startswith("model name"))
+    except (OSError, StopIteration):
+        pass
+    return {"host": platform.node(), "cpu": cpu, "threads": threads}
+
+
+def git_commit() -> str:
+    proc = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True)
+    return proc.stdout.strip() if proc.returncode == 0 else ""
+
+
+def write_bench_record(mod: Module, rows: list[dict], naive_limit: float, threads: int) -> Path:
+    rec = {"module": mod.name, "fingerprint": module_fingerprint(mod),
+           "measured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+           "commit": git_commit(), "machine": machine_description(threads), "naive_limit_s": naive_limit,
+           "rows": rows}
+    p = bench_record_path(mod)
+    p.write_text(json.dumps(rec, indent=1) + "\n")
+    return p
 
 
 # ---- Lean terms ---------------------------------------------------------------------------------
@@ -395,14 +510,14 @@ def bench_case(mod: Module, ctx, case: Case, naive, naive_limit: float, threads:
         assert naive_result.encode() == answer.export(), f"{case.name}: kernel disagrees with naive"
     return {"case": case.name, "what": case.what, "op": case.op, "reduction": red, "members": size,
             "naive_s": naive_s, "naive_extrapolated": extrapolated,
-            "kernel_1_thread_s": times[1], f"kernel_{threads}_threads_s": times[threads],
+            "kernel_1_thread_s": times[1], "kernel_all_threads_s": times[threads], "threads": threads,
             "speedup_1_thread": naive_s / times[1], "speedup_all_threads": naive_s / times[threads],
             "answer": repr(answer.value())[:120]}
 
 
-def format_bench_row(r: dict, threads: int) -> str:
+def format_bench_row(r: dict) -> str:
     return (f"{r['case']:32s} {r['members']:>12,d} members  naive {r['naive_s']:9.2f}s{'~' if r['naive_extrapolated'] else ' '}  "
-            f"kernel x1 {r['kernel_1_thread_s']:8.3f}s  x{threads} {r[f'kernel_{threads}_threads_s']:8.3f}s  "
+            f"kernel x1 {r['kernel_1_thread_s']:8.3f}s  x{r['threads']} {r['kernel_all_threads_s']:8.3f}s  "
             f"speedup {r['speedup_1_thread']:9.0f}x / {r['speedup_all_threads']:9.0f}x\n    {r['what']}\n    {r['answer']}")
 
 

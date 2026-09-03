@@ -1,0 +1,51 @@
+{
+ "module": "gfq",
+ "fingerprint": {
+  "module": "c66f7cbd05648e0f1ce3c1ee87d412e76a423a8349de38552d57847b2b2b25c0",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "e18f1e06599ebd5d7ff13f8269727701b0b33947578dd289b26496ffcd30dfaa"
+ },
+ "measured_at": "2026-09-03T05:21:03+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "gf4_subset_ranks",
+   "what": "rank distribution of every 5-subset of 18 vectors in GF(4)^8",
+   "op": "gfq.rank",
+   "reduction": "histogram",
+   "members": 8568,
+   "naive_s": 1.575876760063693,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.009647636208683252,
+   "kernel_all_threads_s": 0.0026567880995571613,
+   "threads": 32,
+   "speedup_1_thread": 163.3433025434087,
+   "speedup_all_threads": 593.1510910961861,
+   "answer": "Histogram(visited=8568, family_size=8568, bins=[0, 14, 364, 2184, 4011, 1995])"
+  },
+  {
+   "case": "gf16_explicit_rref",
+   "what": "rref of 2000 random 6x8 matrices over GF(16)",
+   "op": "gfq.rref",
+   "reduction": "all",
+   "members": 2000,
+   "naive_s": 1.6428790029603988,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.045078798895701766,
+   "kernel_all_threads_s": 0.003641264047473669,
+   "threads": 32,
+   "speedup_1_thread": 36.44460463024995,
+   "speedup_all_threads": 451.1837047632506,
+   "answer": "Matrix(p=16, count=2000, rows=6, cols=8, entries=array([1, 0, 0, ..., 1, 0, 0], shape=(96000,)))"
+  }
+ ]
+}

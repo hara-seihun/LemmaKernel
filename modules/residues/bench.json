@@ -1,0 +1,94 @@
+{
+ "module": "residues",
+ "fingerprint": {
+  "module": "2ef1cf25c3f529c6a77c15f49c707103a71a28859adf7ebbe6f2f15beaaca752",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "1d392904402e1188d2966838dc46f2a8535cccd14f4e95c24cb43ab04a062ce7"
+ },
+ "measured_at": "2026-09-03T05:22:04+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "orders_mod_10007",
+   "what": "the multiplicative order of every unit modulo 10007",
+   "op": "residues.multiplicative_order",
+   "reduction": "histogram",
+   "members": 10006,
+   "naive_s": 3.1273743871133775,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0009074981790035963,
+   "kernel_all_threads_s": 0.0005494409706443548,
+   "threads": 32,
+   "speedup_1_thread": 3446.149490401329,
+   "speedup_all_threads": 5691.920614230426,
+   "answer": "Histogram(visited=10006, family_size=10006, bins=[0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
+  },
+  {
+   "case": "primitive_roots_mod_10007",
+   "what": "how many units modulo 10007 generate the whole unit group",
+   "op": "residues.is_primitive_root",
+   "reduction": "count",
+   "members": 10006,
+   "naive_s": 23.54140132704517,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.0008237119764089584,
+   "kernel_all_threads_s": 0.0004826630465686321,
+   "threads": 32,
+   "speedup_1_thread": 28579.65162735145,
+   "speedup_all_threads": 48773.98734874497,
+   "answer": "Count(value=5002, visited=10006, family_size=10006)"
+  },
+  {
+   "case": "discrete_logs_mod_10007",
+   "what": "the largest discrete logarithm to base 5 modulo 10007, over every unit",
+   "op": "residues.discrete_log",
+   "reduction": "max",
+   "members": 10006,
+   "naive_s": 2.2186946058645844,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.003208678914234042,
+   "kernel_all_threads_s": 0.0005181329324841499,
+   "threads": 32,
+   "speedup_1_thread": 691.4666955369757,
+   "speedup_all_threads": 4282.095321035121,
+   "answer": "Extremum(p=18446744073709551615, rows=1, cols=1, value=10005, index=4002, visited=10006, family_size=10006, member=Matri"
+  },
+  {
+   "case": "jacobi_255255",
+   "what": "the Jacobi symbol (a/255255) for the first hundred thousand residues",
+   "op": "residues.jacobi",
+   "reduction": "histogram",
+   "members": 100000,
+   "naive_s": 0.17172673204913735,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.005407942924648523,
+   "kernel_all_threads_s": 0.0007288039196282625,
+   "threads": 32,
+   "speedup_1_thread": 31.75453854485684,
+   "speedup_all_threads": 235.6281675004289,
+   "answer": "Histogram(visited=100000, family_size=100000, bins=[63895, 18253, 17852])"
+  },
+  {
+   "case": "least_primitive_roots",
+   "what": "the least primitive root of every modulus from 100 to 999, and the largest of them",
+   "op": "residues.least_primitive_root",
+   "reduction": "max",
+   "members": 900,
+   "naive_s": 1.0391752710565925,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.00022216187790036201,
+   "kernel_all_threads_s": 0.0017099601682275534,
+   "threads": 32,
+   "speedup_1_thread": 4677.558908295937,
+   "speedup_all_threads": 607.7189927375571,
+   "answer": "Extremum(p=18446744073709551615, rows=1, cols=1, value=23, index=742, visited=900, family_size=900, member=Matrix(p=1844"
+  }
+ ]
+}

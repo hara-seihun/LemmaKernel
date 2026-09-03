@@ -1,0 +1,34 @@
+{
+ "module": "polytopes_small",
+ "fingerprint": {
+  "module": "3e1fcef4cf8c1444eecd9a6d5dac73631752ee1f6cff620a1a87e97b94436dd6",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "d860d3002d2aa65fbe5a2f153553ede6d696b0e53fa4d9a1524b247fdb86bacf"
+ },
+ "measured_at": "2026-09-03T05:21:43+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "five-subsets of the 5-cube",
+   "what": "vertex counts for all 201376 five-point selections from the vertices of the 5-cube",
+   "op": "polytopes_small.vertex_count",
+   "reduction": "histogram",
+   "members": 201376,
+   "naive_s": 0.4472839958034456,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.056921871146187186,
+   "kernel_all_threads_s": 0.005501948995515704,
+   "threads": 32,
+   "speedup_1_thread": 7.85785826777773,
+   "speedup_all_threads": 81.29555475123432,
+   "answer": "Histogram(visited=201376, family_size=201376, bins=[0, 0, 0, 0, 0, 201376])"
+  }
+ ]
+}

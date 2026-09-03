@@ -1,0 +1,34 @@
+{
+ "module": "hypergraphs",
+ "fingerprint": {
+  "module": "2911046f0bb15ad7483945f18bf7194befb64e183d05e54a1c70eec75d86cc62",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "4768f23082c2fc9a054c14081196b201bbd6b670da5b18c9d24ffcdb3a63270c"
+ },
+ "measured_at": "2026-09-03T05:21:06+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "ramsey_R33_on_six_vertices",
+   "what": "balanced red-blue colourings of K_6 avoiding a monochromatic triangle; R(3,3)=6 makes the hit set empty",
+   "op": "hypergraphs.is_ramsey_colouring",
+   "reduction": "hits",
+   "members": 6435,
+   "naive_s": 0.05770558095537126,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0015439260751008987,
+   "kernel_all_threads_s": 0.0004782129544764757,
+   "threads": 32,
+   "speedup_1_thread": 37.375870442242565,
+   "speedup_all_threads": 120.66921319298956,
+   "answer": "Hits(p=18446744073709551615, rows=7, cols=2, total=0, visited=6435, family_size=6435, indices=[], members=Matrix(p=18446"
+  }
+ ]
+}

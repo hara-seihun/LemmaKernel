@@ -1,0 +1,64 @@
+{
+ "module": "set_systems",
+ "fingerprint": {
+  "module": "797199ece12be65a73b8692a9ee8593c8f7a9ac5c37db2cc95fc3e3d7f61ee18",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "c21eff2267b79b2d93cce3c5ef4136189d2f28a8b4b49dfbbbdfcdb7e57d4302"
+ },
+ "measured_at": "2026-09-03T05:22:05+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "intersecting_32_choose_5",
+   "what": "count the pairwise-intersecting 5-set systems on a 5-point ground set",
+   "op": "set_systems.is_intersecting",
+   "reduction": "count",
+   "members": 201376,
+   "naive_s": 0.609390300931409,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0008863499388098717,
+   "kernel_all_threads_s": 0.0019551818259060383,
+   "threads": 32,
+   "speedup_1_thread": 687.527887404895,
+   "speedup_all_threads": 311.67960588474443,
+   "answer": "Count(value=38163, visited=201376, family_size=201376)"
+  },
+  {
+   "case": "antichains_64_choose_5",
+   "what": "count 5-element antichains in the Boolean lattice on 6 points",
+   "op": "set_systems.is_antichain",
+   "reduction": "count",
+   "members": 7624512,
+   "naive_s": 16.644463062286377,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.02041697409003973,
+   "kernel_all_threads_s": 0.0037660100497305393,
+   "threads": 32,
+   "speedup_1_thread": 815.2267318792482,
+   "speedup_all_threads": 4419.654446614475,
+   "answer": "Count(value=304752, visited=7624512, family_size=7624512)"
+  },
+  {
+   "case": "shadows_32_choose_4",
+   "what": "distribution of lower-shadow sizes for every 4-set system on 5 points",
+   "op": "set_systems.shadow_size",
+   "reduction": "histogram",
+   "members": 35960,
+   "naive_s": 0.3078814859036356,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0033634239807724953,
+   "kernel_all_threads_s": 0.0020734381396323442,
+   "threads": 32,
+   "speedup_1_thread": 91.53811344144691,
+   "speedup_all_threads": 148.48838748487006,
+   "answer": "Histogram(visited=35960, family_size=35960, bins=[0, 15, 0, 210, 855, 890, 2545, 4095, 6630, 4240, 6725, 4760, 3355, 705"
+  }
+ ]
+}

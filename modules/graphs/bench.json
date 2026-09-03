@@ -1,0 +1,79 @@
+{
+ "module": "graphs",
+ "fingerprint": {
+  "module": "f4c7114c6c2021d0f73380fa6e17919472d65434c0a2721175dab958dc74cf33",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "3f26f6a17d8862ec8f9d8b94fb957fb01eb63b8f17acd66e2070aa727dad7b8f"
+ },
+ "measured_at": "2026-09-03T05:21:05+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "unlabelled_graphs_6",
+   "what": "connected isomorphism classes of simple graphs on six vertices",
+   "op": "graphs.connected",
+   "reduction": "count",
+   "members": 156,
+   "naive_s": 0.0010188741143792868,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 3.092898987233639e-05,
+   "kernel_all_threads_s": 0.00048602395690977573,
+   "threads": 32,
+   "speedup_1_thread": 32.942366323143055,
+   "speedup_all_threads": 2.096345457654936,
+   "answer": "Count(value=112, visited=156, family_size=156)"
+  },
+  {
+   "case": "K7_six_edge_subgraphs",
+   "what": "diameters of all six-edge spanning subgraphs of K7",
+   "op": "graphs.diameter",
+   "reduction": "histogram",
+   "members": 54264,
+   "naive_s": 0.9576925789006054,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.028025328880175948,
+   "kernel_all_threads_s": 0.0024909439962357283,
+   "threads": 32,
+   "speedup_1_thread": 34.17239394389554,
+   "speedup_all_threads": 384.46973530832247,
+   "answer": "Histogram(visited=54264, family_size=54264, bins=[0, 0, 7, 630, 6090, 7560, 2520, 37457])"
+  },
+  {
+   "case": "random_graph_chromatic",
+   "what": "chromatic numbers of 120 random seven-vertex graphs",
+   "op": "graphs.chromatic_number",
+   "reduction": "histogram",
+   "members": 120,
+   "naive_s": 0.07125251204706728,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.00021362211555242538,
+   "kernel_all_threads_s": 0.00035868817940354347,
+   "threads": 32,
+   "speedup_1_thread": 333.54464196185285,
+   "speedup_all_threads": 198.64750537793546,
+   "answer": "Histogram(visited=120, family_size=120, bins=[0, 0, 5, 85, 27, 3])"
+  },
+  {
+   "case": "random_graph_canonical",
+   "what": "canonical forms of 120 random eight-vertex graphs",
+   "op": "graphs.canonical_form",
+   "reduction": "all",
+   "members": 120,
+   "naive_s": 0.06659470312297344,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0046692779287695885,
+   "kernel_all_threads_s": 0.0009362981654703617,
+   "threads": 32,
+   "speedup_1_thread": 14.262312961208107,
+   "speedup_all_threads": 71.12552985674037,
+   "answer": "Matrix(p=2, count=120, rows=8, cols=8, entries=array([0, 0, 0, ..., 1, 0, 0], shape=(7680,)))"
+  }
+ ]
+}

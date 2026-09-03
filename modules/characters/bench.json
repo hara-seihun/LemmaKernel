@@ -1,0 +1,18 @@
+{
+ "module": "characters",
+ "fingerprint": {
+  "module": "cd1dd47b04416db460f9a079b19c1ab2194f489a378618fba563f6704d76e1cf",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "b11d82d6f7d8404cd7e85dc6e4aa0a529033b6ca56e235e1303ec03cf532396f"
+ },
+ "measured_at": "2026-09-03T05:20:52+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": []
+}

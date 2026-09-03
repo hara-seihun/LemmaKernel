@@ -1,0 +1,18 @@
+{
+ "module": "graph_polynomials",
+ "fingerprint": {
+  "module": "2dc48ae761a2c46438b80982ce83e70caa497b67cb7bbf0d57094b5156a7b3a5",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "75701577c088cbb4c6d24225ae0b568381d923af36b47874edd487882991ee79"
+ },
+ "measured_at": "2026-09-03T05:21:04+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": []
+}

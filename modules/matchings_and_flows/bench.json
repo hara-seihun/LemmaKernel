@@ -1,0 +1,64 @@
+{
+ "module": "matchings_and_flows",
+ "fingerprint": {
+  "module": "a596e9b550aecae534d814f1b7757082d28e9c8021c4f7c64db92791d032e55f",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "2adc6eaa048d21c0be1a909361268192bebd9ccadab1f5b9a616da7069ac0aad"
+ },
+ "measured_at": "2026-09-03T05:21:11+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "all_bipartite_graphs_4_4",
+   "what": "perfect-matching count distribution over all 65,536 bipartite graphs on two labelled sets of four vertices",
+   "op": "matchings_and_flows.perfect_matching_count",
+   "reduction": "histogram",
+   "members": 65536,
+   "naive_s": 0.8101170959416777,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.03081776201725006,
+   "kernel_all_threads_s": 0.003464230103418231,
+   "threads": 32,
+   "speedup_1_thread": 26.287343496527082,
+   "speedup_all_threads": 233.85198781752908,
+   "answer": "Histogram(visited=65536, family_size=65536, bins=[27713, 13032, 10800, 4992, 4254, 1440, 1536, 576, 648, 24, 288, 96, 48"
+  },
+  {
+   "case": "all_graphs_5",
+   "what": "spanning-tree count distribution over all symmetric binary 5x5 adjacency matrices, with loops ignored",
+   "op": "matchings_and_flows.spanning_tree_count",
+   "reduction": "histogram",
+   "members": 32768,
+   "naive_s": 0.4940575410146266,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.015590399969369173,
+   "kernel_all_threads_s": 0.001971231075003743,
+   "threads": 32,
+   "speedup_1_thread": 31.689856705749254,
+   "speedup_all_threads": 250.63400596689988,
+   "answer": "Histogram(visited=32768, family_size=32768, bins=[9472, 4000, 0, 4800, 1920, 384, 0, 0, 3840, 480, 0, 1920, 320, 0, 0, 0"
+  },
+  {
+   "case": "all_unit_networks_4",
+   "what": "maximum-flow distribution over all directed unit-capacity networks on four labelled vertices",
+   "op": "matchings_and_flows.max_flow",
+   "reduction": "histogram",
+   "members": 65536,
+   "naive_s": 0.33830396505072713,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0061795159708708525,
+   "kernel_all_threads_s": 0.0009423380251973867,
+   "threads": 32,
+   "speedup_1_thread": 54.74602972877363,
+   "speedup_all_threads": 359.00489633734594,
+   "answer": "Histogram(visited=65536, family_size=65536, bins=[16384, 30720, 16384, 2048])"
+  }
+ ]
+}

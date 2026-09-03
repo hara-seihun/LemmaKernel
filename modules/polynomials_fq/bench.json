@@ -1,0 +1,126 @@
+{
+ "module": "polynomials_fq",
+ "fingerprint": {
+  "module": "012597fa9fc7215b93332325c648dc0a66722c0280a859d2dbe2454418624127",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "c32ed63ffdf502fe1491dfb2715312a9fb4463794f5ad8ccea69e87aac4bc43f"
+ },
+ "measured_at": "2026-09-03T05:21:42+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "irreducible_degree_14_F2",
+   "what": "how many of the 16384 monic degree-14 polynomials over F_2 are irreducible",
+   "op": "polynomials_fq.is_irreducible",
+   "reduction": "count",
+   "members": 16384,
+   "naive_s": 1.6092675810214132,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.009910657070577145,
+   "kernel_all_threads_s": 0.0010928818956017494,
+   "threads": 32,
+   "speedup_1_thread": 162.37748613046278,
+   "speedup_all_threads": 1472.4990756071934,
+   "answer": "Count(value=1161, visited=16384, family_size=16384)"
+  },
+  {
+   "case": "primitive_degree_12_F2",
+   "what": "the primitive polynomials of degree 12 over F_2, of which there are phi(4095)/12",
+   "op": "polynomials_fq.is_primitive",
+   "reduction": "count",
+   "members": 4096,
+   "naive_s": 0.8806729950010777,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.011311657959595323,
+   "kernel_all_threads_s": 0.0010593640618026257,
+   "threads": 32,
+   "speedup_1_thread": 77.85534164370931,
+   "speedup_all_threads": 831.3223251150456,
+   "answer": "Count(value=144, visited=4096, family_size=4096)"
+  },
+  {
+   "case": "order_degree_11_F2",
+   "what": "the order of x modulo every monic polynomial of degree 11 over F_2",
+   "op": "polynomials_fq.order",
+   "reduction": "histogram",
+   "members": 2048,
+   "naive_s": 1.073597117094323,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.016898405039682984,
+   "kernel_all_threads_s": 0.0016382529865950346,
+   "threads": 32,
+   "speedup_1_thread": 63.532452593790104,
+   "speedup_all_threads": 655.3304806272324,
+   "answer": "Histogram(visited=2048, family_size=2048, bins=[0, 2, 1, 2, 2, 2, 4, 6, 4, 4, 4, 2, 13, 0, 15, 22, 3, 4, 4, 0, 3, 26, 0,"
+  },
+  {
+   "case": "factor_degrees_degree_7_F3",
+   "what": "the factorisation pattern of every monic degree-7 polynomial over F_3",
+   "op": "polynomials_fq.factorisation_degrees",
+   "reduction": "all",
+   "members": 2187,
+   "naive_s": 0.21079425304196775,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0025758198462426662,
+   "kernel_all_threads_s": 0.000606859102845192,
+   "threads": 32,
+   "speedup_1_thread": 81.83579039871601,
+   "speedup_all_threads": 347.35287326775216,
+   "answer": "Degrees(count=2187, offsets=[0, 7, 14, 21, 27, 34, 41, 48, 54, 60, 67, 73, 78, 84, 90, 95, 100, 105, 112, 119, 124, 130,"
+  },
+  {
+   "case": "root_count_degree_5_F7",
+   "what": "how many roots in F_7 each of the 16807 monic degree-5 polynomials has",
+   "op": "polynomials_fq.root_count",
+   "reduction": "histogram",
+   "members": 16807,
+   "naive_s": 0.03863117308355868,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0014904581476002932,
+   "kernel_all_threads_s": 0.0005092420615255833,
+   "threads": 32,
+   "speedup_1_thread": 25.918992187574446,
+   "speedup_all_threads": 75.86013804089104,
+   "answer": "Histogram(visited=16807, family_size=16807, bins=[5712, 6671, 3318, 945, 140, 21])"
+  },
+  {
+   "case": "gcd_degree_4_F65537",
+   "what": "gcd of 20000 random monic quartics over F_65537 with x^4 - 1",
+   "op": "polynomials_fq.gcd",
+   "reduction": "all",
+   "members": 20000,
+   "naive_s": 0.19778549391776323,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.00891955103725195,
+   "kernel_all_threads_s": 0.0010198750533163548,
+   "threads": 32,
+   "speedup_1_thread": 22.17437773400527,
+   "speedup_all_threads": 193.9311029077718,
+   "answer": "Elements(p=65537, count=20000, offsets=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,"
+  },
+  {
+   "case": "first_primitive_degree_14_F2",
+   "what": "the least monic primitive polynomial of degree 14 over F_2, in family order",
+   "op": "polynomials_fq.is_primitive",
+   "reduction": "first",
+   "members": 16384,
+   "naive_s": 17.189399224007502,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0007183959241956472,
+   "kernel_all_threads_s": 0.0009058478754013777,
+   "threads": 32,
+   "speedup_1_thread": 23927.473201151068,
+   "speedup_all_threads": 18976.033052338888,
+   "answer": "First(p=2, rows=1, cols=14, found=1, index=8213, visited=8214, family_size=16384, member=Matrix(p=2, count=1, rows=1, co"
+  }
+ ]
+}

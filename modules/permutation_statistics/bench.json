@@ -1,0 +1,94 @@
+{
+ "module": "permutation_statistics",
+ "fingerprint": {
+  "module": "03f8a5d5bea4661176b3c423f65090cac1fe35829dcb867832ad53c5d3dac7f7",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "c104e38b78ab80db2122dfa807afa2648e49bae5022128f8fa3aa568e992b594"
+ },
+ "measured_at": "2026-09-03T05:21:20+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "S8 Mahonian",
+   "what": "Mahonian inversion distribution over all 8! permutations",
+   "op": "permutation_statistics.inversions",
+   "reduction": "histogram",
+   "members": 40320,
+   "naive_s": 10.860787734389305,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.001080682035535574,
+   "kernel_all_threads_s": 0.001978182001039386,
+   "threads": 32,
+   "speedup_1_thread": 10049.938258672746,
+   "speedup_all_threads": 5490.2874096937385,
+   "answer": "Histogram(visited=40320, family_size=40320, bins=[1, 7, 27, 76, 174, 343, 602, 961, 1415, 1940, 2493, 3017, 3450, 3736, "
+  },
+  {
+   "case": "S8 Eulerian",
+   "what": "Eulerian descent distribution over all 8! permutations",
+   "op": "permutation_statistics.descents",
+   "reduction": "histogram",
+   "members": 40320,
+   "naive_s": 0.07955765491351485,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0007177351508289576,
+   "kernel_all_threads_s": 0.0004911029245704412,
+   "threads": 32,
+   "speedup_1_thread": 110.84542093504645,
+   "speedup_all_threads": 161.9979253495639,
+   "answer": "Histogram(visited=40320, family_size=40320, bins=[1, 247, 4293, 15619, 15619, 4293, 247, 1])"
+  },
+  {
+   "case": "S8 major index",
+   "what": "major-index distribution over all 8! permutations",
+   "op": "permutation_statistics.major_index",
+   "reduction": "histogram",
+   "members": 40320,
+   "naive_s": 0.0962497079744935,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0008082718122750521,
+   "kernel_all_threads_s": 0.000510592944920063,
+   "threads": 32,
+   "speedup_1_thread": 119.08086674899417,
+   "speedup_all_threads": 188.50575381444426,
+   "answer": "Histogram(visited=40320, family_size=40320, bins=[1, 7, 27, 76, 174, 343, 602, 961, 1415, 1940, 2493, 3017, 3450, 3736, "
+  },
+  {
+   "case": "Av_8(123) count",
+   "what": "the 1430 permutations of length 8 avoiding the classical pattern 123",
+   "op": "permutation_statistics.pattern_avoids",
+   "reduction": "count",
+   "members": 40320,
+   "naive_s": 0.3834979641251266,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0025518808979541063,
+   "kernel_all_threads_s": 0.002472714986652136,
+   "threads": 32,
+   "speedup_1_thread": 150.28051051778496,
+   "speedup_all_threads": 155.09185902753518,
+   "answer": "Count(value=1430, visited=40320, family_size=40320)"
+  },
+  {
+   "case": "S8 cycle types",
+   "what": "conjugacy-class distribution of S_8 by dense complete-cycle-partition code",
+   "op": "permutation_statistics.cycle_type",
+   "reduction": "histogram",
+   "members": 40320,
+   "naive_s": 16.569726580381392,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.002385977189987898,
+   "kernel_all_threads_s": 0.0014751688577234745,
+   "threads": 32,
+   "speedup_1_thread": 6944.629081079118,
+   "speedup_all_threads": 11232.427049708938,
+   "answer": "Histogram(visited=40320, family_size=40320, bins=[5040, 5760, 3360, 3360, 2688, 4032, 1344, 1260, 3360, 1260, 2520, 420,"
+  }
+ ]
+}

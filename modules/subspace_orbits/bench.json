@@ -1,0 +1,36 @@
+{
+ "module": "subspace_orbits",
+ "fingerprint": {
+  "module": "7b4ee521504c78ee305343882ba36cf4cf60ea8b235b698c2817b827c149d625",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "31b0e121b6a477eeda05e9a4e347fc65bbaa1b217d7e1a4491d6abc704a2237d"
+ },
+ "measured_at": "2026-09-03T05:22:40+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "PG(4,2) line orbits",
+   "what": "canonical indices for the 155 lines of PG(4,2) under the Singer normaliser",
+   "op": "subspace_orbits.canonical_index",
+   "reduction": "histogram",
+   "members": 155,
+   "naive_s": 0.958161385031417,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.014829227002337575,
+   "kernel_all_threads_s": 0.003071123966947198,
+   "threads": 32,
+   "speedup_1_thread": 64.61303646376032,
+   "speedup_all_threads": 311.9904619102244,
+   "answer": "Histogram(visited=155, family_size=155, bins=[155])"
+  }
+ ]
+}

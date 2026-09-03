@@ -1,0 +1,34 @@
+{
+ "module": "quantum_codes",
+ "fingerprint": {
+  "module": "f5a53258f3a17ab0b63305a8de9c733e4de715ca709a915c2e1b0e0720418c78",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "e735316787c6e8c205c89aa889ed50af89c2899e2aa4066e59e5b7a41dbd355d"
+ },
+ "measured_at": "2026-09-03T05:21:57+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "distance census of three-spaces",
+   "what": "distance distribution of all binary symplectic 3-spaces in F_2^8",
+   "op": "quantum_codes.distance",
+   "reduction": "histogram",
+   "members": 97155,
+   "naive_s": 8.153203210793436,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.030010581947863102,
+   "kernel_all_threads_s": 0.0038848358672112226,
+   "threads": 32,
+   "speedup_1_thread": 271.6776110825796,
+   "speedup_all_threads": 2098.725271666706,
+   "answer": "Histogram(visited=97155, family_size=97155, bins=[0, 78255, 18900])"
+  }
+ ]
+}

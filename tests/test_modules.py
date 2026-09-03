@@ -11,6 +11,16 @@ def test_manifests_are_consistent_and_generated_files_current():
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
+def test_every_module_bench_record_is_current():
+    """A module's bench.json fingerprints the module tree and the modules it includes. Touching
+    either without rerunning `tools/bench.py --module NAME` leaves numbers nobody measured."""
+    sys.path.insert(0, str(ROOT))
+    from tools import harness as H
+    stale = [f"{m.name} ({why})" for m in H.modules() for why in [H.bench_staleness(m)]
+             if why is not None and why != "runtime changed"]
+    assert not stale, "stale bench records, run tools/bench.py --module NAME for: " + ", ".join(stale)
+
+
 def test_every_module_contract_compiles():
     """`lake build` covers each module's Reference and Contract (the latter against Mathlib)."""
     proc = subprocess.run(["lake", "build"], cwd=ROOT, capture_output=True, text=True, timeout=1800)

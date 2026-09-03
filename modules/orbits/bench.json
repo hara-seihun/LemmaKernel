@@ -1,0 +1,111 @@
+{
+ "module": "orbits",
+ "fingerprint": {
+  "module": "0c7b688ee2e461dfbe52f92abc3ba2ff77c84fa571b0e7763eca43c9c6868d89",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "f28b8e0e507ece9286ac3ee04bcb118d0b1f85b0b55c9492459aa94e0547e6c6"
+ },
+ "measured_at": "2026-09-03T05:20:35+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "bracelets_16_6",
+   "what": "bracelets with 6 black and 10 white beads: orbits of D_16 on 6-subsets of 16 positions",
+   "op": "orbits.is_canonical",
+   "reduction": "count",
+   "members": 8008,
+   "naive_s": 0.3497455520555377,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.005162301007658243,
+   "kernel_all_threads_s": 0.001127511030063033,
+   "threads": 32,
+   "speedup_1_thread": 67.74993390286468,
+   "speedup_all_threads": 310.1925770393442,
+   "answer": "Count(value=280, visited=8008, family_size=8008)"
+  },
+  {
+   "case": "bracelets_stabilizers",
+   "what": "how symmetric each such bracelet is: stabiliser orders in D_16",
+   "op": "orbits.stabilizer_order",
+   "reduction": "histogram",
+   "members": 8008,
+   "naive_s": 0.3389745061285794,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.04717366397380829,
+   "kernel_all_threads_s": 0.0032236480619758368,
+   "threads": 32,
+   "speedup_1_thread": 7.185672631169469,
+   "speedup_all_threads": 105.15245448996541,
+   "answer": "Histogram(visited=8008, family_size=8008, bins=[0, 7104, 880, 0, 24])"
+  },
+  {
+   "case": "bracelets_burnside",
+   "what": "fixed 6-subsets of every element of D_16 (Burnside count of the bracelets)",
+   "op": "orbits.fixed_points",
+   "reduction": "all",
+   "members": 32,
+   "naive_s": 0.12696928810328245,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 7.780035957694054e-06,
+   "kernel_all_threads_s": 0.0006427478510886431,
+   "threads": 32,
+   "speedup_1_thread": 16319.884483016609,
+   "speedup_all_threads": 197.5413653864893,
+   "answer": "Integers(values=[8008, 56, 56, 0, 56, 0, 56, 0, 56, 0, 56, 0, 56, 0, 56, 0, 56, 56, 56, 0, 56, 0, 56, 0, 56, 0, 56, 0, 5"
+  },
+  {
+   "case": "cube4_quadruples",
+   "what": "4-vertex configurations of the 4-cube up to symmetry (group of order 384)",
+   "op": "orbits.is_canonical",
+   "reduction": "hits",
+   "members": 1820,
+   "naive_s": 0.4686888779979199,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0008556998800486326,
+   "kernel_all_threads_s": 0.0005704800132662058,
+   "threads": 32,
+   "speedup_1_thread": 547.7257726988142,
+   "speedup_all_threads": 821.5693224982685,
+   "answer": "Hits(p=2, rows=4, cols=16, total=19, visited=1820, family_size=1820, indices=[0, 1, 2, 4, 9, 10, 12, 46, 49, 50, 53, 54,"
+  },
+  {
+   "case": "pg42_lines_singer",
+   "what": "orbits of the Singer normaliser of GL(5,2) (order 155) on the 155 lines of PG(4,2)",
+   "op": "orbits.orbit_size",
+   "reduction": "histogram",
+   "members": 155,
+   "naive_s": 0.3970543029718101,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.007199661107733846,
+   "kernel_all_threads_s": 0.001124081201851368,
+   "threads": 32,
+   "speedup_1_thread": 55.14902674311934,
+   "speedup_all_threads": 353.22564092154505,
+   "answer": "Histogram(visited=155, family_size=155, bins=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,"
+  },
+  {
+   "case": "all_3x4_f2_singer_normaliser",
+   "what": "every 3x4 matrix over F_2 under right multiplication by a group of order 60",
+   "op": "orbits.canonical_index",
+   "reduction": "histogram",
+   "members": 4096,
+   "naive_s": 2.9243934149853885,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.058550759917125106,
+   "kernel_all_threads_s": 0.0037459400482475758,
+   "threads": 32,
+   "speedup_1_thread": 49.94629308184356,
+   "speedup_all_threads": 780.6834539045752,
+   "answer": "Histogram(visited=4096, family_size=4096, bins=[1, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 60, 60, 0, 0, 6"
+  }
+ ]
+}

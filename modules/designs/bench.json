@@ -1,0 +1,34 @@
+{
+ "module": "designs",
+ "fingerprint": {
+  "module": "534e950d9c93e2a62df372cb61822d8f2e77a2ec57baac02ad325a7557eb1462",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "f715c685b9475132b0def5d66596171990212564c9ad9ec6eeb16bc57029f9b6"
+ },
+ "measured_at": "2026-09-03T05:20:55+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "complete 6-subsets of 12",
+   "what": "multiplicities of all triples in the complete family of 6-subsets of 12 points",
+   "op": "designs.lambda_vector",
+   "reduction": "all",
+   "members": 924,
+   "naive_s": 0.04510312806814909,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0005866691935807467,
+   "kernel_all_threads_s": 0.0005725501105189323,
+   "threads": 32,
+   "speedup_1_thread": 76.88000079373741,
+   "speedup_all_threads": 78.77586125565455,
+   "answer": "U64Matrices(count=1, rows=1, cols=220, entries=[84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, "
+  }
+ ]
+}

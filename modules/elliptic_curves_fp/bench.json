@@ -1,0 +1,81 @@
+{
+ "module": "elliptic_curves_fp",
+ "fingerprint": {
+  "module": "3481d120086ff3d1019eb8d8c8c944d9644650d1e15ab9ccb5dea8d3d7eb580b",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "5f1e09c9c4150d8c438421eddcb374fe15534556eaf7ab052e0c661ff072317e"
+ },
+ "measured_at": "2026-09-03T05:21:00+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "point_counts_F_1009",
+   "what": "the number of points on every curve over F_1009; one histogram bin per isogeny class",
+   "op": "elliptic_curves_fp.point_count",
+   "reduction": "histogram",
+   "members": 1018081,
+   "naive_s": 506.1053008230764,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.8148682601749897,
+   "kernel_all_threads_s": 0.07120945304632187,
+   "threads": 32,
+   "speedup_1_thread": 621.0884943713384,
+   "speedup_all_threads": 7107.276901759856,
+   "answer": "Histogram(visited=1018081, family_size=1018081, bins=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "
+  },
+  {
+   "case": "iso_classes_F_997",
+   "what": "how many curves over F_997 there are up to F_997-isomorphism",
+   "op": "elliptic_curves_fp.is_canonical",
+   "reduction": "count",
+   "members": 994009,
+   "naive_s": 174.85523284754018,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.02861342905089259,
+   "kernel_all_threads_s": 0.0037734301295131445,
+   "threads": 32,
+   "speedup_1_thread": 6110.949950687074,
+   "speedup_all_threads": 46338.53731117061,
+   "answer": "Count(value=2003, visited=994009, family_size=994009)"
+  },
+  {
+   "case": "supersingular_F_499",
+   "what": "how many of the 249001 pairs over F_499 give a supersingular curve",
+   "op": "elliptic_curves_fp.supersingular",
+   "reduction": "count",
+   "members": 249001,
+   "naive_s": 62.799648424444015,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.10215527098625898,
+   "kernel_all_threads_s": 0.008646931033581495,
+   "threads": 32,
+   "speedup_1_thread": 614.747020081727,
+   "speedup_all_threads": 7262.651706201114,
+   "answer": "Count(value=2988, visited=249001, family_size=249001)"
+  },
+  {
+   "case": "group_structure_F_101",
+   "what": "the invariant factors of E(F_101) for all 10201 pairs (a, b)",
+   "op": "elliptic_curves_fp.group_structure",
+   "reduction": "all",
+   "members": 10201,
+   "naive_s": 32.15345922365203,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.05430808896198869,
+   "kernel_all_threads_s": 0.003990232013165951,
+   "threads": 32,
+   "speedup_1_thread": 592.0565396097232,
+   "speedup_all_threads": 8058.042519221999,
+   "answer": "CurveGroups(orders=[(0, 0), (1, 102), (1, 102), (1, 102), (1, 102), (1, 102), (1, 102), (1, 102), (1, 102), (1, 102), (1"
+  }
+ ]
+}

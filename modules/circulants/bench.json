@@ -1,0 +1,49 @@
+{
+ "module": "circulants",
+ "fingerprint": {
+  "module": "c69986e8377c312ed4f75e295669f89d87d2bb883bc89149fd8978cb76ba6c60",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "d7d9674f5961194ec52c219fd23073fc562ab409c6a28b38f1bdf449e495cf3f"
+ },
+ "measured_at": "2026-09-03T05:20:55+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "canonical 5-subsets on Z31",
+   "what": "multiplier-isomorphism classes of valency-five circulant digraphs on 31 vertices",
+   "op": "circulants.is_canonical",
+   "reduction": "count",
+   "members": 142506,
+   "naive_s": 0.8879305541049689,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.07763915997929871,
+   "kernel_all_threads_s": 0.03170135198161006,
+   "threads": 32,
+   "speedup_1_thread": 11.436632677913078,
+   "speedup_all_threads": 28.009233001168436,
+   "answer": "Count(value=4751, visited=142506, family_size=142506)"
+  },
+  {
+   "case": "spectra of pairs on Z101",
+   "what": "exact character spectra of every valency-two circulant digraph on 101 vertices",
+   "op": "circulants.spectrum",
+   "reduction": "all",
+   "members": 4950,
+   "naive_s": 0.21435787295922637,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.005179719999432564,
+   "kernel_all_threads_s": 0.0027017961256206036,
+   "threads": 32,
+   "speedup_1_thread": 41.38406573766713,
+   "speedup_all_threads": 79.33902596369602,
+   "answer": "Spectra(n=101, count=4950, offsets=[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 4"
+  }
+ ]
+}

@@ -1,0 +1,36 @@
+{
+ "module": "char_poly",
+ "fingerprint": {
+  "module": "6ee49c4c2c73af9b8012f057387255280070c0f8c6423cb7f73cf4064fa8f051",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "242748997a5a34179ec0636f5d5399c40170feba83eef317a138eb031c796ce3"
+ },
+ "measured_at": "2026-09-03T05:20:52+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "explicit_6x6_charpoly",
+   "what": "characteristic polynomials of 10,000 dense and structured 6x6 matrices over F_251",
+   "op": "char_poly.charpoly",
+   "reduction": "all",
+   "members": 10000,
+   "naive_s": 26.08524764655158,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.006965569220483303,
+   "kernel_all_threads_s": 0.0012302771210670471,
+   "threads": 32,
+   "speedup_1_thread": 3744.8838452202854,
+   "speedup_all_threads": 21202.741398561695,
+   "answer": "Matrix(p=251, count=10000, rows=1, cols=7, entries=array([ 52, 121, 163, ...,  61,   0,   1], shape=(70000,)))"
+  }
+ ]
+}

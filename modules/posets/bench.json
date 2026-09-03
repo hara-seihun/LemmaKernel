@@ -1,0 +1,49 @@
+{
+ "module": "posets",
+ "fingerprint": {
+  "module": "18108a426bf7d172dcf46e99f7ef68e96aa435ef5cb3cda467ad1ec3573680c5",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "588211d67a2bb804eeab0de7e60785a769079f9e67e876c3fb140a8e1b3cf93a"
+ },
+ "measured_at": "2026-09-03T05:21:45+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "eight_of_sixteen_subsets",
+   "what": "linear-extension distribution for all 8-element induced subposets of the Boolean lattice B_4",
+   "op": "posets.linear_extension_count",
+   "reduction": "histogram",
+   "members": 12870,
+   "naive_s": 1.7412071239668876,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.010822445852681994,
+   "kernel_all_threads_s": 0.0024237059988081455,
+   "threads": 32,
+   "speedup_1_thread": 160.88850410236847,
+   "speedup_all_threads": 718.4069044773269,
+   "answer": "Histogram(visited=12870, family_size=12870, bins=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 24, 0, 96, 0, 36, 24, 24, 9"
+  },
+  {
+   "case": "divisor_heights_100000",
+   "what": "height distribution of the divisor posets of the first 100000 positive integers",
+   "op": "posets.height",
+   "reduction": "histogram",
+   "members": 100000,
+   "naive_s": 122.8757945355028,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.16957889311015606,
+   "kernel_all_threads_s": 0.01084883394651115,
+   "threads": 32,
+   "speedup_1_thread": 724.5936819252878,
+   "speedup_all_threads": 11326.175249923346,
+   "answer": "Histogram(visited=100000, family_size=100000, bins=[0, 1, 9592, 23378, 25556, 18744, 11185, 5933, 2973, 1418, 671, 306, "
+  }
+ ]
+}

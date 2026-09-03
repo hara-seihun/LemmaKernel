@@ -44,8 +44,9 @@ operation is a much smaller change than a new module.
 There is no per-module test or bench script. `tests/test_cases.py` runs every case against every
 backend, the naive implementation and the reference, checks every rejection, thread invariance
 and roundtrips, and fails if some (operation, reduction) pair the manifest allows has no oracle
-case. `tools/bench.py` times the cases that carry `bench`. Both are driven by the manifest
-through `tools/harness.py`.
+case. `tools/bench.py` times the cases that carry `bench` and writes the rows to the module's
+`bench.json` with a fingerprint of the sources they were measured from; commit that file. Both
+are driven by the manifest through `tools/harness.py`.
 
 gfp is the worked example of all of this; copy its shape.
 
@@ -106,9 +107,11 @@ thread invariance and, when benched, byte-for-byte against naive) and in `invari
    ready.
 2. Write the naive implementation and `cases.py`, and make the naive implementation pass the
    oracle (`pytest -n auto tests -k naive`). Now you have a correct, slow module.
-3. Write the portable backend. Make it pass. `tools/bench.py --module <name>`.
+3. Write the portable backend. Make it pass.
 4. Write the contract. Statements first; proofs when a small primitive admits one.
-5. Add the module to the table in `README.md`, run `tools/manifest.py generate`, commit.
+5. `tools/bench.py --module <name>` once the sources are final; it writes `bench.json` and
+   regenerates `BENCHMARKS.md`. Edit the module afterwards and the tests will ask for a rerun.
+6. Add the module to the table in `README.md`, run `tools/manifest.py generate`, commit.
 
 ## When you are stuck
 

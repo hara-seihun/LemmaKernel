@@ -1,0 +1,36 @@
+{
+ "module": "projective_sets",
+ "fingerprint": {
+  "module": "b41e396e8212154da7dfdcf6601fccaefe8f3ef4e24790fe5548e8c50d49105d",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "42348c2c62f3c8168be684906393159f8c3df249b6db23d2abd51ff8f1f07726"
+ },
+ "measured_at": "2026-09-03T05:21:48+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "pg32_six_sets",
+   "what": "maximum line intersection for every 6-point subset of the 15 points of PG(3,2)",
+   "op": "projective_sets.max_collinear",
+   "reduction": "histogram",
+   "members": 5005,
+   "naive_s": 2.948628363898024,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0017629589419811964,
+   "kernel_all_threads_s": 0.0005196919664740562,
+   "threads": 32,
+   "speedup_1_thread": 1672.5451136056429,
+   "speedup_all_threads": 5673.8001626300365,
+   "answer": "Histogram(visited=5005, family_size=5005, bins=[0, 0, 420, 4585])"
+  }
+ ]
+}

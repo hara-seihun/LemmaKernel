@@ -1,0 +1,34 @@
+{
+ "module": "perm_groups",
+ "fingerprint": {
+  "module": "2dff979a213aed09e188311dad1366b1ea43aa39000d2ab2bbb77303718abc8f",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "13d65953f37d150bd39ce91e8c581806ef109c4a43d36cea1ab997e3858b71b7"
+ },
+ "measured_at": "2026-09-03T05:21:19+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "S9 Schreier-Sims order",
+   "what": "order of S_9 from a 9-cycle and one transposition, without enumerating 362880 elements",
+   "op": "perm_groups.order",
+   "reduction": "all",
+   "members": 1,
+   "naive_s": 1.3636122411116958,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 2.6779016479849815e-05,
+   "kernel_all_threads_s": 2.229004167020321e-05,
+   "threads": 32,
+   "speedup_1_thread": 50920.92318393253,
+   "speedup_all_threads": 61175.84979370136,
+   "answer": "Integers(values=[362880])"
+  }
+ ]
+}

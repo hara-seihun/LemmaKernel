@@ -1,0 +1,49 @@
+{
+ "module": "lattices_small",
+ "fingerprint": {
+  "module": "81304c6773909d684bc080ed6a8236f446b5f61f05950eea9323c2e5e9e374e4",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "f800e0674ac8f78ee6e573a44811e37fafec8d32d60b36a563ca8f7374a1c10f"
+ },
+ "measured_at": "2026-09-03T05:21:09+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "Z4 theta through 12",
+   "what": "theta coefficients through q^12 for the standard rank-four lattice",
+   "op": "lattices_small.theta_series",
+   "reduction": "all",
+   "members": 1,
+   "naive_s": 0.005515129072591662,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.00019173393957316875,
+   "kernel_all_threads_s": 0.0001709850039333105,
+   "threads": 32,
+   "speedup_1_thread": 28.76449044373284,
+   "speedup_all_threads": 32.25504544680851,
+   "answer": "ThetaSeries(count=1, bound=12, coefficients=[1, 8, 24, 32, 24, 48, 96, 64, 24, 104, 144, 96, 96])"
+  },
+  {
+   "case": "A4 vectors through norm 12",
+   "what": "all nonzero A4 coordinate vectors of squared norm at most 12",
+   "op": "lattices_small.short_vectors",
+   "reduction": "all",
+   "members": 1,
+   "naive_s": 0.004054408986121416,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 4.054815508425236e-05,
+   "kernel_all_threads_s": 3.475905396044254e-05,
+   "threads": 32,
+   "speedup_1_thread": 99.98997433291416,
+   "speedup_all_threads": 116.64324900026124,
+   "answer": "ShortVectors(count=1, n=4, bound=12, offsets=[0, 330], entries=array([-3, -3, -2, ...,  3,  2,  1], shape=(1320,)))"
+  }
+ ]
+}

@@ -1,0 +1,34 @@
+{
+ "module": "hadamard",
+ "fingerprint": {
+  "module": "22593e50aa0c3aff31b4740ac0c05f818670b54fde31d5b4d6b962390a6df56b",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "8c94a8f260ad328a90af2d05764b3a5caaafb2c8865ea50721ef5b036e73aba8"
+ },
+ "measured_at": "2026-09-03T05:21:05+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "all_4x4_hadamard",
+   "what": "count all 4x4 Hadamard sign matrices among the 65,536 binary matrices",
+   "op": "hadamard.is_hadamard",
+   "reduction": "count",
+   "members": 65536,
+   "naive_s": 0.1700560599565506,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0029166890308260918,
+   "kernel_all_threads_s": 0.0006363580469042063,
+   "threads": 32,
+   "speedup_1_thread": 58.304487780236805,
+   "speedup_all_threads": 267.23329858693506,
+   "answer": "Count(value=768, visited=65536, family_size=65536)"
+  }
+ ]
+}

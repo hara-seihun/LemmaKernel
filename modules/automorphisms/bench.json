@@ -1,0 +1,34 @@
+{
+ "module": "automorphisms",
+ "fingerprint": {
+  "module": "1640b0068ab389b516792787c2206b1626db504a57da9d53e7f1b3b8aadb8d22",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "4ef7dbd44c634744dbd324d75d3684204d995efb68ffc535cfdeac5ac30baf18"
+ },
+ "measured_at": "2026-09-03T05:20:40+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "order8_catalogue",
+   "what": "automorphism orders for four stored groups of order 8: C8, C4xC2, C2^3, and D8",
+   "op": "automorphisms.aut_order",
+   "reduction": "histogram",
+   "members": 4,
+   "naive_s": 0.07815921120345592,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 5.3148018196225166e-05,
+   "kernel_all_threads_s": 7.747719064354897e-05,
+   "threads": 32,
+   "speedup_1_thread": 1470.5950260438342,
+   "speedup_all_threads": 1008.8028560953475,
+   "answer": "Histogram(visited=4, family_size=4, bins=[0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "
+  }
+ ]
+}

@@ -1,0 +1,96 @@
+{
+ "module": "spreads_and_partitions",
+ "fingerprint": {
+  "module": "ce277f98e92b3bb661969f5d3b3ad98392687a84b3e46ed58efdf9357ffa83b6",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "3b633a23151c4133c7038a7750180426a0b3c16d73e14bed8b745efadca3cc07"
+ },
+ "measured_at": "2026-09-03T05:22:37+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "pg32_spreads",
+   "what": "the 56 spreads of PG(3,2): which of the 324,632 five-sets of lines partition F_2^4",
+   "op": "spreads_and_partitions.is_spread",
+   "reduction": "count",
+   "members": 324632,
+   "naive_s": 42.255774688376114,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.0009017689153552055,
+   "kernel_all_threads_s": 0.0029678570572286844,
+   "threads": 32,
+   "speedup_1_thread": 46858.76167258618,
+   "speedup_all_threads": 14237.806563309881,
+   "answer": "Count(value=56, visited=324632, family_size=324632)"
+  },
+  {
+   "case": "pg32_first_spread",
+   "what": "the least five-set of lines of PG(3,2) that is a spread",
+   "op": "spreads_and_partitions.is_spread",
+   "reduction": "first",
+   "members": 324632,
+   "naive_s": 38.91651383902878,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 7.923785597085953e-05,
+   "kernel_all_threads_s": 0.0018366260919719934,
+   "threads": 32,
+   "speedup_1_thread": 491135.37162515725,
+   "speedup_all_threads": 21189.132621569122,
+   "answer": "First(p=2, rows=5, cols=8, found=1, index=23919, visited=23920, family_size=324632, member=Matrix(p=2, count=1, rows=5, "
+  },
+  {
+   "case": "pg32_partial_spreads",
+   "what": "how many of the 52,360 four-sets of lines of PG(3,2) are partial spreads",
+   "op": "spreads_and_partitions.is_partial_spread",
+   "reduction": "count",
+   "members": 52360,
+   "naive_s": 4.034384288825095,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0008128108456730843,
+   "kernel_all_threads_s": 0.003125302027910948,
+   "threads": 32,
+   "speedup_1_thread": 4963.497116582202,
+   "speedup_all_threads": 1290.8782104242919,
+   "answer": "Count(value=280, visited=52360, family_size=52360)"
+  },
+  {
+   "case": "pg32_meetings",
+   "what": "how many of the three pairs meet, over every three-set of lines of PG(3,2)",
+   "op": "spreads_and_partitions.intersecting_pairs",
+   "reduction": "histogram",
+   "members": 6545,
+   "naive_s": 0.27328453911468387,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0009422982111573219,
+   "kernel_all_threads_s": 0.0018173670396208763,
+   "threads": 32,
+   "speedup_1_thread": 290.01916365631035,
+   "speedup_all_threads": 150.37388329200368,
+   "answer": "Histogram(visited=6545, family_size=6545, bins=[560, 2520, 2520, 945])"
+  },
+  {
+   "case": "pg42_partial_spreads",
+   "what": "partial spreads among the 23,130,030 four-sets of the 155 lines of PG(4,2)",
+   "op": "spreads_and_partitions.is_partial_spread",
+   "reduction": "count",
+   "members": 23130030,
+   "naive_s": 1750.7521206759616,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 1.1817887069191784,
+   "kernel_all_threads_s": 0.20123897888697684,
+   "threads": 32,
+   "speedup_1_thread": 1481.4425881933007,
+   "speedup_all_threads": 8699.86585282391,
+   "answer": "Count(value=2925160, visited=23130030, family_size=23130030)"
+  }
+ ]
+}

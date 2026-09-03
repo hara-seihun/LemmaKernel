@@ -1,0 +1,64 @@
+{
+ "module": "graph_iso",
+ "fingerprint": {
+  "module": "7a61abfe7a4da77ec62df4073a0810fdb149f126d21469548f8415f32023a3d9",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "5a7f31b086b6d40d110d545a7cd61129f89fedcdeb1413f4a76d57494072dcb1"
+ },
+ "measured_at": "2026-09-03T05:21:04+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "random_graph_8_form",
+   "what": "lexicographically canonicalise one random graph on 8 vertices",
+   "op": "graph_iso.canonical_form",
+   "reduction": "all",
+   "members": 1,
+   "naive_s": 0.07394150807522237,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 4.70280647277832e-05,
+   "kernel_all_threads_s": 4.239799454808235e-05,
+   "threads": 32,
+   "speedup_1_thread": 1572.2847304737008,
+   "speedup_all_threads": 1743.985980076662,
+   "answer": "Matrix(p=2, count=1, rows=8, cols=8, entries=array([0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0,\n  "
+  },
+  {
+   "case": "random_graph_8_label",
+   "what": "find the canonical vertex order of one random graph on 8 vertices",
+   "op": "graph_iso.canonical_label",
+   "reduction": "all",
+   "members": 1,
+   "naive_s": 0.07291228487156332,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 4.736799746751785e-05,
+   "kernel_all_threads_s": 4.308903589844704e-05,
+   "threads": 32,
+   "speedup_1_thread": 1539.2731120111678,
+   "speedup_all_threads": 1692.130801984157,
+   "answer": "Perms(n=8, count=1, entries=array([4, 7, 5, 6, 1, 3, 0, 2]))"
+  },
+  {
+   "case": "cycle_8_automorphisms",
+   "what": "enumerate all 16 automorphisms of the 8-cycle",
+   "op": "graph_iso.automorphism_group",
+   "reduction": "all",
+   "members": 1,
+   "naive_s": 0.05583064607344568,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.00011249585077166557,
+   "kernel_all_threads_s": 0.00010315678082406521,
+   "threads": 32,
+   "speedup_1_thread": 496.29071375055366,
+   "speedup_all_threads": 541.221290810396,
+   "answer": "GraphGroups(count=1, n=8, offsets=[0, 16], entries=array([0, 1, 2, 3, 4, 5, 6, 7, 0, 7, 6, 5, 4, 3, 2, 1, 1, 0, 7, 6, 5,"
+  }
+ ]
+}

@@ -1,0 +1,36 @@
+{
+ "module": "linear_codes",
+ "fingerprint": {
+  "module": "5658416eaf61634d5989b12365574181101378519d016992b34bc4e96c3aec1b",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [
+   "gfp"
+  ],
+  "combined": "78d9270b3c30056cdd0c92117013c2b45b734cc26e1bcc8f257299eb75fe38ca"
+ },
+ "measured_at": "2026-09-03T05:21:10+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "grassmannian_3_7_binary",
+   "what": "minimum-distance distribution of every binary [7,3] code in canonical Grassmannian order",
+   "op": "linear_codes.minimum_distance",
+   "reduction": "histogram",
+   "members": 11811,
+   "naive_s": 0.41836453205905855,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.002669556997716427,
+   "kernel_all_threads_s": 0.000578789971768856,
+   "threads": 32,
+   "speedup_1_thread": 156.71683819335303,
+   "speedup_all_threads": 722.8261588231792,
+   "answer": "Histogram(visited=11811, family_size=11811, bins=[0, 3941, 6265, 1575, 30])"
+  }
+ ]
+}

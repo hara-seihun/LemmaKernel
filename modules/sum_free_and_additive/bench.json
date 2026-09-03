@@ -1,0 +1,49 @@
+{
+ "module": "sum_free_and_additive",
+ "fingerprint": {
+  "module": "f32882913ca22b42335c048d0ac1939defa9113a27c64f18bfeb9a88294c7231",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "1deefa015d50437925a9e660405e33efe47c36ef7f60e7a9242a4c58b0ff02b6"
+ },
+ "measured_at": "2026-09-03T05:22:41+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "sum_free_10_subsets_of_30",
+   "what": "how many of the 30 million 10-subsets of [1,30] are sum-free",
+   "op": "sum_free_and_additive.is_sum_free",
+   "reduction": "count",
+   "members": 30045015,
+   "naive_s": 140.88980803621234,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.009473302168771625,
+   "kernel_all_threads_s": 0.0036785530392080545,
+   "threads": 32,
+   "speedup_1_thread": 14872.301709181214,
+   "speedup_all_threads": 38300.333455717715,
+   "answer": "Count(value=14815, visited=30045015, family_size=30045015)"
+  },
+  {
+   "case": "sumset_sizes_6_subsets_of_40",
+   "what": "the distribution of |S+S| over every 6-subset of [1,40]",
+   "op": "sum_free_and_additive.sumset_size",
+   "reduction": "histogram",
+   "members": 3838380,
+   "naive_s": 13.920940611138938,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 0.12542523816227913,
+   "kernel_all_threads_s": 0.03890806599520147,
+   "threads": 32,
+   "speedup_1_thread": 110.98994759832615,
+   "speedup_all_threads": 357.7906085811566,
+   "answer": "Histogram(visited=3838380, family_size=3838380, bins=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 140, 228, 817, 1530, 19748, 33720"
+  }
+ ]
+}

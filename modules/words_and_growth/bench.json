@@ -1,0 +1,34 @@
+{
+ "module": "words_and_growth",
+ "fingerprint": {
+  "module": "185f6a1ca58ddfc4f4683c1daf5fe500c3ea9d254baff8522b4ef39e744430fb",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "5548cf048dafd5d28aff86072da1bf5fa5776f698b3a8df9527c16e4ebf2344e"
+ },
+ "measured_at": "2026-09-03T05:22:45+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "free group F2 geodesic prefix",
+   "what": "geodesic-word counts through length 9 in the rank-two free group",
+   "op": "words_and_growth.geodesic_count",
+   "reduction": "all",
+   "members": 10,
+   "naive_s": 2.056687759933993,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 1.879013143479824e-05,
+   "kernel_all_threads_s": 1.1470168828964233e-05,
+   "threads": 32,
+   "speedup_1_thread": 109455.74101334524,
+   "speedup_all_threads": 179307.54033371224,
+   "answer": "Integers(values=[1, 4, 12, 36, 108, 324, 972, 2916, 8748, 26244])"
+  }
+ ]
+}

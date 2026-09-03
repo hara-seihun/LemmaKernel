@@ -1,0 +1,49 @@
+{
+ "module": "young",
+ "fingerprint": {
+  "module": "baa3fea1e4fc50fbfb31bf7b83140b1137021c34b6b34dacf513062c83e444c1",
+  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "dependencies": [],
+  "combined": "0aeeb1d2ee6c443198e0a48666055543eb3f65d9fb5b628e7776277cebb27bad"
+ },
+ "measured_at": "2026-09-03T05:22:45+00:00",
+ "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "hook_counts_n30",
+   "what": "the dimensions of every irreducible representation of S_30",
+   "op": "young.hook_length_count",
+   "reduction": "all",
+   "members": 5604,
+   "naive_s": 0.14456272800453007,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.007205290952697396,
+   "kernel_all_threads_s": 0.0022551119327545166,
+   "threads": 32,
+   "speedup_1_thread": 20.0634129771555,
+   "speedup_all_threads": 64.10445792282837,
+   "answer": "Integers(values=[1, 29, 405, 406, 3625, 7280, 3654, 23345, 70470, 47125, 70875, 23751, 115101, 464464, 583625, 702351, 5"
+  },
+  {
+   "case": "ternary_rsk_length7",
+   "what": "RSK insertion and recording tableaux for all 2,187 ternary words of length 7",
+   "op": "young.rsk",
+   "reduction": "all",
+   "members": 2187,
+   "naive_s": 0.042728865053504705,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.0006929459050297737,
+   "kernel_all_threads_s": 0.0014619098510593176,
+   "threads": 32,
+   "speedup_1_thread": 61.662627260447955,
+   "speedup_all_threads": 29.228112131909402,
+   "answer": "RskPairs(count=2187, length=7, shapes=array([7, 0, 0, ..., 0, 0, 0], shape=(15309,)), insertion=array([0, 0, 0, ..., 0, "
+  }
+ ]
+}

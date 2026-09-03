@@ -48,7 +48,7 @@ non-existence answer.
 ```
 cmake -S . -B build -G Ninja && ninja -C build      # liblemmakernel.so
 pytest -n auto tests                                # every module's cases against every backend, naive, and Lean
-tools/bench.py                                      # kernel vs naive on each module's bench cases
+tools/bench.py                                      # kernel vs naive; reruns only modules whose sources changed
 ```
 
 The Lean side (`lake build`) needs Mathlib. In the canonical checkout `.lake/packages` is a
@@ -64,6 +64,13 @@ after which `lake build` finishes in seconds. Tests only need `Lk.Reference` and
 `pytest -n 8 tests` rather than `auto`.
 No test or bench script is written per module: a module ships `cases.py` and the manifest, and
 `tools/harness.py` derives the rest.
+
+Bench results are committed: `modules/NAME/bench.json` holds the rows and a fingerprint of the
+module tree, the module trees it includes, and the runtime, and [BENCHMARKS.md](BENCHMARKS.md)
+is generated from every record. `tools/bench.py` reruns a module only when its fingerprint
+changed (`--status` says which and why, `--force` reruns anyway), and the tests fail on a module
+whose sources moved without a new record. A runtime change stales every record; rerun
+`tools/bench.py` after one when you can, but it is not a test failure.
 
 ## Layout
 
@@ -142,14 +149,13 @@ element is its little-endian base-p coefficient vector. For example, GF(4) uses 
 
 An orbit is a permutation of member indices; the representative is the least index. Permutation
 groups act on `subsets` families, matrix groups on `grassmannian` and `all_matrices` families
-(on the right, `M ↦ M A`). `tools/bench.py` compares each module's generic backend with the
-naive Python implementation on inputs small enough for naive to finish, so every row is a
-byte-for-byte agreement; single-threaded ratios on this machine run from about 40× (Grassmannian
-orbits, where each step is an elimination) to a few thousand× (independence of subsets;
-isomorphism classes of elliptic curves), and higher where the backend changes the algorithm
-(Burnside counts from cycle types) or refuses to look at most of the family at all (spreads: one
-meeting pair kills every extension of that prefix, which is where 47,000× on the spreads of
-PG(3,2) comes from, and sum-free subsets are the same trick: 30 million members in 9 ms).
+(on the right, `M ↦ M A`). [BENCHMARKS.md](BENCHMARKS.md) has every module's generic backend
+against the naive Python implementation on inputs small enough for naive to finish, so every row
+is a byte-for-byte agreement. Single-threaded ratios run from tens (Grassmannian orbits, where
+each step is an elimination) to thousands (independence of subsets; isomorphism classes of
+elliptic curves), and beyond that where the backend changes the algorithm (Burnside counts from
+cycle types) or refuses to look at most of the family at all (spreads: one meeting pair kills
+every extension of that prefix; sum-free subsets are the same trick).
 
 `elliptic_curves_fp` reads a `1 x 2` member as the pair `(a, b)` of `y^2 = x^3 + ax + b`, so
 `all_matrices(p, 1, 2)` is every curve over `F_p` and a histogram of `point_count` over it is the
