@@ -58,7 +58,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | hypergraphs | ramsey_R33_on_six_vertices | 6,435 | 0.0577 s | 0.00154 s | 37× | 121× |
 | continued_fractions_and_pell | class_numbers_to_50000 | 50,000 | 5.01 s | 0.176 s | 28× | 365× |
 | subgroups | S5 subgroup census | 1 | 0.363 s | 0.044 s | 8.3× | 8.3× |
-| polytopes_small | five-subsets of the 5-cube | 201,376 | 0.447 s | 0.0569 s | 7.9× | 81× |
+| polytopes_small | five-subsets of the 5-cube | 201,376 | 0.362 s | 0.0567 s | 6.4× | 42× |
 
 ## Every bench case
 
@@ -139,7 +139,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | polynomials_fq | root_count_degree_5_F7 | how many roots in F_7 each of the 16807 monic degree-5 polynomials has | 16,807 | 0.0327 s | 0.00147 s | 0.000521 s | 22× | 63× |
 | polynomials_fq | gcd_degree_4_F65537 | gcd of 20000 random monic quartics over F_65537 with x^4 - 1 | 20,000 | 0.17 s | 0.00793 s | 0.000942 s | 21× | 180× |
 | polynomials_fq | first_primitive_degree_14_F2 | the least monic primitive polynomial of degree 14 over F_2, in family order | 16,384 | 14 s | 0.000721 s | 0.00101 s | 19,465× | 13,886× |
-| polytopes_small | five-subsets of the 5-cube | vertex counts for all 201376 five-point selections from the vertices of the 5-cube | 201,376 | 0.447 s | 0.0569 s | 0.0055 s | 7.9× | 81× |
+| polytopes_small | five-subsets of the 5-cube | vertex counts for all 201376 five-point selections from the vertices of the 5-cube | 201,376 | 0.362 s | 0.0567 s | 0.0086 s | 6.4× | 42× |
 | posets | eight_of_sixteen_subsets | linear-extension distribution for all 8-element induced subposets of the Boolean lattice B_4 | 12,870 | 1.74 s | 0.0108 s | 0.00242 s | 161× | 718× |
 | posets | divisor_heights_100000 | height distribution of the divisor posets of the first 100000 positive integers | 100,000 | 123 s~ | 0.17 s | 0.0108 s | 725× | 11,326× |
 | projective_sets | pg32_six_sets | maximum line intersection for every 6-point subset of the 15 points of PG(3,2) | 5,005 | 2.7 s | 0.00153 s | 0.000557 s | 1,764× | 4,842× |

@@ -3,6 +3,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <functional>
 #include <limits>
+#include <numeric>
 #include <set>
 
 namespace lk::polytopes_small {
