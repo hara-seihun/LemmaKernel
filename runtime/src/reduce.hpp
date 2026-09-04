@@ -184,9 +184,10 @@ inline Result<std::shared_ptr<Object>> assemble(const Request &req, Reduction re
         o->count = std::make_shared<Count>(Count{count, visited, size});
         break;
     case Reduction::Sum:
-        if (sum > UINT64_MAX) return R::failure(1, "sum does not fit in 64 bits");
+        /* Per-member values are 64-bit; their sum over a family is carried and returned as 128 bits,
+         * like every other count over a family. */
         o->kind = "count";
-        o->count = std::make_shared<Count>(Count{(uint64_t)sum, visited, size});
+        o->count = std::make_shared<Count>(Count{sum, visited, size});
         break;
     case Reduction::Histogram:
         o->kind = "histogram";

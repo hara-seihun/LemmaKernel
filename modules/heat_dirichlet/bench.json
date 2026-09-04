@@ -1,0 +1,49 @@
+{
+ "module": "heat_dirichlet",
+ "fingerprint": {
+  "module": "4519eeababe428cda6102db49e338f8f005cbb9619e9bb3067bde2d272f1baac",
+  "runtime": "e2c22f1525a9b6fdf085131519f3796a8f7149637270e406f140e9159e975320",
+  "dependencies": [],
+  "combined": "1e15200ceace266e87c9e5e055bb5dc1ac27401c0694adf9e7414db94345dd42"
+ },
+ "measured_at": "2026-09-04T00:55:53+00:00",
+ "commit": "32186328c0abc3178119541e19fc530d906fa30c",
+ "machine": {
+  "host": "gmktec",
+  "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+  "threads": 32
+ },
+ "naive_limit_s": 10.0,
+ "rows": [
+  {
+   "case": "cell_terms",
+   "what": "the mollified summands of one canopy cell, n from 2 to D N_+ = 4242000, summed",
+   "op": "heat_dirichlet.mollified_term_upper",
+   "reduction": "sum",
+   "members": 4241999,
+   "naive_s": 579.8336879923335,
+   "naive_extrapolated": true,
+   "kernel_1_thread_s": 7.642572507960722,
+   "kernel_all_threads_s": 0.40317586879245937,
+   "threads": 32,
+   "speedup_1_thread": 75.86891552397601,
+   "speedup_all_threads": 1438.1656564143507,
+   "answer": "Count(value=1171368389581, visited=4241999, family_size=4241999)"
+  },
+  {
+   "case": "cell_blocks",
+   "what": "the part of that cell above N_- in blocks of 700 (a thousandth of n, which costs the bound well under a percent)",
+   "op": "heat_dirichlet.block_term_upper",
+   "reduction": "sum",
+   "members": 5060,
+   "naive_s": 2.9976736078970134,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 0.02678803913295269,
+   "kernel_all_threads_s": 0.0019480101764202118,
+   "threads": 32,
+   "speedup_1_thread": 111.9034354481547,
+   "speedup_all_threads": 1538.8387823546848,
+   "answer": "Count(value=121372046011, visited=5060, family_size=5060)"
+  }
+ ]
+}

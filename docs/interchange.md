@@ -40,7 +40,7 @@ Runtime kinds (not module-specific):
 | `lk.signed_matrices` | count, rows, cols | count·rows·cols signed 8-byte entries |
 | `family.<name>` | the family's integer parameters | the nested objects (matrices, inner family) as concatenated blobs, in the order the manifest lists them |
 
-`sum` returns kind `count` with the sum as its value. `first` reports `visited` as index + 1 when
+`sum` returns kind `count` with the sum as its value; per-member values are u64 but the sum is a full u128 parameter. `first` reports `visited` as index + 1 when
 found and family_size otherwise, so the encoding does not depend on how many members other
 threads happened to decide.
 

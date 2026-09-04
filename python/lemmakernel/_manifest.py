@@ -1519,6 +1519,100 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'error': 'does not accept',
                   'op': 'canonical_form',
                   'reduction': 'count'}]},
+ {'backends': [{'accepts': 'every request the module accepts',
+                'name': 'generic',
+                'sources': ['backends/generic/heat_dirichlet_generic.cpp'],
+                'summary': 'Portable C++: 128-bit fixed-point arithmetic at scale 2^48 with directed '
+                           'rounding, the per-request constants (lambda_d, d^(-y), r) computed once, block '
+                           'coefficients computed once per divisor class, members split across threads.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Heat_dirichlet/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'heat_dirichlet',
+             'reference': 'lean/Heat_dirichlet/Reference.lean',
+             'summary': 'Rigorous fixed-point upper bounds on the summands of heat-weighted Dirichlet '
+                        'polynomials: the weight b_n n^(-sigma), the mollified summand max(|beta - alpha|, r '
+                        '|beta + alpha|) b_n n^(-sigma) enclosed over an interval of y, that summand summed '
+                        'over a block of consecutive n, and the lower bound on Re s consumed by the others. '
+                        'Members are 1 x 1 natural numbers; values are integers at scale 2^scale with every '
+                        'rounding directed, so a value is a true upper bound and the same integer in every '
+                        'implementation. Real parameters are rationals x_num / x_den.',
+             'version': 1},
+  'operations': [{'args': {'scale': 'int',
+                           'sigma_den': 'int',
+                           'sigma_num': 'int',
+                           't_den': 'int',
+                           't_num': 'int'},
+                  'families': ['range', 'explicit'],
+                  'name': 'weight_upper',
+                  'summary': 'An upper bound on 2^scale exp((t/4) ln^2 n - sigma ln n) for the member n >= '
+                             '1; the heat weight b_n times n^(-sigma).',
+                  'value': 'integer'},
+                 {'args': {'c_den': 'int',
+                           'c_num': 'int',
+                           'n_minus': 'int',
+                           'n_plus': 'int',
+                           'primes': 'int',
+                           'scale': 'int',
+                           'sigma_den': 'int',
+                           'sigma_num': 'int',
+                           't_den': 'int',
+                           't_num': 'int',
+                           'y_den': 'int',
+                           'y_hi_num': 'int',
+                           'y_lo_num': 'int'},
+                  'families': ['range', 'explicit'],
+                  'name': 'mollified_term_upper',
+                  'summary': 'An upper bound on 2^scale sup term(n, y) over y in [y_lo, y_hi] and cutoffs N '
+                             'in [N_-, N_+], for the member n >= 1, where term(n, y) = max(|beta(n) - '
+                             'alpha(n, y)|, r(y) |beta(n) + alpha(n, y)|) b_n n^(-sigma) is the n-th summand '
+                             'of the mollified heat Dirichlet polynomial, with beta, alpha, r as in the '
+                             'module description.',
+                  'value': 'integer'},
+                 {'args': {'c_den': 'int',
+                           'c_num': 'int',
+                           'n0': 'int',
+                           'n_minus': 'int',
+                           'n_plus': 'int',
+                           'primes': 'int',
+                           'scale': 'int',
+                           'sigma_den': 'int',
+                           'sigma_num': 'int',
+                           't_den': 'int',
+                           't_num': 'int',
+                           'width': 'int',
+                           'y_den': 'int',
+                           'y_hi_num': 'int',
+                           'y_lo_num': 'int'},
+                  'families': ['range', 'explicit'],
+                  'name': 'block_term_upper',
+                  'summary': 'For the member k, an upper bound on 2^scale sup over y in [y_lo, y_hi] and '
+                             'cutoffs N in [N_-, N_+] of the sum of term(n, y) over the block n0 + k width '
+                             '<= n < n0 + (k+1) width, obtained without visiting every n: rho_d decreases in '
+                             "n, (n/N_-)^y increases, and b_n n^(-sigma) is quasi-convex, so the block's "
+                             'ends enclose every summand. Blocks must start at 1 or above.',
+                  'value': 'integer'},
+                 {'args': {'scale': 'int',
+                           't_den': 'int',
+                           't_num': 'int',
+                           'y_den': 'int',
+                           'y_hi_num': 'int',
+                           'y_lo_num': 'int'},
+                  'families': ['range', 'explicit'],
+                  'name': 'sigma_lower',
+                  'summary': 'A lower bound on 2^scale ((1 + y_lo)/2 + (t/4) ln(N^2 - 1) - t / (144 (N^2 - '
+                             '1)^2)) for the member N >= 2, rounded down and clamped at 0: the lower bound '
+                             'on Re s_* across a cell whose x-range starts at x_N = 4 pi N^2 - pi t / 4, so '
+                             'that the other operations may take sigma = value / 2^scale.',
+                  'value': 'integer'}],
+  'rejections': [{'case': 'grassmannian is not a number family', 'error': 'families only'},
+                 {'case': 'matrices over F_5 are not numbers', 'error': 'natural numbers'},
+                 {'case': 'pairs of numbers are not numbers', 'error': '1 x 1'},
+                 {'case': 'weight of 0', 'error': 'at least 1'},
+                 {'case': 'sigma at 1', 'error': 'at least 2'},
+                 {'case': 't above one half', 'error': 'rational in'},
+                 {'case': 'exponent too large', 'error': 'exceeds 7'}]},
  {'backends': [{'accepts': 'natural-number edge matrices with 2 <= uniformity <= vertices <= 64',
                 'name': 'generic',
                 'sources': ['backends/generic/hypergraphs_generic.cpp'],
