@@ -84,7 +84,18 @@ Python package, shared library, and C headers under `/srv/pi/lemmakernel/current
 CMake and Ninja toolchain when present, otherwise the pinned Debian builder in
 `tools/deploy.Dockerfile`. The package finds its colocated library without `LEMMAKERNEL_LIB`; when
 the host does not already expose it, deployment adds the stable `current/python` path to the
-invoking user's Python site.
+invoking user's Python site. On a constrained host where a cold build exceeds the command budget,
+build it in independent resumable slices before publishing:
+
+```bash
+LEMMAKERNEL_BUILD_SHARD=0/3 ./deploy
+LEMMAKERNEL_BUILD_SHARD=1/3 ./deploy
+LEMMAKERNEL_BUILD_SHARD=2/3 ./deploy
+./deploy
+```
+
+Each shard only fills Ninja's object cache; the final command links, packages, smokes, and switches
+`current` atomically.
 
 Bench results are committed: `modules/NAME/bench.json` holds the rows and a fingerprint of the
 module tree, the module trees it includes, and the runtime, and [BENCHMARKS.md](BENCHMARKS.md)
