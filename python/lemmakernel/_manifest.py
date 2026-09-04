@@ -1744,6 +1744,29 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                              'in eps past `order` charged as losses, and tail polynomials of weighted mass '
                              'at most `prune` (scale 2^48) pruned into the loss.',
                   'value': 'integer'},
+                 {'args': {'box': 'vectors',
+                           'gt': 'int',
+                           'gx': 'int',
+                           'gy': 'int',
+                           'jmax': 'int',
+                           'n': 'int',
+                           'offset': 'int',
+                           'real': 'int',
+                           'scale': 'int'},
+                  'families': ['range', 'explicit'],
+                  'name': 'barrier_lower',
+                  'summary': 'For the member box (i, j, k) of the family [xa, xb] x [ya, yb] x [ta, tb] '
+                             'split gx x gy x gt (the family as one lk.naturals row: the numerators xa and '
+                             'xb as two 32-bit words each, high word first, then x_den, ya, yb, y_den, ta, '
+                             'tb, t_den; the member a mixed-radix index or a 1 x 3 row), a lower bound on '
+                             '2^scale (offset + inf over the box of |f_t(x + iy)|), or of Re f_t when real = '
+                             "1, rounded down and clamped at 0, where f_t is the effective model's pair of "
+                             "sums with the cutoff n: the moment method about the box family's centre with "
+                             'jmax moments per dyadic range, the phases at scale 2^112, alpha and gamma by '
+                             'the explicit lemmas of the module description. Refused when a box is too far '
+                             'from the centre for the exponent limit, when an angle interval exceeds pi/2, '
+                             'or when the Taylor remainder does not converge.',
+                  'value': 'integer'},
                  {'args': {'scale': 'int', 't_den': 'int', 't_num': 'int', 'y_den': 'int', 'y_num': 'int'},
                   'families': ['range', 'explicit'],
                   'name': 'sigma_lower',

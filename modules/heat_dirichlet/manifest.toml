@@ -59,6 +59,25 @@
 # mu_d = (-1)^sign num / den; the bins are one lk.naturals row 2 = K_0 < K_1 < ... > n_plus.
 # With LK_PHASE_DEBUG set the generic backend reports the component count and the loss on stderr.
 #
+# `barrier_lower` bounds the effective model's f_t itself over a box in (x, y, t), for the
+# barrier, where x ~ 10^13 and N ~ 10^6. With s = (1 + y - ix)/2, tau = x/2, A = (1/2) ln(x/4 pi):
+#
+#   alpha(s)  = A - i pi/4 + e_1,                                    |e_1| <= 2.01 / tau
+#   |kappa|  <= t y / (2 (x - 6))
+#   log gamma = -y A + i [(x/2)(2A - 1) - pi/4 + (pi t/4) A] + eps   (mod 2 pi i),  |eps| <= (2 + t (4 + 4.2 A)) / x
+#   f_t       = sum_{n <= N} exp(c_1 L + c_2 L^2) + gamma sum_{n <= N} exp(d_1 L + d_2 L^2),  L = ln n,
+#   c_1 = -s - (t/2) alpha(s),  d_1 = y - conj s - (t/2) conj alpha(s) - kappa,  c_2 = d_2 = t/4.
+#
+# Every term is w_n exp(dc_1 L + dc_2 L^2) with w_n the term at the box family's centre and dc the
+# exponent's displacement; over a dyadic range r of n with centre L_r and L = L_r + l this is
+# P_r exp(a l + b l^2), P_r = exp(dc_1 L_r + dc_2 L_r^2), a = dc_1 + 2 dc_2 L_r, b = dc_2, so the
+# range sums to P_r sum_{j < J} q_j m_{r,j} plus a remainder, with the moments m_{r,j} = sum w_n l^j
+# complex intervals computed once and q_j the Taylor coefficients of exp(a l + b l^2); the
+# remainder is at most the range's l1 mass times sum_{k >= ceil(J/2)} U^k / k!,
+# U = |a| l_max + |b| l_max^2, charged as a loss. The phases (x_c/2) ln n (ln n by the recurrence
+# ln n = ln(n-1) + 2 artanh(1/(2n-1)) at scale 2^112) and (x/2)(ln(x/4 pi) - 1) at the grid
+# abscissae are reduced modulo 2 pi in exact integers before they reach scale 2^48.
+#
 # Arguments to exp above 7 are refused, which keeps every intermediate below 2^63 at scale 2^48.
 
 [module]
@@ -99,6 +118,13 @@ value = "integer"
 args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_hi_num = "int", sigma_den = "int", y_num = "int", y_den = "int", n_minus = "int", n_plus = "int", c_num = "int", c_den = "int", g2 = "int", g3 = "int", g5 = "int", g7 = "int", npsi = "int", m0 = "int", order = "int", prune = "int", offset = "int", scale = "int", mollifier = "vectors", bins = "vectors" }
 families = ["range", "explicit"]
 summary = "For the member theta box of the torus grid g2 x g3 x g5 x g7 (a range index in mixed radix, or a 1 x 4 multi-index), a lower bound on 2^scale (offset + F) rounded down and clamped at 0, where F is the phase-aware bound inf over the box and over psi (sampled at npsi boxes) of dist(T_1, (-inf, 0]) - sum_{k > 1} b_k k^(-sigma) |T_k| of the module description, with the mollifier (rows d, sign, num, den) and the bins of rough k given as lk.naturals arguments, sigma in [sigma_num, sigma_hi_num] / sigma_den, terms above m0 and Taylor remainders in eps past `order` charged as losses, and tail polynomials of weighted mass at most `prune` (scale 2^48) pruned into the loss."
+
+[[operations]]
+name = "barrier_lower"
+value = "integer"
+args = { gx = "int", gy = "int", gt = "int", n = "int", jmax = "int", real = "int", offset = "int", scale = "int", box = "vectors" }
+families = ["range", "explicit"]
+summary = "For the member box (i, j, k) of the family [xa, xb] x [ya, yb] x [ta, tb] split gx x gy x gt (the family as one lk.naturals row: the numerators xa and xb as two 32-bit words each, high word first, then x_den, ya, yb, y_den, ta, tb, t_den; the member a mixed-radix index or a 1 x 3 row), a lower bound on 2^scale (offset + inf over the box of |f_t(x + iy)|), or of Re f_t when real = 1, rounded down and clamped at 0, where f_t is the effective model's pair of sums with the cutoff n: the moment method about the box family's centre with jmax moments per dyadic range, the phases at scale 2^112, alpha and gamma by the explicit lemmas of the module description. Refused when a box is too far from the centre for the exponent limit, when an angle interval exceeds pi/2, or when the Taylor remainder does not converge."
 
 [[operations]]
 name = "sigma_lower"

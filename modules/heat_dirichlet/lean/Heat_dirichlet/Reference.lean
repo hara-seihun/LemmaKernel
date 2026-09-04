@@ -55,10 +55,25 @@ head precisely, a tail component with the first-order term by the triangle inequ
 enclosed by its rectangle instead), minus the losses, plus `offset`, at scale `2^scale`, clamped
 at `0`.
 
+`barrierLower` is the barrier's lower bound: for a box of the family `[xa, xb] × [ya, yb] × [ta, tb]`
+split `gx × gy × gt`, a lower bound on `|f_t(x + iy)|` (or on `Re f_t`) over the box, where
+`f_t = ∑_{n ≤ N} exp(c₁ L + c₂ L²) + γ ∑_{n ≤ N} exp(d₁ L + d₂ L²)`, `L = ln n`, is the effective
+model's pair of sums with `α` and `log γ` by the explicit lemmas of the module description. The
+moment method: about the family's centre the exponent is `c₁^c L + c₂^c L²` plus a displacement
+`Δc₁ L + Δc₂ L²`; over a dyadic range `r` of `n` with centre `L_r` and `L = L_r + ℓ` the displaced
+factor is `P_r exp(a ℓ + b ℓ²)`, so the range sums to `P_r ∑_{j < J} q_j m_{r,j}` with the moments
+`m_{r,j} = ∑ w_n ℓ^j` of the centre terms `w_n`, computed once, plus a remainder bounded by the
+range's `ℓ¹` mass times `∑_{k ≥ ⌈J/2⌉} U^k / k!`, `U = |a| ℓ_max + |b| ℓ_max²`, charged as a
+loss. The phases `(x_c/2) ln n` and `(x/2)(ln(x/4π) − 1)` are carried at scale `2^112` (`ln n` by
+the series at every chunk start `max(1, 2^16 ⌊n/2^16⌋)` and the recurrence
+`ln n = ln(n−1) + 2 artanh(1/(2n−1))` within a chunk) and reduced modulo `2π` in exact integers.
+The box's `x` numerators arrive as two 32-bit words each, high word first, since `lk.naturals`
+entries are below `2^32`.
+
 Arguments to `exp` above `7` make an operation `.invalid`, as they do in the backend, whose
 128-bit words this limit protects. Members are single natural numbers (a `range` family or an
-`explicit` family of 1 x 1 `lk.naturals` members; `phaseBound` also takes 1 x 4 members);
-anything else is `.invalid`.
+`explicit` family of 1 x 1 `lk.naturals` members; `phaseBound` also takes 1 x 4 members and
+`barrierLower` 1 x 3); anything else is `.invalid`.
 -/
 
 namespace Heat_dirichlet
@@ -620,6 +635,317 @@ def PhaseParams.phaseBound (P : PhaseParams) (head : Poly) (tail : List Poly) (l
   let v := fdiv (best - loss + P.offset * S) (2 ^ (K - P.base.scale))
   if v < 0 then some 0 else if v ≥ 2 ^ 64 then none else some v.toNat
 
+
+/-! ## barrier_lower -/
+
+def KH : Nat := 112
+def SH : Int := 2 ^ 112
+/-- `⌊2π 2^112⌋`, `⌊ln 2 · 2^112⌋`, `⌊ln(4π) 2^112⌋`. -/
+def twoPiHL : Int := 32624163332060752803334972325496544
+def ln2HL : Int := 3599025928123676973540407451845618
+def ln4PiHL : Int := 13141829246414126302627206044224549
+def lnhTerms : Nat := 36
+def lnChunk : Nat := 16
+def ln4PiL : Int := fdiv ln4PiHL (2 ^ (KH - K))
+def ln4PiU : Int := cdiv (ln4PiHL + 1) (2 ^ (KH - K))
+def absCap : Int := 2 ^ 60
+def shiftH : Int := 2 ^ (KH - K)
+
+/-- `lnLoop` at scale `SH`. -/
+def lnhLoop (lower : Bool) (z2 : Int) : Nat → Nat → Int → Int → Int
+  | 0, _, _, acc => acc
+  | remaining + 1, k, power, acc =>
+    lnhLoop lower z2 remaining (k + 1) (rdiv lower (power * z2) SH) (acc + rdiv lower power (2 * k + 1))
+
+def lnhMantissa (m : Int) (lower : Bool) : Int :=
+  let z := rdiv lower ((m - SH) * SH) (m + SH)
+  let z2 := rdiv lower (z * z) SH
+  lnhLoop lower z2 lnhTerms 0 z 0
+
+/-- `(lower, upper)` bounds on `ln n` at scale `SH`, for `n ≥ 1`, by the mantissa series. -/
+def lnHigh (n : Nat) : Int × Int :=
+  let e := bitLength 128 n - 1
+  let m : Int := if e ≤ KH then (n <<< KH) >>> e else n >>> (e - KH)
+  let mHi : Int := if e ≤ KH then m else m + (if n % 2 ^ (e - KH) = 0 then 0 else 1)
+  (2 * lnhMantissa m true + e * ln2HL, 2 * lnhMantissa mHi false + e * (ln2HL + 1) + 1)
+
+/-- `∑ p_k / (2k+1)` with `p_k = ⌊z^(2k+1) SH⌋` by successive division, until `p_k = 0`. -/
+def artanhLoop (d2 : Int) : Nat → Nat → Int → Int → Int → Int × Int
+  | 0, _, _, lo, hi => (lo, hi)
+  | fuel + 1, k, p, lo, hi =>
+    if p ≤ 0 then (lo, hi)
+    else artanhLoop d2 fuel (k + 1) (fdiv p d2) (lo + fdiv p (2 * k + 1)) (hi + cdiv (p + 1) (2 * k + 1))
+
+/-- `(lower, upper)` bounds on `artanh(1/(2n−1))` at scale `SH`, `n ≥ 2`; the omitted tail is
+below two ulps. -/
+def artanhStep (n : Nat) : Int × Int :=
+  let d : Int := 2 * n - 1
+  let (lo, hi) := artanhLoop (d * d) 128 0 (fdiv SH d) 0 0
+  (lo, hi + 2)
+
+/-- `ln n` at scale `SH` for `n = 1, …, N`, in order: the series at every chunk start, the
+recurrence within the chunk. -/
+def lnhTable (N : Nat) : List (Int × Int) :=
+  ((List.range N).foldl (fun (acc : List (Int × Int)) i =>
+    let n := i + 1
+    let v := if n = 1 ∨ n % 2 ^ lnChunk = 0 then lnHigh n
+      else
+        let st := artanhStep n
+        let prev := acc.headD (0, 0)
+        (prev.1 + 2 * st.1, prev.2 + 2 * st.2)
+    v :: acc) []).reverse
+
+/-- The angle `num [loH, hiH] / den` (the bracket at scale `SH`) modulo `2π`, at scale `S`: the
+lower end reduced exactly, the width kept, the quotient's worth of the `2π` error on each side. -/
+def phaseOf (num loH hiH den : Int) : Iv :=
+  let lo := fdiv (num * loH) den
+  let hi := cdiv (num * hiH) den
+  let r := lo % twoPiHL
+  let qb := fdiv hi twoPiHL + 1
+  (fdiv (r - qb) shiftH, cdiv (r + (hi - lo) + qb) shiftH)
+
+/-- The interval shifted by a multiple of `2π` so that its lower end is in `[0, 2π)`. -/
+def reduce2pi (a : Iv) : Iv :=
+  let q := fdiv a.1 (2 * piU)
+  if q ≥ 0 then (max 0 (a.1 - q * 2 * piU), a.2 - q * 2 * piL)
+  else (max 0 (a.1 + (-q) * 2 * piL), a.2 + (-q) * 2 * piU)
+
+/-- Enclosures of `cos` and `sin` over an interval of angles of width below `π/2`, or `none`. -/
+def cis (a : Iv) : Option (Iv × Iv) :=
+  let u := reduce2pi a
+  let qq := fdiv (2 * u.1) piU
+  let vLo := max 0 (u.1 - cdiv (qq * piU) 2)
+  let vHi := u.2 - fdiv (qq * piL) 2
+  if vHi > piU ∨ vLo > vHi then none else
+  let c : Iv := ((cosBounds vHi).1, (cosBounds vLo).2)
+  let s : Iv := if vHi ≤ fdiv piL 2 then ((sinBounds vLo).1, (sinBounds vHi).2)
+    else (min (sinBounds vLo).1 (sinBounds vHi).1, S)
+  some (match qq % 4 with
+    | 0 => (c, s)
+    | 1 => (ineg s, c)
+    | 2 => (ineg c, ineg s)
+    | _ => (s, ineg c))
+
+/-- The rational `num/den` as an interval at scale `S`. -/
+def ratIv (num den : Int) : Iv := (fdiv (num * S) den, cdiv (num * S) den)
+
+abbrev Cv := Iv × Iv
+
+def cmul (a b : Cv) : Cv := (isub (imul a.1 b.1) (imul a.2 b.2), iadd (imul a.1 b.2) (imul a.2 b.1))
+def cadd (a b : Cv) : Cv := (iadd a.1 b.1, iadd a.2 b.2)
+def cscale (a : Cv) (p : Iv) : Cv := (imul a.1 p, imul a.2 p)
+def cmodUpper (a : Cv) : Int := absUpper a.1 + absUpper a.2
+def rad (r : Int) : Iv := (-r, r)
+def czero : Cv := ((0, 0), (0, 0))
+
+structure BarrierParams where
+  xa : Int
+  xb : Int
+  xden : Int
+  ya : Int
+  yb : Int
+  yden : Int
+  ta : Int
+  tb : Int
+  tden : Int
+  gx : Nat
+  gy : Nat
+  gt : Nat
+  N : Nat
+  J : Nat
+  real : Nat
+  offset : Int
+  scale : Nat
+
+def BarrierParams.valid (P : BarrierParams) : Bool :=
+  P.xden ≥ 1 ∧ P.yden ≥ 1 ∧ P.tden ≥ 1 ∧ P.xa ≤ P.xb ∧ P.ya ≤ P.yb ∧ P.ta ≤ P.tb ∧
+  P.xa ≥ 200 * P.xden ∧ P.yb ≤ P.yden ∧ 2 * P.tb ≤ P.tden ∧ P.xa + P.xb < 2 ^ 60 ∧
+  P.gx ≥ 1 ∧ P.gy ≥ 1 ∧ P.gt ≥ 1 ∧ P.N ≥ 1 ∧ 2 ≤ P.J ∧ P.J ≤ 24 ∧ P.real ≤ 1 ∧ P.scale ≤ K
+
+def BarrierParams.xAt (P : BarrierParams) (i : Nat) : Int × Int :=
+  (P.xa * P.gx + i * (P.xb - P.xa), P.xden * P.gx)
+def BarrierParams.yAt (P : BarrierParams) (j : Nat) : Int × Int :=
+  (P.ya * P.gy + j * (P.yb - P.ya), P.yden * P.gy)
+def BarrierParams.tAt (P : BarrierParams) (k : Nat) : Int × Int :=
+  (P.ta * P.gt + k * (P.tb - P.ta), P.tden * P.gt)
+
+/-- Everything a box does not depend on: the centre's `t` and `A`, the dyadic ranges with their
+centres `L_r` and half-widths, the moments and masses of both sums, and `ln(x_i/4π)` with
+`Φ_i = (x_i/2)(ln(x_i/4π) − 1)` at the grid abscissae, at scale `SH`. -/
+structure BarrierSetup where
+  Tc : Iv
+  Ac : Iv
+  Lr : List Int
+  lmax : List Int
+  mm : List (List Cv)
+  mp : List (List Cv)
+  massM : List Int
+  massP : List Int
+  ellH : List (Int × Int)
+  Phi : List (Int × Int)
+
+/-- The dyadic ranges `[a, min(2a − 1, N)]`, `a = 1, 2, 4, …`. -/
+def dyadicRanges (N : Nat) : List (Nat × Nat) :=
+  ((List.range (bitLength 128 N)).map fun e => (2 ^ e, min (2 ^ (e + 1) - 1) N))
+
+def BarrierParams.setup (P : BarrierParams) : Option BarrierSetup := do
+  let xcNum := P.xa + P.xb
+  let xcDen := 2 * P.xden
+  let tcNum := P.ta + P.tb
+  let tcDen := 2 * P.tden
+  let ycNum := P.ya + P.yb
+  let ycDen := 2 * P.yden
+  let Tc := ratIv tcNum tcDen
+  let lnN := lnBounds xcNum.toNat
+  let lnD := lnBounds xcDen.toNat
+  let Ac : Iv := (fdiv (lnN.1 - lnD.2 - ln4PiU) 2, cdiv (lnN.2 - lnD.1 - ln4PiL) 2)
+  let sigmaC := ratIv (2 * P.yden + ycNum) (4 * P.yden)
+  let halfYm1 := ratIv (ycNum - 2 * P.yden) (4 * P.yden)
+  let rho1 := cdiv (201 * tcNum * P.xden * S) (100 * tcDen * xcNum)
+  let rhok := cdiv (tcNum * ycNum * P.xden * S) (2 * tcDen * ycDen * (xcNum - 12 * P.xden))
+  let TA2 := iscale (imul Tc Ac) 1 2
+  let reC1 := iadd (isub (ineg sigmaC) TA2) (rad rho1)
+  let reD1 := iadd (isub halfYm1 TA2) (rad (rho1 + rhok))
+  let c2 := iscale Tc 1 4
+  let TP8 := iscale (imul Tc (piL, piU)) 1 8
+  let lnh := lnhTable P.N
+  let lnhAt (n : Nat) : Int × Int := lnh.getD (n - 1) (0, 0)
+  let l48 (n : Nat) : Iv := let v := lnhAt n; (fdiv v.1 shiftH, cdiv v.2 shiftH)
+  let ranges := dyadicRanges P.N
+  let Lr := ranges.map fun (a, b) => fdiv ((l48 a).1 + (l48 b).2) 2
+  let lmax := (ranges.zip Lr).map fun ((a, b), L) => max (max (L - (l48 a).1) ((l48 b).2 - L)) 0
+  let moments ← (ranges.zip Lr).mapM fun ((a, b), Lr) => do
+    (List.range (b + 1 - a)).foldlM (fun (acc : List Cv × List Cv × Int × Int) i => do
+      let n := a + i
+      let L := l48 n
+      let lh := lnhAt n
+      let phi := phaseOf xcNum lh.1 lh.2 (2 * xcDen)
+      let tp := imul TP8 L
+      let rr := cdiv (rho1 * L.2) S
+      let rk := cdiv ((rho1 + rhok) * L.2) S
+      let L2 := imul c2 (isq L)
+      let gM ← iexp (iadd (imul reC1 L) L2)
+      let gP ← iexp (iadd (imul reD1 L) L2)
+      let (cM, sM) ← cis (iadd (iadd phi tp) (rad rr))
+      let (cP, sP) ← cis (iadd (ineg (iadd phi tp)) (rad rk))
+      let wM : Cv := (imul gM cM, imul gM sM)
+      let wP : Cv := (imul gP cP, imul gP sP)
+      let ell := isub L (Lr, Lr)
+      let powers := ((List.range P.J).foldl (fun (acc : List Iv × Iv) _ =>
+        (acc.2 :: acc.1, imul acc.2 ell)) ([], (S, S))).1.reverse
+      let mm := (acc.1.zip powers).map fun (m, pw) => cadd m (cscale wM pw)
+      let mp := (acc.2.1.zip powers).map fun (m, pw) => cadd m (cscale wP pw)
+      pure (mm, mp, acc.2.2.1 + gM.2, acc.2.2.2 + gP.2))
+      (List.replicate P.J czero, List.replicate P.J czero, 0, 0)
+  let grid := (List.range (P.gx + 1)).map fun i =>
+    let (num, den) := P.xAt i
+    let lnN := lnHigh num.toNat
+    let lnD := lnHigh den.toNat
+    let ell := (lnN.1 - lnD.2 - (ln4PiHL + 1), lnN.2 - lnD.1 - ln4PiHL)
+    (ell, (fdiv (num * (ell.1 - SH)) (2 * den), cdiv (num * (ell.2 - SH)) (2 * den)))
+  pure { Tc, Ac, Lr, lmax,
+         mm := moments.map (·.1), mp := moments.map (·.2.1),
+         massM := moments.map (·.2.2.1), massP := moments.map (·.2.2.2),
+         ellH := grid.map (·.1), Phi := grid.map (·.2) }
+
+/-- The box of a member: a mixed-radix index, or three coordinates. -/
+def BarrierParams.boxOf (P : BarrierParams) (member : List Nat) : Option (Nat × Nat × Nat) :=
+  match member with
+  | [m] =>
+    if m ≥ P.gx * P.gy * P.gt then none
+    else some (m / (P.gy * P.gt), (m / P.gt) % P.gy, m % P.gt)
+  | [i, j, k] => if i < P.gx ∧ j < P.gy ∧ k < P.gt then some (i, j, k) else none
+  | _ => none
+
+/-- `∑_r P_r ∑_j q_j m_{r,j}` over the ranges as a complex interval, and the remainder loss. -/
+def BarrierParams.rangeSum (P : BarrierParams) (B : BarrierSetup) (dc1 : Cv) (dc2 : Iv)
+    (moments : List (List Cv)) (mass : List Int) : Option (Cv × Int) := do
+  let K0 : Nat := (P.J + 1) / 2
+  ((B.Lr.zip B.lmax).zip (moments.zip mass)).foldlM (fun (acc : Cv × Int) ((Lr, lmax), (mom, ms)) => do
+    let LrIv : Iv := (Lr, Lr)
+    let eRe := iadd (imul dc1.1 LrIv) (imul dc2 (isq LrIv))
+    let eIm := imul dc1.2 LrIv
+    let g ← iexp eRe
+    let (c, s) ← cis eIm
+    let Pr : Cv := (imul g c, imul g s)
+    let a : Cv := (iadd dc1.1 (iscale (imul dc2 LrIv) 2 1), dc1.2)
+    let apow := ((List.range (P.J - 1)).foldl (fun (acc : List Cv) (k : Nat) =>
+      let z := cmul (acc.headD czero) a
+      (iscale z.1 1 ((k : Int) + 1), iscale z.2 1 ((k : Int) + 1)) :: acc) [((S, S), (0, 0))]).reverse
+    let bpow := ((List.range (P.J / 2)).foldl (fun (acc : List Iv) (m : Nat) =>
+      iscale (imul (acc.headD (S, S)) dc2) 1 ((m : Int) + 1) :: acc) [(S, S)]).reverse
+    let Sr := (List.range P.J).foldl (fun Sr j =>
+      let q := (List.range (j / 2 + 1)).foldl (fun q m =>
+        cadd q (cscale (apow.getD (j - 2 * m) czero) (bpow.getD m (0, 0)))) czero
+      cadd Sr (cmul q (mom.getD j czero))) czero
+    let aHi := cmodUpper a
+    let U := cdiv (aHi * lmax) S + cdiv (absUpper dc2 * cdiv (lmax * lmax) S) S
+    if U ≥ (K0 : Int) * S then none else
+    let rem := cdiv (powfact U K0 false * ((K0 : Int) + 1) * S) (((K0 : Int) + 1) * S - U)
+    pure (cadd acc.1 (cmul Pr Sr), acc.2 + cdiv (cmodUpper Pr * cdiv (ms * rem) S) S))
+    (czero, 0)
+
+def BarrierParams.barrierLower (P : BarrierParams) (B : BarrierSetup) (member : List Nat) : Option Nat := do
+  let (i, j, k) ← P.boxOf member
+  let xcNum := P.xa + P.xb
+  let tcNum := P.ta + P.tb
+  let tcDen := 2 * P.tden
+  let ycNum := P.ya + P.yb
+  let ycDen := 2 * P.yden
+  let (x0, xd) := P.xAt i
+  let (x1, _) := P.xAt (i + 1)
+  let DX : Iv := (fdiv ((2 * x0 - xcNum * P.gx) * S) (2 * xd), cdiv ((2 * x1 - xcNum * P.gx) * S) (2 * xd))
+  let (y0, yd) := P.yAt j
+  let (y1, _) := P.yAt (j + 1)
+  let DY : Iv := (fdiv ((2 * y0 - ycNum * P.gy) * S) (2 * yd), cdiv ((2 * y1 - ycNum * P.gy) * S) (2 * yd))
+  let Y : Iv := (fdiv (y0 * S) yd, cdiv (y1 * S) yd)
+  let (t0, td) := P.tAt k
+  let (t1, _) := P.tAt (k + 1)
+  let DT : Iv := (fdiv ((2 * t0 - tcNum * P.gt) * S) (2 * td), cdiv ((2 * t1 - tcNum * P.gt) * S) (2 * td))
+  let T : Iv := (fdiv (t0 * S) td, cdiv (t1 * S) td)
+  let ellI := B.ellH.getD i (0, 0)
+  let ellI1 := B.ellH.getD (i + 1) (0, 0)
+  let ell : Iv := (fdiv ellI.1 shiftH, cdiv ellI1.2 shiftH)
+  let A : Iv := (fdiv ell.1 2, cdiv ell.2 2)
+  let tsumNum := 2 * t1 * P.tden + tcNum * td
+  let tsumDen := 2 * td * P.tden
+  let rho := cdiv (201 * tsumNum * P.xden * S) (100 * tsumDen * P.xa)
+  let tyNum := 4 * t1 * y1 * tcDen * ycDen + tcNum * ycNum * 4 * td * yd
+  let tyDen := 4 * td * yd * tcDen * ycDen
+  let rhok := cdiv (tyNum * P.xden * S) (tyDen * 2 * (P.xa - 6 * P.xden))
+  let mid := iscale (iadd (imul DT A) (imul B.Tc (isub A B.Ac))) 1 2
+  let dtp8 := iscale (imul DT (piL, piU)) 1 8
+  let dc1 : Cv := (iadd (isub (ineg (iscale DY 1 2)) mid) (rad rho), iadd (iadd (iscale DX 1 2) dtp8) (rad rho))
+  let dd1 : Cv := (iadd (isub (iscale DY 1 2) mid) (rad (rho + rhok)),
+                   iadd (ineg (iadd (iscale DX 1 2) dtp8)) (rad (rho + rhok)))
+  let dc2 := iscale DT 1 4
+  let (main, lossM) ← P.rangeSum B dc1 dc2 B.mm B.massM
+  let (part, lossP) ← P.rangeSum B dd1 dc2 B.mp B.massP
+  let eps := cdiv ((2 * S + cdiv (T.2 * (4 * S + cdiv (42 * A.2) 10)) S) * P.xden) P.xa
+  let reG := iadd (ineg (iscale (imul Y ell) 1 2)) (rad eps)
+  let PhiIv := phaseOf 1 (B.Phi.getD i (0, 0)).1 (B.Phi.getD (i + 1) (0, 0)).2 1
+  let imG := iadd (iadd (iadd PhiIv (-cdiv piU 4, -fdiv piL 4)) (iscale (imul (imul (piL, piU) T) ell) 1 8)) (rad eps)
+  let g ← iexp reG
+  let (c, s) ← cis imG
+  let G : Cv := (imul g c, imul g s)
+  let f := cadd main (cmul G part)
+  let loss := lossM + cdiv (cmodUpper G * lossP) S
+  let value := if P.real = 1 then f.1.1 - loss
+    else
+      let reLo := min (absLower f.1) absCap
+      let imLo := min (absLower f.2) absCap
+      sqrtLower (fdiv (reLo * reLo + imLo * imLo) S) - loss
+  let v := fdiv (value + P.offset * S) (2 ^ (K - P.scale))
+  if v < 0 then some 0 else if v ≥ 2 ^ 64 then none else some v.toNat
+
+/-- The box row: eleven naturals, the `x` numerators as two 32-bit words each. -/
+def readBarrier (gx gy gt n jmax real offset scale : Nat) (box : List (List Nat)) : Option BarrierParams :=
+  match box with
+  | [[xaHi, xaLo, xbHi, xbLo, xden, ya, yb, yden, ta, tb, tden]] =>
+    some { xa := (xaHi : Int) * 2 ^ 32 + xaLo, xb := (xbHi : Int) * 2 ^ 32 + xbLo, xden, ya, yb, yden, ta, tb, tden,
+           gx, gy, gt, N := n, J := jmax, real, offset, scale }
+  | _ => none
+
 /-- The mollifier rows `(d, sign, num, den)` as `(d, ±num, den)`; `none` for a malformed row. -/
 def readMollifier (rows : List (List Nat)) : Option (List (Nat × Int × Int)) :=
   rows.mapM fun row => match row with
@@ -638,6 +964,7 @@ inductive Op
   | sigmaLower (tNum tDen yNum yDen scale : Nat)
   | phaseBound (tNum tDen sigmaNum sigmaHiNum sigmaDen yNum yDen nMinus nPlus cNum cDen
       g2 g3 g5 g7 npsi m0 order prune offset scale : Nat) (mollifier bins : List (List Nat))
+  | barrierLower (gx gy gt n jmax real offset scale : Nat) (box : List (List Nat))
 
 /-- No operation materialises a per-member value; every reduction is over integers. -/
 inductive Value
@@ -659,6 +986,9 @@ def Op.params : Op → Params
   | .phaseBound tNum tDen sigmaNum _ sigmaDen yNum yDen nMinus nPlus cNum cDen _ _ _ _ _ _ _ _ _ scale _ _ =>
     { tNum, tDen, sigmaNum, sigmaDen, yNum, yDen, nMinus, nPlus, primes := [], cNum, cDen,
       n0 := 0, width := 1, scale }
+  | .barrierLower _ _ _ _ _ _ _ scale _ =>
+    { tNum := 0, tDen := 1, sigmaNum := 0, sigmaDen := 1, yNum := 0, yDen := 1, nMinus := 1, nPlus := 1,
+      primes := [], cNum := 1, cDen := 1, n0 := 0, width := 1, scale }
 
 /-- The phase-aware request, or `none` when it is not one. -/
 def Op.phaseParams : Op → Option PhaseParams
@@ -669,11 +999,11 @@ def Op.phaseParams : Op → Option PhaseParams
            mollifier, bins }
   | _ => none
 
-/-- The boxes a family presents: single naturals or rows of four. -/
-def boxes? : Family → Option (List (List Nat))
+/-- The boxes a family presents: single naturals or rows of `w`. -/
+def boxes? (w : Nat) : Family → Option (List (List Nat))
   | .range a b => some ((List.range (b - a)).map fun i => [a + i])
   | .explicit p batch =>
-    if p = Lk.naturals ∧ batch.all fun m => m.length = 1 ∧ ((m.headD []).length = 1 ∨ (m.headD []).length = 4) then
+    if p = Lk.naturals ∧ batch.all fun m => m.length = 1 ∧ ((m.headD []).length = 1 ∨ (m.headD []).length = w) then
       some (batch.map fun m => m.headD [])
     else none
   | _ => none
@@ -690,13 +1020,24 @@ def numbers? : Family → Option (List Nat)
 def run (op : Op) (f : Family) (red : Red) : Result Value :=
   match op with
   | .phaseBound .. =>
-    match op.phaseParams, boxes? f with
+    match op.phaseParams, boxes? 4 f with
     | some P, some bs =>
       if !P.valid then .invalid else
       match P.polys with
       | none => .invalid
       | some (head, tail, loss) =>
         match bs.mapM (P.phaseBound head tail loss) with
+        | none => .invalid
+        | some vs => reduceInt red f.members vs
+    | _, _ => .invalid
+  | .barrierLower gx gy gt n jmax real offset scale box =>
+    match readBarrier gx gy gt n jmax real offset scale box, boxes? 3 f with
+    | some P, some bs =>
+      if !P.valid then .invalid else
+      match P.setup with
+      | none => .invalid
+      | some B =>
+        match bs.mapM (P.barrierLower B) with
         | none => .invalid
         | some vs => reduceInt red f.members vs
     | _, _ => .invalid
@@ -720,6 +1061,7 @@ def run (op : Op) (f : Family) (red : Red) : Result Value :=
         if ns.any (· < 2) then none else
         some (ns.map fun n => (max (P.sigmaLower n) 0).toNat >>> (K - P.scale))
       | .phaseBound .. => none
+      | .barrierLower .. => none
     match values with
     | none => .invalid
     | some vs => reduceInt red ms vs

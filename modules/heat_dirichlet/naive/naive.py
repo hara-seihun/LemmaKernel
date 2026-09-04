@@ -813,6 +813,7 @@ LN2_HU = LN2_HL + 1
 LN4PI_HL = 13141829246414126302627206044224549      # floor(ln(4 pi) * 2^112)
 LN4PI_HU = LN4PI_HL + 1
 LNH_TERMS = 36   # atanh series at 2^112; z < 1/3 so the tail is below 3^-73 / 73
+LN_CHUNK = 16    # ln n restarts from the series every 2^16
 LN4PI_L = LN4PI_HL >> (KH - K)
 LN4PI_U = cdiv(LN4PI_HU, 1 << (KH - K))
 ABS_CAP = 1 << 60
@@ -930,16 +931,19 @@ def rad(r: int) -> tuple[int, int]:
 
 
 class BarrierParams:
-    """The request: the box family [xa, xb] x [ya, yb] x [ta, tb] (one row of nine naturals:
-    numerators and denominators for x, y, t), its grid gx x gy x gt, the cutoff N, the number of
+    """The request: the box family [xa, xb] x [ya, yb] x [ta, tb] (one row of eleven naturals:
+    the numerators of xa and xb as two 32-bit words each, high word first, then x_den, and the
+    numerators and denominators of y and t), its grid gx x gy x gt, the cutoff N, the number of
     moments J, whether the real part or the modulus is bounded, the offset and the scale; then
     the setup, everything a box does not depend on."""
 
     def __init__(self, args: dict):
         rows = read_rows(args["box"])
-        if len(rows) != 1 or len(rows[0]) != 9:
-            raise ValueError("box must be one row of nine naturals")
-        (self.xa, self.xb, self.xden, self.ya, self.yb, self.yden, self.ta, self.tb, self.tden) = rows[0]
+        if len(rows) != 1 or len(rows[0]) != 11:
+            raise ValueError("box must be one row of eleven naturals")
+        (xa_hi, xa_lo, xb_hi, xb_lo, self.xden, self.ya, self.yb, self.yden, self.ta, self.tb, self.tden) = rows[0]
+        self.xa = (xa_hi << 32) + xa_lo     # lk.naturals entries are below 2^32; x is two words
+        self.xb = (xb_hi << 32) + xb_lo
         self.gx, self.gy, self.gt = int(args["gx"]), int(args["gy"]), int(args["gt"])
         self.N = int(args["n"])
         self.J = int(args["jmax"])
@@ -993,13 +997,16 @@ class BarrierParams:
         re_d1 = iadd(isub(half_ym1, TA2), rad(rho1 + rhok))
         c2 = iscale(self.Tc, 1, 4)
         TP8 = iscale(imul(self.Tc, (PI_L, PI_U)), 1, 8)
-        # ln n at 2^112 by the recurrence, then at 2^48
+        # ln n at 2^112: the series at every chunk start c = max(1, 2^16 floor(n / 2^16)), the
+        # recurrence within the chunk (the chunking is part of the definition); then at 2^48
         lnh = [(0, 0)] * (self.N + 1)
-        lo_h, hi_h = 0, 0
-        for n in range(2, self.N + 1):
-            s_lo, s_hi = artanh_step(n)
-            lo_h += 2 * s_lo
-            hi_h += 2 * s_hi
+        for n in range(1, self.N + 1):
+            if n == 1 or n % (1 << LN_CHUNK) == 0:
+                lo_h, hi_h = ln_high(n)
+            else:
+                s_lo, s_hi = artanh_step(n)
+                lo_h += 2 * s_lo
+                hi_h += 2 * s_hi
             lnh[n] = (lo_h, hi_h)
         L48 = [(lo >> (KH - K), cdiv(hi, 1 << (KH - K))) for lo, hi in lnh]
         # dyadic ranges [a, b], centre L_r = (ln_lo a + ln_hi b) / 2 exactly, l_max

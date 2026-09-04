@@ -89,6 +89,38 @@ def cases(ctx, rng):
              {**phase, "mollifier": ctx.naturals([[[1, 0, 1, 1], [11, 1, 1, 1]]])}, reductions=["all"], oracle=False),
         Case("sigma range reversed", ctx.range(0, 2), "phase_bound",
              {**phase, "sigma_hi_num": 1_400_000_000_000}, reductions=["all"], oracle=False),
+    ]
+
+    # The barrier: the box [X, X+1] x [0.1, 1] x [0, t0] at the row's X, split coarsely, with a
+    # small cutoff so the naive oracle is quick (the ln recurrence's restart at 2^16 is beyond it;
+    # the backend and the naive were checked against each other at N = 70000 by hand, 30 s of
+    # naive setup).  The x numerators are two 32-bit words each.
+    X = 6_000_000_185_827
+    words = lambda v: [v >> 32, v & 0xFFFFFFFF]
+    bottom = ctx.naturals([[words(X) + words(X + 1) + [1, 1, 1, 10, 0, 1579, 10000]]])
+    left = ctx.naturals([[words(X) + words(X) + [1, 1, 10, 10, 0, 1579, 10000]]])
+    top_t0 = ctx.naturals([[words(X) + words(X + 1) + [1, 1, 1, 10, 1579, 1579, 10000]]])
+    BARRIER = {"box": bottom, "gx": 10, "gy": 1, "gt": 8, "n": 60, "jmax": 14, "real": 0, "offset": 8, "scale": 40}
+    out += [
+        Case("bottom edge, |f|", ctx.range(0, 80), "barrier_lower", BARRIER, reductions=["all", "min"]),
+        Case("bottom edge, Re f", ctx.range(0, 80), "barrier_lower", {**BARRIER, "real": 1}, reductions=["all", "min"]),
+        Case("left edge by coordinates", ctx.explicit(lk.naturals([[[0, 0, 0]], [[0, 5, 3]], [[0, 8, 7]]])),
+             "barrier_lower", {**BARRIER, "box": left, "gx": 1, "gy": 9}, reductions=["all", "min"]),
+        Case("the t0 face, Re f", ctx.range(0, 10), "barrier_lower", {**BARRIER, "box": top_t0, "gt": 1, "real": 1},
+             reductions=["all", "min"]),
+        Case("coarse histogram", ctx.range(0, 8), "barrier_lower", {**BARRIER, "gx": 1, "scale": 1},
+             reductions=["histogram"]),
+        Case("box beyond the grid", ctx.range(79, 82), "barrier_lower", BARRIER, reductions=["all"], oracle=False),
+        Case("box too large for the Taylor remainder", ctx.range(0, 2), "barrier_lower",
+             {**BARRIER, "n": 70_000, "gx": 2, "gt": 1}, reductions=["all"], oracle=False),
+        Case("box with x reversed", ctx.range(0, 2), "barrier_lower",
+             {**BARRIER, "box": ctx.naturals([[words(X + 1) + words(X) + [1, 1, 1, 10, 0, 1579, 10000]]])},
+             reductions=["all"], oracle=False),
+        Case("box row of the wrong width", ctx.range(0, 2), "barrier_lower",
+             {**BARRIER, "box": ctx.naturals([[[1, 2, 3]]])}, reductions=["all"], oracle=False),
+    ]
+
+    out += [
         Case("grassmannian is not a number family", ctx.grassmannian(2, 3, 1), "weight_upper", BASE,
              reductions=["sum"], oracle=False),
         Case("matrices over F_5 are not numbers", ctx.explicit(lk.matrix(5, [[[1, 2], [3, 4]]])), "weight_upper",
@@ -121,6 +153,13 @@ def cases(ctx, rng):
               "bins": ctx.naturals([[[2] + list(range(11, 7071, 233)) + [7071]]]),
               "g2": 16, "g3": 8, "g5": 4, "g7": 4, "npsi": 16, "m0": 300},
              what="the phase-aware bound over every box of a 16 x 8 x 4 x 4 theta grid with 16 psi samples for one cell with the {2, 3} Euler mollifier and 31 bins of rough k, terms above 300 as loss, minimised",
+             bench="min", oracle=False),
+        # The barrier's bottom edge at the row's cutoff: the setup (ln, weights, moments for every
+        # n up to N) and 8000 boxes of 10^-2 in x and 10^-3 in t over the first half of [0, t0].
+        Case("barrier_edge", lambda: ctx.range(0, 8000), "barrier_lower",
+             {**BARRIER, "box": ctx.naturals([[words(X) + words(X + 1) + [1, 1, 1, 10, 0, 1579, 20000]]]),
+              "gx": 100, "gt": 80, "n": 690_988},
+             what="the lower bound on |f_t| over 8000 boxes of the barrier's bottom edge (x in [X, X+1], y = 0.1, t in [0, t0/2]) with N = 690988, minimised",
              bench="min", oracle=False),
     ]
     return out

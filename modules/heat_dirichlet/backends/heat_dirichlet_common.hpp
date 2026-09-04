@@ -49,13 +49,13 @@ constexpr I PI_L = 884279719003555;
 constexpr I PI_U = 884279719003556;
 constexpr int TRIG_TERMS = 13;
 
-enum class Op { WeightUpper, MollifiedTermUpper, BlockTermUpper, SigmaLower, PhaseBound };
+enum class Op { WeightUpper, MollifiedTermUpper, BlockTermUpper, SigmaLower, PhaseBound, BarrierLower };
 
 inline Result<Op> parse_op(const std::string &name) {
     static const std::map<std::string, Op> names{
         {"weight_upper", Op::WeightUpper}, {"mollified_term_upper", Op::MollifiedTermUpper},
         {"block_term_upper", Op::BlockTermUpper}, {"sigma_lower", Op::SigmaLower},
-        {"phase_bound", Op::PhaseBound}};
+        {"phase_bound", Op::PhaseBound}, {"barrier_lower", Op::BarrierLower}};
     auto it = names.find(name);
     if (it == names.end()) return Result<Op>::failure(INTERNAL, "unknown heat_dirichlet operation " + name);
     return Result<Op>::success(it->second);

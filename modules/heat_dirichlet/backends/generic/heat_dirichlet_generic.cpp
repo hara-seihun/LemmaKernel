@@ -1,18 +1,19 @@
 /* heat_dirichlet generic backend: the portable CPU runner over the shared setup and arithmetic
  * of heat_dirichlet_common.hpp; members are split across threads. */
 #include "../heat_dirichlet_common.hpp"
+#include "../barrier.hpp"
 
 namespace lk::heat_dirichlet {
 namespace {
 
 using namespace lk::heat_dirichlet::detail;
 
-Status validate(const Family &family, bool boxes) {
+Status validate(const Family &family, bool boxes, uint64_t width) {
     if (family.prime() != NATURALS)
         return fail(INVALID, "heat_dirichlet operations need members that are natural numbers (lk.naturals), not elements of a field");
     if (boxes) {
-        if (family.rows() != 1 || (family.cols() != 1 && family.cols() != 4))
-            return fail(INVALID, "phase_bound needs 1 x 1 or 1 x 4 members (a box index or its four grid indices)");
+        if (family.rows() != 1 || (family.cols() != 1 && family.cols() != width))
+            return fail(INVALID, "boxes need 1 x 1 or 1 x " + std::to_string(width) + " members (a box index or its grid indices)");
         return ok();
     }
     if (family.rows() != 1 || family.cols() != 1)
@@ -29,12 +30,18 @@ R run(const Request &req) {
     auto parsed = parse_op(req.op);
     if (!parsed.ok) return R::failure(parsed.error.status, parsed.error.message);
     Op op = parsed.value;
-    auto valid = validate(*req.family, op == Op::PhaseBound);
+    auto valid = validate(*req.family, op == Op::PhaseBound || op == Op::BarrierLower, op == Op::PhaseBound ? 4 : 3);
     if (!valid.ok) return R::failure(valid.error.status, valid.error.message);
     Params P;
     PhaseParams PP;
+    BarrierParams BP;
     Status st;
-    if (op == Op::PhaseBound) {
+    if (op == Op::BarrierLower) {
+        st = BP.init(req);
+        if (!st.ok) return R::failure(st.error.status, st.error.message);
+        st = BP.setup(std::max<uint32_t>(1, req.threads));
+        if (!st.ok) return R::failure(st.error.status, st.error.message);
+    } else if (op == Op::PhaseBound) {
         st = PP.init_phase(req);
         if (!st.ok) return R::failure(st.error.status, st.error.message);
         st = PP.precompute_phase(std::max<uint32_t>(1, req.threads));
@@ -52,7 +59,7 @@ R run(const Request &req) {
     auto size_r = req.family->size();
     if (!size_r.ok) return R::failure(size_r.error.status, size_r.error.message);
     uint64_t size = size_r.value;
-    if (op != Op::BlockTermUpper && op != Op::PhaseBound)
+    if (op != Op::BlockTermUpper && op != Op::PhaseBound && op != Op::BarrierLower)
         for (uint64_t i = 0; i < size; ++i)
             if (member(*req.family, i) < (op == Op::SigmaLower ? 2u : 1u))
                 return R::failure(INVALID, op == Op::SigmaLower ? "sigma_lower needs a cutoff of at least 2"
@@ -70,7 +77,17 @@ R run(const Request &req) {
         Accumulator &acc = accumulators[thread];
         std::vector<Parts> scratch;
         std::vector<I> firsts;
+        std::vector<Cv> apow;
+        std::vector<Iv> bpow;
         for (uint64_t i = begin; i < end; ++i) {
+            if (op == Op::BarrierLower) {
+                auto js = BP.box_of(*req.family, i);
+                if (!js) return fail(INVALID, "box index beyond the grid at member " + std::to_string(i));
+                auto v = BP.barrier_lower(*js, apow, bpow);
+                if (!v) return fail(INVALID, "box too large for the centre (exponent above 7, angle wider than pi/2, or the Taylor remainder diverges) at member " + std::to_string(i));
+                acc.integer(i, *v);
+                continue;
+            }
             if (op == Op::PhaseBound) {
                 auto js = PP.box_of(*req.family, i);
                 if (!js) return fail(INVALID, "box index beyond the grid at member " + std::to_string(i));
@@ -90,7 +107,7 @@ R run(const Request &req) {
                 v = (uint64_t)((s < 0 ? 0 : s) >> (int)(K - P.scale));
                 break;
             }
-            case Op::PhaseBound: break; /* handled above */
+            case Op::PhaseBound: case Op::BarrierLower: break; /* handled above */
             }
             if (!v) return fail(INVALID, "exponent exceeds 7 or value does not fit in 64 bits at member " + std::to_string(n));
             acc.integer(i, *v);
