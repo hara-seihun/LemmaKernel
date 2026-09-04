@@ -18,8 +18,18 @@ elif command -v docker >/dev/null; then
   docker run --rm --user "$(id -u):$(id -g)" \
     --env HOME=/tmp --env LEMMAKERNEL_MARCH="${LEMMAKERNEL_MARCH:-native}" \
     --volume "$PWD:/src" --workdir /src lemmakernel-builder:bookworm \
-    sh -c 'cmake -S . -B "$1" -G Ninja -DLEMMAKERNEL_MARCH="$LEMMAKERNEL_MARCH" && ninja -C "$1"' \
-    sh "$build_dir"
+    sh -eu -c '
+      cmake -S . -B "$1" -G Ninja -DLEMMAKERNEL_MARCH="$LEMMAKERNEL_MARCH"
+      ninja -C "$1"
+      rm -rf "$1/runtime-libs"
+      mkdir -p "$1/runtime-libs"
+      ldd "$1/liblemmakernel.so" |
+        while read -r soname _arrow dependency _rest; do
+          case "$soname" in
+            libnauty*) cp -L "$dependency" "$1/runtime-libs/$soname" ;;
+          esac
+        done
+    ' sh "$build_dir"
 else
   echo "deploy: either cmake and ninja, or docker, must be installed" >&2
   exit 1
@@ -43,11 +53,21 @@ mkdir -p "$stage/python/lemmakernel" "$stage/lib" "$stage/include"
 rsync -a --exclude __pycache__ python/lemmakernel/ "$stage/python/lemmakernel/"
 cp "$library" "$stage/python/lemmakernel/liblemmakernel.so"
 ln -s ../python/lemmakernel/liblemmakernel.so "$stage/lib/liblemmakernel.so"
-while read -r dependency; do
-  name=$(basename "$dependency")
-  cp -L "$dependency" "$stage/python/lemmakernel/$name"
-  ln -s "../python/lemmakernel/$name" "$stage/lib/$name"
-done < <(ldd "$library" | awk '/libnauty/{print $3}')
+while read -r soname _arrow dependency _rest; do
+  case "$soname" in
+    libnauty*) ;;
+    *) continue ;;
+  esac
+  if [[ $dependency == not ]]; then
+    dependency="$build_dir/runtime-libs/$soname"
+  fi
+  [[ -f $dependency ]] || {
+    echo "deploy: cannot resolve $soname for $library" >&2
+    exit 1
+  }
+  cp -L "$dependency" "$stage/python/lemmakernel/$soname"
+  ln -s "../python/lemmakernel/$soname" "$stage/lib/$soname"
+done < <(ldd "$library")
 cp -a runtime/include/lemmakernel "$stage/include/"
 cp README.md BENCHMARKS.md LICENSE "$stage/"
 printf '%s\n' "$commit" > "$stage/COMMIT"
