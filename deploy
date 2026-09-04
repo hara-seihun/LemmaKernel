@@ -8,9 +8,22 @@ build_dir=${LEMMAKERNEL_BUILD_DIR:-build}
 dest=${LEMMAKERNEL_DEPLOY_ROOT:-/srv/pi/lemmakernel}
 
 "$python_bin" tools/manifest.py check
-cmake -S . -B "$build_dir" -G Ninja \
-  -DLEMMAKERNEL_MARCH="${LEMMAKERNEL_MARCH:-native}"
-ninja -C "$build_dir"
+if command -v cmake >/dev/null && command -v ninja >/dev/null; then
+  cmake -S . -B "$build_dir" -G Ninja \
+    -DLEMMAKERNEL_MARCH="${LEMMAKERNEL_MARCH:-native}"
+  ninja -C "$build_dir"
+elif command -v docker >/dev/null; then
+  docker build --file tools/deploy.Dockerfile \
+    --tag lemmakernel-builder:bookworm tools
+  docker run --rm --user "$(id -u):$(id -g)" \
+    --env HOME=/tmp --env LEMMAKERNEL_MARCH="${LEMMAKERNEL_MARCH:-native}" \
+    --volume "$PWD:/src" --workdir /src lemmakernel-builder:bookworm \
+    sh -c 'cmake -S . -B "$1" -G Ninja -DLEMMAKERNEL_MARCH="$LEMMAKERNEL_MARCH" && ninja -C "$1"' \
+    sh "$build_dir"
+else
+  echo "deploy: either cmake and ninja, or docker, must be installed" >&2
+  exit 1
+fi
 
 library="$build_dir/liblemmakernel.so"
 [[ -f $library ]] || { echo "deploy: $library was not built" >&2; exit 1; }
@@ -30,6 +43,11 @@ mkdir -p "$stage/python/lemmakernel" "$stage/lib" "$stage/include"
 rsync -a --exclude __pycache__ python/lemmakernel/ "$stage/python/lemmakernel/"
 cp "$library" "$stage/python/lemmakernel/liblemmakernel.so"
 ln -s ../python/lemmakernel/liblemmakernel.so "$stage/lib/liblemmakernel.so"
+while read -r dependency; do
+  name=$(basename "$dependency")
+  cp -L "$dependency" "$stage/python/lemmakernel/$name"
+  ln -s "../python/lemmakernel/$name" "$stage/lib/$name"
+done < <(ldd "$library" | awk '/libnauty/{print $3}')
 cp -a runtime/include/lemmakernel "$stage/include/"
 cp README.md BENCHMARKS.md LICENSE "$stage/"
 printf '%s\n' "$commit" > "$stage/COMMIT"
@@ -44,14 +62,25 @@ find "$dest" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' |
   sort -rn | tail -n +3 | cut -d' ' -f2- |
   while read -r old; do rm -rf "$old"; done
 
+smoke='import lemmakernel as lk; c=lk.Context(); f=c.explicit(lk.matrix(2, [[[1, 0], [0, 1]]])); assert c.value("gfp.rank", f).values == [2]; assert any(m["module"]["name"] == "circuit_fires" for m in lk.describe()["modules"])'
 PYTHONPATH="$version/python${PYTHONPATH:+:$PYTHONPATH}" LEMMAKERNEL_LIB='' \
-  "$python_bin" - <<'PY'
-import lemmakernel as lk
+  "$python_bin" -c "$smoke"
 
-ctx = lk.Context()
-family = ctx.explicit(lk.matrix(2, [[[1, 0], [0, 1]]]))
-assert ctx.value("gfp.rank", family).values == [2]
-assert any(module["module"]["name"] == "circuit_fires" for module in lk.describe()["modules"])
+if ! env -u PYTHONPATH -u LEMMAKERNEL_LIB \
+    LEMMAKERNEL_DEPLOY_ROOT="$dest" "$python_bin" - <<'PY'
+import os
+from pathlib import Path
+import lemmakernel
+
+root = Path(os.environ["LEMMAKERNEL_DEPLOY_ROOT"]).resolve()
+assert Path(lemmakernel.__file__).resolve().is_relative_to(root)
 PY
+then
+  user_site=$("$python_bin" -m site --user-site)
+  mkdir -p "$user_site"
+  printf '%s\n' "$dest/current/python" > "$user_site/lemmakernel.pth.tmp"
+  mv "$user_site/lemmakernel.pth.tmp" "$user_site/lemmakernel.pth"
+fi
+env -u PYTHONPATH -u LEMMAKERNEL_LIB "$python_bin" -c "$smoke"
 
 echo "LemmaKernel $commit published to $dest"

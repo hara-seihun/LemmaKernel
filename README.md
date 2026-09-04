@@ -80,9 +80,11 @@ No test or bench script is written per module: a module ships `cases.py` and the
 `tools/harness.py` derives the rest.
 
 `./deploy` builds the current checkout, checks its generated files, and atomically publishes the
-Python package, shared library, and C headers under `/srv/pi/lemmakernel/current`. The published
-Python package finds its colocated library without `LEMMAKERNEL_LIB`; a host only needs to put
-`/srv/pi/lemmakernel/current/python` on `PYTHONPATH`.
+Python package, shared library, and C headers under `/srv/pi/lemmakernel/current`. It uses the host
+CMake and Ninja toolchain when present, otherwise the pinned Debian builder in
+`tools/deploy.Dockerfile`. The package finds its colocated library without `LEMMAKERNEL_LIB`; when
+the host does not already expose it, deployment adds the stable `current/python` path to the
+invoking user's Python site.
 
 Bench results are committed: `modules/NAME/bench.json` holds the rows and a fingerprint of the
 module tree, the module trees it includes, and the runtime, and [BENCHMARKS.md](BENCHMARKS.md)

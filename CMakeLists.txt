@@ -54,7 +54,8 @@ elseif(TARGET PkgConfig::NAUTY)
   target_compile_definitions(lemmakernel PRIVATE
     LEMMAKERNEL_HAVE_NAUTY=1 LEMMAKERNEL_SERIALIZE_NAUTY=1)
 endif()
-set_target_properties(lemmakernel PROPERTIES VERSION 0.1.0 SOVERSION 0)
+set_target_properties(lemmakernel PROPERTIES
+  VERSION 0.1.0 SOVERSION 0 BUILD_RPATH "$ORIGIN")
 
 include(${CMAKE_SOURCE_DIR}/runtime/generated/modules.cmake)
 
