@@ -1642,7 +1642,7 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                         'of consecutive n, the lower bound on Re s consumed by the others, and the '
                         'phase-aware lower bound on dist(E f, (-inf, 0]) over a box of the torus of shared '
                         'prime phases, which is what the triangle inequality gives up. Members are 1 x 1 '
-                        'natural numbers (boxes may also be 1 x 5); values are integers at scale 2^scale '
+                        'natural numbers (boxes may also be 1 x 4); values are integers at scale 2^scale '
                         'with every rounding directed, so a value is a true bound and the same integer in '
                         'every implementation. Real parameters are rationals x_num / x_den.',
              'version': 1},
@@ -1704,11 +1704,14 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                            'g3': 'int',
                            'g5': 'int',
                            'g7': 'int',
-                           'gpsi': 'int',
+                           'm0': 'int',
                            'mollifier': 'vectors',
                            'n_minus': 'int',
                            'n_plus': 'int',
+                           'npsi': 'int',
                            'offset': 'int',
+                           'order': 'int',
+                           'prune': 'int',
                            'scale': 'int',
                            'sigma_den': 'int',
                            'sigma_hi_num': 'int',
@@ -1719,13 +1722,15 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                            'y_num': 'int'},
                   'families': ['range', 'explicit'],
                   'name': 'phase_bound',
-                  'summary': 'For the member box of the torus grid g2 x g3 x g5 x g7 x gpsi (a range index '
-                             'in mixed radix, or a 1 x 5 multi-index), a lower bound on 2^scale (offset + F) '
+                  'summary': 'For the member theta box of the torus grid g2 x g3 x g5 x g7 (a range index in '
+                             'mixed radix, or a 1 x 4 multi-index), a lower bound on 2^scale (offset + F) '
                              'rounded down and clamped at 0, where F is the phase-aware bound inf over the '
-                             'box of dist(T_1, (-inf, 0]) - sum_{k > 1} b_k k^(-sigma) |T_k| of the module '
-                             'description, with the mollifier (rows d, sign, num, den) and the bins of rough '
-                             'k given as lk.naturals arguments and sigma in [sigma_num, sigma_hi_num] / '
-                             'sigma_den.',
+                             'box and over psi (sampled at npsi boxes) of dist(T_1, (-inf, 0]) - sum_{k > 1} '
+                             'b_k k^(-sigma) |T_k| of the module description, with the mollifier (rows d, '
+                             'sign, num, den) and the bins of rough k given as lk.naturals arguments, sigma '
+                             'in [sigma_num, sigma_hi_num] / sigma_den, terms above m0 and Taylor remainders '
+                             'in eps past `order` charged as losses, and tail polynomials of weighted mass '
+                             'at most `prune` (scale 2^48) pruned into the loss.',
                   'value': 'integer'},
                  {'args': {'scale': 'int', 't_den': 'int', 't_num': 'int', 'y_den': 'int', 'y_num': 'int'},
                   'families': ['range', 'explicit'],

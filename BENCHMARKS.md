@@ -37,7 +37,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | gfq | gf4_subset_ranks | 8,568 | 1.39 s | 0.00542 s | 257× | 537× |
 | cayley | C4xC2 non-CI witness | 1 | 0.00518 s | 2.18e-05 s | 238× | 295× |
 | linear_codes | grassmannian_3_7_binary | 11,811 | 0.358 s | 0.00187 s | 192× | 654× |
-| heat_dirichlet | cell_blocks | 5,060 | 4.77 s | 0.0371 s | 129× | 1,843× |
+| heat_dirichlet | cell_blocks | 5,060 | 5.03 s | 0.0374 s | 135× | 1,998× |
 | lattice_of_subspaces | g84_contains_line | 200,787 | 1.88 s | 0.0158 s | 119× | 731× |
 | simplicial_complexes | independence_faces | 1,184,040 | 196 s~ | 1.75 s | 112× | 1,757× |
 | lattices_small | A4 vectors through norm 12 | 1 | 0.00405 s | 4.05e-05 s | 100× | 117× |
@@ -107,9 +107,9 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | graphs | random_graph_chromatic | chromatic numbers of 120 random seven-vertex graphs | 120 | 0.0713 s | 0.000214 s | 0.000359 s | 334× | 199× |
 | graphs | random_graph_canonical | canonical forms of 120 random eight-vertex graphs | 120 | 0.0666 s | 0.00467 s | 0.000936 s | 14× | 71× |
 | hadamard | all_4x4_hadamard | count all 4x4 Hadamard sign matrices among the 65,536 binary matrices | 65,536 | 0.17 s | 0.00292 s | 0.000636 s | 58× | 267× |
-| heat_dirichlet | cell_terms | the mollified summands of one canopy cell, n from 2 to D N_+ = 4242000, summed | 4,241,999 | 637 s~ | 8.99 s | 0.467 s | 71× | 1,364× |
-| heat_dirichlet | cell_blocks | the part of that cell above N_- in blocks of 700 (a thousandth of n, which costs the bound well under a percent) | 5,060 | 4.77 s | 0.0371 s | 0.00259 s | 129× | 1,843× |
-| heat_dirichlet | cell_phase | the phase-aware bound over every box of an 8 x 4 x 4 x 4 x 8 torus grid for one cell with the {2, 3} Euler mollifier and 31 bins of rough k, minimised | 4,096 | 21 s~ | 0.39 s | 0.0348 s | 54× | 604× |
+| heat_dirichlet | cell_terms | the mollified summands of one canopy cell, n from 2 to D N_+ = 4242000, summed | 4,241,999 | 631 s~ | 9.09 s | 0.465 s | 69× | 1,357× |
+| heat_dirichlet | cell_blocks | the part of that cell above N_- in blocks of 700 (a thousandth of n, which costs the bound well under a percent) | 5,060 | 5.03 s | 0.0374 s | 0.00252 s | 135× | 1,998× |
+| heat_dirichlet | cell_phase | the phase-aware bound over every box of a 16 x 8 x 4 x 4 theta grid with 16 psi samples for one cell with the {2, 3} Euler mollifier and 31 bins of rough k, terms above 300 as loss, minimised | 2,048 | 45.9 s~ | 0.347 s | 0.0235 s | 132× | 1,949× |
 | hypergraphs | ramsey_R33_on_six_vertices | balanced red-blue colourings of K_6 avoiding a monochromatic triangle; R(3,3)=6 makes the hit set empty | 6,435 | 0.0577 s | 0.00154 s | 0.000478 s | 37× | 121× |
 | integer_partitions | partition_rank_50 | Dyson rank distribution of all 204,226 partitions of 50 | 204,226 | 0.834 s | 0.00961 s | 0.00214 s | 87× | 390× |
 | latin_squares | order5_transversals | transversal-count distribution over all 161,280 Latin squares of order 5 | 161,280 | 9.79 s | 0.182 s | 0.0306 s | 54× | 320× |

@@ -1,13 +1,13 @@
 {
  "module": "heat_dirichlet",
  "fingerprint": {
-  "module": "67529fcc9b5348491f6e185bf1492ce0bb2a464bbe457278c7647b5a27d45b1b",
-  "runtime": "76a2d8e8c1923e67d3154ec3fc66e4f8b2edded1be65953d44223b682deaeb96",
+  "module": "af83fa1fefc829d8c93e1bd1818b8a0ecc3ec5fb47244fed9ebbf60ce25bb784",
+  "runtime": "0a04738fbaf4053c26ee38a51b11eba2e59b1db27160d7b2cd51e76aea0d8bc9",
   "dependencies": [],
-  "combined": "874498aa09a80f35823dffa7c33167f83c70ed89a7e1e9be82cb6849a17d9eff"
+  "combined": "6385548fd90179c644e67d0af33000e9cab1e2548ebb250a863beec61c5a64a7"
  },
- "measured_at": "2026-09-04T03:18:03+00:00",
- "commit": "16c44dd57ac970544ae903312a168a7f028bdca0",
+ "measured_at": "2026-09-04T04:32:35+00:00",
+ "commit": "167a4baea2754602db99e3bd21ff7a98d4955087",
  "machine": {
   "host": "gmktec",
   "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
@@ -21,13 +21,13 @@
    "op": "heat_dirichlet.mollified_term_upper",
    "reduction": "sum",
    "members": 4241999,
-   "naive_s": 636.5837456978544,
+   "naive_s": 631.3314541488281,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 8.985451005864888,
-   "kernel_all_threads_s": 0.4666104728821665,
+   "kernel_1_thread_s": 9.088836272014305,
+   "kernel_all_threads_s": 0.46526641584932804,
    "threads": 32,
-   "speedup_1_thread": 70.84605383551146,
-   "speedup_all_threads": 1364.272305689571,
+   "speedup_1_thread": 69.46229806039953,
+   "speedup_all_threads": 1356.924619191252,
    "answer": "Count(value=1122124142523, visited=4241999, family_size=4241999)"
   },
   {
@@ -36,29 +36,29 @@
    "op": "heat_dirichlet.block_term_upper",
    "reduction": "sum",
    "members": 5060,
-   "naive_s": 4.77287115692161,
+   "naive_s": 5.031012202845886,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.0370903299190104,
-   "kernel_all_threads_s": 0.0025891060940921307,
+   "kernel_1_thread_s": 0.0373774750623852,
+   "kernel_all_threads_s": 0.00251809717155993,
    "threads": 32,
-   "speedup_1_thread": 128.68235918482102,
-   "speedup_all_threads": 1843.4436378688515,
+   "speedup_1_thread": 134.60010860682354,
+   "speedup_all_threads": 1997.942041183914,
    "answer": "Count(value=113207442370, visited=5060, family_size=5060)"
   },
   {
    "case": "cell_phase",
-   "what": "the phase-aware bound over every box of an 8 x 4 x 4 x 4 x 8 torus grid for one cell with the {2, 3} Euler mollifier and 31 bins of rough k, minimised",
+   "what": "the phase-aware bound over every box of a 16 x 8 x 4 x 4 theta grid with 16 psi samples for one cell with the {2, 3} Euler mollifier and 31 bins of rough k, terms above 300 as loss, minimised",
    "op": "heat_dirichlet.phase_bound",
    "reduction": "min",
-   "members": 4096,
-   "naive_s": 21.04867489814758,
+   "members": 2048,
+   "naive_s": 45.86168947696686,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 0.39020802290178835,
-   "kernel_all_threads_s": 0.03482736204750836,
+   "kernel_1_thread_s": 0.3466240151319653,
+   "kernel_all_threads_s": 0.02353562880307436,
    "threads": 32,
-   "speedup_1_thread": 53.94218894224359,
-   "speedup_all_threads": 604.3717830088558,
-   "answer": "Extremum(p=18446744073709551615, rows=1, cols=1, value=0, index=0, visited=4096, family_size=4096, member=Matrix(p=18446"
+   "speedup_1_thread": 132.30961351453558,
+   "speedup_all_threads": 1948.60693379801,
+   "answer": "Extremum(p=18446744073709551615, rows=1, cols=1, value=0, index=0, visited=2048, family_size=2048, member=Matrix(p=18446"
   }
  ]
 }

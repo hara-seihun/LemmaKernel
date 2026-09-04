@@ -42,13 +42,20 @@ so that dist(E f, (-inf, 0]) >= F(theta, psi) - |E| Z with
 
     F(theta, psi) = dist(T_1(theta, psi), (-inf, 0]) - sum_{k > 1} b_k k^(-sigma) |T_k(theta, psi)|.
 
-The rough k are grouped into bins [K_i, K_{i+1}) given by the caller; a bin's coefficients are
-enclosed over its k (eps_k and the partner weight are monotone, a term whose cutoff condition
-mk/d <= N depends on k or N is hulled with 0), and the bin costs W_i max |T| with W_i the sum
-of b_k k^(-sigma) over its rough k. A member is a box of the grid g2 x g3 x g5 x g7 x gpsi on
-the torus; the value is a lower bound on F over the box, from the centre value, the gradient,
-and the second-order remainder (|e^(ix) - 1 - ix| <= x^2/2), plus `offset`, at scale 2^scale.
-sigma ranges over [sigma_num, sigma_hi_num] / sigma_den across the cell.
+The rough k are grouped into bins [K_i, K_{i+1}) given by the caller; a bin costs W_i max |T|
+with W_i the sum of b_k k^(-sigma) over its rough k. Its coefficients are taken at the bin centre
+k_c = isqrt(K_a K_b) and expanded in eps_k about eps_c to Taylor order `order`: (m/d)^(eps_k) =
+(m/d)^(eps_c) sum_r (delta ln(m/d))^r / r! + remainder, so |T_k| <= sum_r delta^r / r! |T^(r)|
+with T^(r) the polynomial whose terms carry (ln j)^r and delta the largest |eps_k - eps_c| over
+the bin; the remainder, (delta ln j)^(order+1) / (order+1)! e^(delta ln j) times each term's
+size, is a loss. A term whose cutoff condition mk/d <= N depends on k in the bin or on N is
+hulled with 0. Terms with m > m0 are not evaluated: their l1 mass is a loss too, as is any tail
+polynomial whose weighted low mass is at most `prune` (scale 2^48). A member is a theta box of
+the grid g2 x g3 x g5 x g7 on the torus; psi is sampled at npsi boxes inside the operation and
+the value is the minimum over them, a lower bound on F over the box from the centre value, the
+gradient, and the second-order remainder (|e^(ix) - 1 - ix| <= x^2/2) of every polynomial, minus
+the losses, plus `offset`, at scale 2^scale. sigma ranges over [sigma_num, sigma_hi_num] /
+sigma_den across the cell.
 """
 from __future__ import annotations
 
@@ -480,17 +487,33 @@ def read_rows(arg) -> list[list[int]]:
 
 
 class PhaseParams(Params):
-    """The phase-aware bound's request: the cell, the grid, the mollifier and the bins, with
-    every member-independent quantity computed once."""
+    """The phase-aware bound's request: the cell, the theta grid and the psi samples, the mollifier,
+    the bins of rough k, the low/high split at m0, the Taylor order in eps and the pruning
+    threshold, with every member-independent quantity computed once.
+
+    A component is one polynomial to evaluate on a box: its weight W (at scale S), its terms over
+    the low smooth m <= m0 (index, cS, cA, vh, X) and its second-order constant Q. Everything not
+    evaluated (high terms m > m0, Taylor remainders, pruned components) is an l1 mass folded into
+    `loss`, subtracted from every box."""
 
     def __init__(self, args: dict):
         super().__init__(args)
         self.sigma_hi_num = int(args.get("sigma_hi_num", self.sigma_num))
         if self.sigma_hi_num < self.sigma_num:
             raise ValueError("need sigma_num <= sigma_hi_num")
-        self.g = [int(args.get(name, 1)) for name in ("g2", "g3", "g5", "g7", "gpsi")]
-        if any(x < 1 for x in self.g):
-            raise ValueError("grid sizes must be positive")
+        self.g = [int(args.get(name, 1)) for name in ("g2", "g3", "g5", "g7")]
+        self.npsi = int(args.get("npsi", 1))
+        if any(x < 1 for x in self.g) or self.npsi < 1:
+            raise ValueError("grid sizes and npsi must be positive")
+        self.m0 = int(args.get("m0", self.n_plus))
+        if self.m0 < 1:
+            raise ValueError("m0 must be positive")
+        self.order = int(args.get("order", 2))
+        if not (0 <= self.order <= 3):
+            raise ValueError("order must be 0, 1, 2 or 3")
+        self.prune = int(args.get("prune", 0))
+        if self.prune < 0:
+            raise ValueError("prune must be non-negative")
         self.offset = int(args.get("offset", 0))
         if self.offset < 0:
             raise ValueError("offset must be non-negative")
@@ -521,30 +544,46 @@ class PhaseParams(Params):
             raise ValueError("bins must be increasing, start at 2 and end above n_plus")
         self.sigma_iv = ((S * self.sigma_num) // self.sigma_den, cdiv(S * self.sigma_hi_num, self.sigma_den))
         lcm = 1
-        for x in self.g:
+        for x in self.g + [self.npsi]:
             lcm = lcm * x // gcd(lcm, x)
         self.M = 4 * lcm
-        self.h = [cdiv(PI_U, x) for x in self.g]   # half-widths of a box, in radians at scale S
+        self.h = [cdiv(PI_U, x) for x in self.g + [self.npsi]]   # half-widths, radians at scale S
         # the mollified polynomial reaches d N for d in the support: n / d <= N, not n <= N
         self.smooth = smooth_numbers(max(d for d, _, _ in self.mollifier) * self.n_plus)
         self.circle = [unit_circle(self.M, J) for J in range(self.M)]
         self.lnN = ln_bounds(self.n_minus)
-        # the head and the bins: (W, Q, terms) with terms a list of (index into smooth, cS, cA)
-        self.head = self.polynomial(1, 1, True)
-        self.tail = []
+        self.loss = 0
+        self.components = []
+        self.head = self.polynomial(1, S, 1, 0, True)
+        self.components.append(self.head)
         for lo, hi in zip(self.bins, self.bins[1:]):
             ks = [k for k in range(lo, min(hi, self.n_plus + 1)) if is_rough(k)]
             if not ks:
                 continue
             W = sum(self.g_upper(k) for k in ks)
-            self.tail.append((W,) + self.polynomial(ks[0], ks[-1], False)[1:])
+            ka, kb = ks[0], ks[-1]
+            kc = isqrt(ka * kb)
+            eps = lambda k: iscale(ln_bounds(k), self.t_num, 2 * self.t_den)  # noqa: E731
+            ec, ea, eb = eps(kc), eps(ka), eps(kb)
+            delta = max(ec[1] - ea[0], eb[1] - ec[0], 0)   # |eps_k - eps_c| over the bin, at scale S
+            # the r-th component carries (delta ln j)^r / r! on every term; the remainder past
+            # `order` is a loss, charged in the r = 0 pass
+            for r in range(self.order + 1):
+                self.components.append(self.polynomial(kc, W, ka, r, False, delta, kb))
+        if self.loss > 16 * S:
+            raise ValueError("loss exceeds 16")
 
-    def polynomial(self, ka: int, kb: int, head: bool):
-        """The coefficient enclosures of T_k over rough k in [ka, kb] and cutoffs in the cell, the
-        second-order constant Q, and W = 1 (the head's weight is not used)."""
-        Lk = (0, 0) if head else (ln_bounds(ka)[0], ln_bounds(kb)[1])
+    def polynomial(self, kc: int, W: int, ka: int, r: int, head: bool, delta=0, kb=None):
+        """The component with weight W: coefficient enclosures of sum_m [cS + e^(i psi) cA] e^(i theta(m))
+        at the bin centre kc, every term multiplied by (delta ln j)^r / r!, over the cell's
+        cutoffs; terms with m > m0 and (in the r = 0 pass) the Taylor remainder go to the loss.
+        Returns (W, Q, terms) with terms over low m only, or None when pruned."""
+        kb = kc if kb is None else kb
+        Lk = (0, 0) if head else ln_bounds(kc)
         terms = []
-        mass = 0
+        mass_low = 0
+        mass_high = 0
+        rem = 0
         Q = 0
         for idx, (m, v) in enumerate(self.smooth):
             Lm = ln_bounds(m)
@@ -564,30 +603,42 @@ class PhaseParams(Params):
                 e_part = iadd(e_main, iscale(isub(iadd(Lj, Lk), self.lnN), self.y_num, self.y_den))
                 main = iscale(iexp(e_main), num, den)
                 part = iscale(iscale(iexp(e_part), num, den), self.c_num, self.c_den)
+                for q in range(1, r + 1):
+                    main = iscale(imul(main, Lj), delta, S * q)
+                    part = iscale(imul(part, Lj), delta, S * q)
                 if not certain:
                     main = (min(main[0], 0), max(main[1], 0))
                     part = (min(part[0], 0), max(part[1], 0))
+                if r == 0 and not head and j > 1:
+                    # the Taylor remainder in eps: (delta ln j)^(order+1) / (order+1)! e^(delta ln j)
+                    # times the term's size
+                    x = cdiv(delta * Lj[1], S)
+                    factor = cdiv(powfact(x, self.order + 1, False) * exp_upper(x), S)
+                    rem += cdiv((abs_upper(main) + abs_upper(part)) * factor, S)
                 cS = iadd(cS, main)
                 cA = iadd(cA, part)
             if cS == (0, 0) and cA == (0, 0):
                 continue
-            # The arc a term sweeps over a box: half-angle vh (radians at scale S) and X (table
-            # steps). Up to one radian the term is expanded to first order around the centre
-            # and its second-order remainder |e^(ix) - 1 - ix| <= x^2/2 goes into Q; beyond that
-            # the arc is enclosed by its rectangle instead, with no remainder.
-            vh = sum(vp * hp for vp, hp in zip(v, self.h[:4]))
-            X = sum(vp * (self.M // (2 * gx)) for vp, gx in zip(v, self.g[:4]))
             aS = abs_upper(cS)
             aA = abs_upper(cA)
-            mass += aS + aA
+            if m > self.m0:
+                mass_high += aS + aA
+                continue
+            vh = sum(vp * hp for vp, hp in zip(v, self.h[:4]))
+            X = sum(vp * (self.M // (2 * gx)) for vp, gx in zip(v, self.g))
+            mass_low += aS + aA
             if vh <= S:
                 Q += cdiv(aS * cdiv(vh * vh, S), S)
             if vh + self.h[4] <= S:
                 Q += cdiv(aA * cdiv((vh + self.h[4]) ** 2, S), S)
             terms.append((idx, cS, cA, vh, X))
-        if mass > 16 * S:
+        if mass_low + mass_high > 16 * S:
             raise ValueError("polynomial mass exceeds 16")
-        return 1, cdiv(Q, 2), terms
+        self.loss += cdiv(W * (mass_high + rem), S)
+        if not head and cdiv(W * mass_low, S) <= self.prune:
+            self.loss += cdiv(W * mass_low, S)
+            return None
+        return W, cdiv(Q, 2), terms, mass_low
 
     def arc(self, J: int, X: int) -> tuple[tuple[int, int], tuple[int, int]]:
         """Enclosures of cos and sin over the arc of table steps [J - X, J + X]: an extremum lies
@@ -618,83 +669,117 @@ class PhaseParams(Params):
             if i:
                 raise ValueError("box index beyond the grid")
             return js[::-1]
-        if len(member) != 5:
-            raise ValueError("a box is one index or five")
+        if len(member) != 4:
+            raise ValueError("a box is one index or four")
         if any(not (0 <= j < gx) for j, gx in zip(member, self.g)):
             raise ValueError("box index beyond the grid")
         return list(member)
 
     def evaluate(self, poly, js: list[int]):
-        """Centre value T_c and gradient G (five complex intervals) of a polynomial on the box."""
-        _, _, terms = poly
+        """The S and A parts of a component on the theta box: centre values and the four theta
+        gradients of each, as complex intervals; the arc-enclosed terms (sweep beyond a radian)
+        carry no gradient."""
+        _, _, terms, _ = poly
         steps = [(2 * j + 1) * (self.M // (2 * gx)) for j, gx in zip(js, self.g)]
-        Tre, Tim = (0, 0), (0, 0)
-        G = [[(0, 0), (0, 0)] for _ in range(5)]
-        for idx, cS, cA, vh, X in terms:
-            _, v = self.smooth[idx]
-            J = sum(vp * sp for vp, sp in zip(v, steps[:4])) % self.M
-            for c, JJ, XX, taylor, part in ((cS, J, X, vh <= S, False),
-                                            (cA, (J + steps[4]) % self.M, X + self.M // (2 * self.g[4]),
-                                             vh + self.h[4] <= S, True)):
+        parts = []
+        for which in (0, 1):
+            Tre, Tim = (0, 0), (0, 0)
+            G = [[(0, 0), (0, 0)] for _ in range(4)]
+            for idx, cS, cA, vh, X in terms:
+                _, v = self.smooth[idx]
+                c = cA if which else cS
                 if c == (0, 0):
                     continue
+                J = sum(vp * sp for vp, sp in zip(v, steps)) % self.M
+                taylor = vh <= S if which == 0 else vh + self.h[4] <= S
                 if not taylor:
-                    cs, sn = self.arc(JJ, XX)
+                    XX = X if which == 0 else X + self.M // (2 * self.npsi)
+                    cs, sn = self.arc(J, XX)
                     Tre = iadd(Tre, imul(c, cs))
                     Tim = iadd(Tim, imul(c, sn))
                     continue
-                cs, sn = self.circle[JJ]
+                cs, sn = self.circle[J]
                 wre, wim = imul(c, cs), imul(c, sn)
                 Tre = iadd(Tre, wre)
                 Tim = iadd(Tim, wim)
-                # i w = (-Im w, Re w), times the exponent
                 for p in range(4):
                     if v[p]:
                         G[p][0] = iadd(G[p][0], (-v[p] * wim[1], -v[p] * wim[0]))
                         G[p][1] = iadd(G[p][1], (v[p] * wre[0], v[p] * wre[1]))
-                if part:
-                    G[4][0] = iadd(G[4][0], (-wim[1], -wim[0]))
-                    G[4][1] = iadd(G[4][1], wre)
-        return (Tre, Tim), G
+            parts.append(((Tre, Tim), G))
+        return parts
 
     def mod_upper(self, z) -> int:
         ar, ai = abs_upper(z[0]), abs_upper(z[1])
         return sqrt_upper(cdiv(ar * ar, S) + cdiv(ai * ai, S))
 
-    def bounds(self, poly, js):
-        """(modulus upper bound, dist lower bound) of the polynomial over the box."""
-        _, Q, _ = poly
-        (Tre, Tim), G = self.evaluate(poly, js)
+    @staticmethod
+    def rotate(z, cs, sn):
+        """z e^(i psi) for the complex interval z and the enclosure (cs, sn) of e^(i psi)."""
+        re, im = z
+        return isub(imul(re, cs), imul(im, sn)), iadd(imul(re, sn), imul(im, cs))
+
+    def bounds(self, poly, parts, jpsi: int):
+        """(modulus upper bound, dist lower bound) of the component over the theta box and the
+        psi box jpsi, from the S and A parts."""
+        _, Q, _, mass = poly
+        (Sc, GS), (Ac, GA) = parts
+        cs, sn = self.circle[(2 * jpsi + 1) * (self.M // (2 * self.npsi))]
+        Ar = self.rotate(Ac, cs, sn)
+        Tre, Tim = iadd(Sc[0], Ar[0]), iadd(Sc[1], Ar[1])
+        G = []
+        for p in range(4):
+            gr = self.rotate(GA[p], cs, sn)
+            G.append([iadd(GS[p][0], gr[0]), iadd(GS[p][1], gr[1])])
+        # i A e^(i psi) = (-Im, Re) of the rotated partner
+        G.append([(-Ar[1][1], -Ar[1][0]), Ar[0]])
         A = iadd(isq(Tre), isq(Tim))
         B = sum(cdiv(h * abs_upper(iadd(imul(Tre, g[0]), imul(Tim, g[1]))), S) for h, g in zip(self.h, G))
         Cc = sum(cdiv(h * self.mod_upper(g), S) for h, g in zip(self.h, G))
-        upper = sqrt_upper(A[1] + 2 * B + cdiv(Cc * Cc, S)) + Q
+        upper = min(sqrt_upper(A[1] + 2 * B + cdiv(Cc * Cc, S)) + Q, mass)   # |T| never exceeds the l1 mass
         lower_mod = sqrt_lower(max(0, A[0] - 2 * B)) - Q
         re_margin = Tre[0] - sum(cdiv(h * abs_upper(g[0]), S) for h, g in zip(self.h, G)) - Q
         im_lower = abs_lower(Tim) - sum(cdiv(h * abs_upper(g[1]), S) for h, g in zip(self.h, G)) - Q
         dist = max(0, im_lower, lower_mod if re_margin >= 0 else 0)
         return upper, dist
 
+    def tail_upper(self, poly, parts, jpsi: int) -> int:
+        """Upper bound on |T| of a tail component over the theta box and the psi box jpsi, with
+        the first-order term by the triangle inequality |G_p| <= |G^S_p| + |G^A_p| (so only the
+        centre value depends on psi): |T(c)| + sum_p h_p (|G^S_p| + |G^A_p|) + h_psi |A(c)| + Q,
+        capped by the l1 mass."""
+        _, Q, _, mass = poly
+        (Sc, GS), (Ac, GA) = parts
+        cs, sn = self.circle[(2 * jpsi + 1) * (self.M // (2 * self.npsi))]
+        Ar = self.rotate(Ac, cs, sn)
+        T = (iadd(Sc[0], Ar[0]), iadd(Sc[1], Ar[1]))
+        first = sum(cdiv(h * (self.mod_upper(gs) + self.mod_upper(ga)), S) for h, gs, ga in zip(self.h, GS, GA))
+        first += cdiv(self.h[4] * self.mod_upper(Ac), S)
+        return min(self.mod_upper(T) + first + Q, mass)
+
     def phase_bound(self, member: list[int]) -> int:
         js = self.box_of(member)
-        F = self.bounds(self.head, js)[1]
-        for poly in self.tail:
-            F -= cdiv(poly[0] * self.bounds(poly, js)[0], S)
-        v = (F + self.offset * S) >> (K - self.scale)
+        evaluated = [(poly, self.evaluate(poly, js)) for poly in self.components if poly is not None]
+        best = None
+        for jpsi in range(self.npsi):
+            F = self.bounds(evaluated[0][0], evaluated[0][1], jpsi)[1]
+            for poly, parts in evaluated[1:]:
+                F -= cdiv(poly[0] * self.tail_upper(poly, parts, jpsi), S)
+            best = F if best is None else min(best, F)
+        v = (best - self.loss + self.offset * S) >> (K - self.scale)
         if v < 0:
             return 0
         if v >= 1 << 64:
             raise ValueError("value does not fit in 64 bits")
         return v
 
-
 def numbers(family: Family, prefix: int | None, boxes: bool = False):
     ms = list(itertools.islice(rt.iter_members(family), prefix))
     if rt.prime(family) != NATURALS:
         raise ValueError("heat_dirichlet operations need natural numbers, not elements of a field")
     if boxes:
-        if any(len(m) != 1 or len(m[0]) not in (1, 5) for m in ms):
-            raise ValueError("phase_bound needs 1 x 1 or 1 x 5 members")
+        if any(len(m) != 1 or len(m[0]) not in (1, 4) for m in ms):
+            raise ValueError("phase_bound needs 1 x 1 or 1 x 4 members")
         return ms, [list(m[0]) for m in ms]
     if any(len(m) != 1 or len(m[0]) != 1 for m in ms):
         raise ValueError("heat_dirichlet operations need 1 x 1 members")

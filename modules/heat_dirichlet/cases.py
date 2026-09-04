@@ -22,12 +22,13 @@ CELL = {**BASE, "y_num": 2, "y_den": 10, "n_minus": 700_000, "n_plus": 707_000,
         "primes": 0b11, "c_num": 103, "c_den": 100}
 SIGMA_ARGS = {"t_num": 1579, "t_den": 10000, "y_num": 2, "y_den": 10, "scale": 40}
 # A toy phase-aware cell, N in [20, 21] at y = 0.1 with the Euler mollifier on {2, 3} (rows are
-# d, sign, num, den) and two bins of rough k, on a 4 x 3 x 2 x 2 x 4 torus grid; sigma spans a
-# small range as it does across a cell. Tiny, because the Lean kernel pays for every exponential
-# and every point of the cosine table it touches.
+# d, sign, num, den) and two bins of rough k, on a 4 x 3 x 2 x 2 theta grid with 4 psi samples,
+# the low/high split at m0 = 12 and Taylor order 2 in eps; sigma spans a small range as it does
+# across a cell. Tiny, because the Lean kernel pays for every exponential and every point of the
+# cosine table it touches.
 PHASE = {"t_num": 1579, "t_den": 10000, "sigma_num": 1_500_000_000_000, "sigma_hi_num": 1_505_000_000_000,
          "sigma_den": 1 << 40, "y_num": 1, "y_den": 10, "n_minus": 20, "n_plus": 21, "c_num": 103, "c_den": 100,
-         "g2": 4, "g3": 3, "g5": 2, "g7": 2, "gpsi": 4, "offset": 4, "scale": 40}
+         "g2": 4, "g3": 3, "g5": 2, "g7": 2, "npsi": 4, "m0": 12, "order": 2, "prune": 0, "offset": 4, "scale": 40}
 MOLLIFIER = [[1, 0, 1, 1], [2, 1, 1067, 1000], [3, 1, 1130, 1000], [6, 0, 1206, 1000]]
 BINS = [2, 11, 22]
 
@@ -67,10 +68,15 @@ def cases(ctx, rng):
     ]
 
     phase = {**PHASE, "mollifier": ctx.naturals([MOLLIFIER]), "bins": ctx.naturals([[BINS]])}
-    boxes = ctx.explicit(lk.naturals([[[0, 0, 0, 0, 0]], [[1, 2, 0, 1, 3]], [[3, 1, 1, 0, 2]]]))
+    boxes = ctx.explicit(lk.naturals([[[0, 0, 0, 0]], [[1, 2, 0, 1]], [[3, 1, 1, 0]]]))
     out += [
         Case("boxes by index", ctx.range(0, 6), "phase_bound", phase, reductions=["all", "min", "max"]),
         Case("boxes by coordinates", boxes, "phase_bound", phase, reductions=["all", "min", "sum"]),
+        Case("every term low, order 3, pruned", ctx.range(0, 3), "phase_bound",
+             {**phase, "m0": 21, "order": 3, "prune": 1 << 20, "bins": ctx.naturals([[[2, 5, 11, 22]]])},
+             reductions=["all"]),
+        Case("order 0 with a coarse split", ctx.range(0, 3), "phase_bound", {**phase, "m0": 6, "order": 0},
+             reductions=["all"]),
         Case("coarse histogram", ctx.range(0, 4), "phase_bound", {**phase, "scale": 2}, reductions=["histogram"]),
     ]
 
@@ -108,12 +114,13 @@ def cases(ctx, rng):
              {**CELL, "n0": 700_000, "width": 700, "scale": 40},
              what="the part of that cell above N_- in blocks of 700 (a thousandth of n, which costs the bound well under a percent)",
              bench="sum", oracle=False),
-        # The phase-aware bound on one cell: every box of an 8 x 4 x 4 x 4 x 8 grid, minimised.
-        Case("cell_phase", lambda: ctx.range(0, 8 * 4 * 4 * 4 * 8), "phase_bound",
+        # The phase-aware bound on one cell: every box of a 16 x 8 x 4 x 4 theta grid with 16 psi
+        # samples, minimised.
+        Case("cell_phase", lambda: ctx.range(0, 16 * 8 * 4 * 4), "phase_bound",
              {**PHASE, "n_minus": 7000, "n_plus": 7070, "mollifier": ctx.naturals([MOLLIFIER]),
               "bins": ctx.naturals([[[2] + list(range(11, 7071, 233)) + [7071]]]),
-              "g2": 8, "g3": 4, "g5": 4, "g7": 4, "gpsi": 8},
-             what="the phase-aware bound over every box of an 8 x 4 x 4 x 4 x 8 torus grid for one cell with the {2, 3} Euler mollifier and 31 bins of rough k, minimised",
+              "g2": 16, "g3": 8, "g5": 4, "g7": 4, "npsi": 16, "m0": 300},
+             what="the phase-aware bound over every box of a 16 x 8 x 4 x 4 theta grid with 16 psi samples for one cell with the {2, 3} Euler mollifier and 31 bins of rough k, terms above 300 as loss, minimised",
              bench="min", oracle=False),
     ]
     return out

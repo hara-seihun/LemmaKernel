@@ -42,22 +42,29 @@
 #
 #   F(theta, psi)   = dist(T_1(theta, psi), (-inf, 0]) - sum_{k > 1} b_k k^(-sigma) |T_k(theta, psi)|.
 #
-# The rough k are grouped into the caller's bins [K_i, K_{i+1}); a bin's coefficients are
-# enclosed over its k and the cell's cutoffs, and it costs W_i max |T| with W_i the sum of
-# b_k k^(-sigma) over its rough k. A member is a box of the grid g2 x g3 x g5 x g7 x gpsi on the
-# torus (a `range` index in mixed radix, or an explicit 1 x 5 multi-index); the value is a lower
+# The rough k are grouped into the caller's bins [K_i, K_{i+1}); a bin costs W_i max |T| with
+# W_i the sum of b_k k^(-sigma) over its rough k, and its coefficients are expanded in eps_k
+# about the bin centre k_c = isqrt(K_a K_b) to Taylor order `order` (0 to 3): T_k is enclosed by
+# sum_r delta^r / r! |T^(r)| with T^(r) the polynomial whose terms carry (ln j)^r, delta the
+# largest |eps_k - eps_c| over the bin, and the remainder (delta ln j)^(order+1) / (order+1)!
+# e^(delta ln j) times each term's size charged as a loss. Terms with m > m0 are not evaluated:
+# their l1 mass is charged as a loss too, as is any tail polynomial whose weighted low mass is at
+# most `prune` (at scale 2^48). A member is a theta box of the grid g2 x g3 x g5 x g7 on the
+# torus (a `range` index in mixed radix, or an explicit 1 x 4 multi-index); psi is sampled at
+# npsi boxes inside the operation and the value is the minimum over them. The value is a lower
 # bound on F over the box, plus `offset`, at scale 2^scale, from the centre value, the gradient
 # and the second-order remainder of every polynomial, with terms whose arc over the box exceeds
 # a radian enclosed by their rectangle instead. sigma ranges over [sigma_num, sigma_hi_num] /
 # sigma_den across the cell. The mollifier is an lk.naturals matrix of rows (d, sign, num, den),
 # mu_d = (-1)^sign num / den; the bins are one lk.naturals row 2 = K_0 < K_1 < ... > n_plus.
+# With LK_PHASE_DEBUG set the generic backend reports the component count and the loss on stderr.
 #
 # Arguments to exp above 7 are refused, which keeps every intermediate below 2^63 at scale 2^48.
 
 [module]
 name = "heat_dirichlet"
 version = 1
-summary = "Rigorous fixed-point bounds for heat-weighted Dirichlet polynomials: the weight b_n n^(-sigma), the mollified summand max(|beta - alpha|, r |beta + alpha|) b_n n^(-sigma) at a height y over a range of cutoffs, that summand summed over a block of consecutive n, the lower bound on Re s consumed by the others, and the phase-aware lower bound on dist(E f, (-inf, 0]) over a box of the torus of shared prime phases, which is what the triangle inequality gives up. Members are 1 x 1 natural numbers (boxes may also be 1 x 5); values are integers at scale 2^scale with every rounding directed, so a value is a true bound and the same integer in every implementation. Real parameters are rationals x_num / x_den."
+summary = "Rigorous fixed-point bounds for heat-weighted Dirichlet polynomials: the weight b_n n^(-sigma), the mollified summand max(|beta - alpha|, r |beta + alpha|) b_n n^(-sigma) at a height y over a range of cutoffs, that summand summed over a block of consecutive n, the lower bound on Re s consumed by the others, and the phase-aware lower bound on dist(E f, (-inf, 0]) over a box of the torus of shared prime phases, which is what the triangle inequality gives up. Members are 1 x 1 natural numbers (boxes may also be 1 x 4); values are integers at scale 2^scale with every rounding directed, so a value is a true bound and the same integer in every implementation. Real parameters are rationals x_num / x_den."
 
 lean = "lean"
 contract = "lean/Heat_dirichlet/Contract.lean"
@@ -89,9 +96,9 @@ summary = "For the member k, an upper bound on 2^scale sup over cutoffs N in [N_
 [[operations]]
 name = "phase_bound"
 value = "integer"
-args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_hi_num = "int", sigma_den = "int", y_num = "int", y_den = "int", n_minus = "int", n_plus = "int", c_num = "int", c_den = "int", g2 = "int", g3 = "int", g5 = "int", g7 = "int", gpsi = "int", offset = "int", scale = "int", mollifier = "vectors", bins = "vectors" }
+args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_hi_num = "int", sigma_den = "int", y_num = "int", y_den = "int", n_minus = "int", n_plus = "int", c_num = "int", c_den = "int", g2 = "int", g3 = "int", g5 = "int", g7 = "int", npsi = "int", m0 = "int", order = "int", prune = "int", offset = "int", scale = "int", mollifier = "vectors", bins = "vectors" }
 families = ["range", "explicit"]
-summary = "For the member box of the torus grid g2 x g3 x g5 x g7 x gpsi (a range index in mixed radix, or a 1 x 5 multi-index), a lower bound on 2^scale (offset + F) rounded down and clamped at 0, where F is the phase-aware bound inf over the box of dist(T_1, (-inf, 0]) - sum_{k > 1} b_k k^(-sigma) |T_k| of the module description, with the mollifier (rows d, sign, num, den) and the bins of rough k given as lk.naturals arguments and sigma in [sigma_num, sigma_hi_num] / sigma_den."
+summary = "For the member theta box of the torus grid g2 x g3 x g5 x g7 (a range index in mixed radix, or a 1 x 4 multi-index), a lower bound on 2^scale (offset + F) rounded down and clamped at 0, where F is the phase-aware bound inf over the box and over psi (sampled at npsi boxes) of dist(T_1, (-inf, 0]) - sum_{k > 1} b_k k^(-sigma) |T_k| of the module description, with the mollifier (rows d, sign, num, den) and the bins of rough k given as lk.naturals arguments, sigma in [sigma_num, sigma_hi_num] / sigma_den, terms above m0 and Taylor remainders in eps past `order` charged as losses, and tail polynomials of weighted mass at most `prune` (scale 2^48) pruned into the loss."
 
 [[operations]]
 name = "sigma_lower"

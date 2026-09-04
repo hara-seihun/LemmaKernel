@@ -38,17 +38,26 @@ polynomial is `∑_k b_k k^{-sigma} e^{iφ_k} T_k(θ, ψ)` with free rough phase
 
 and `dist(E f, (−∞, 0]) ≥ F(θ, ψ) − |E| Z` with
 `F(θ, ψ) = dist(T₁(θ, ψ), (−∞, 0]) − ∑_{k > 1} b_k k^{-sigma} |T_k(θ, ψ)|`. The rough `k` are
-grouped into the caller's bins `[K_i, K_{i+1})`; a bin's coefficients are enclosed over its `k` and
-the cell's cutoffs (a term whose cutoff condition depends on `k` or `N` is hulled with `0`), and it
-costs `W_i max |T|`, `W_i = ∑ b_k k^{-sigma}` over its rough `k`. A member is a box of the grid
-`g2 × g3 × g5 × g7 × gpsi` on the torus, as a mixed-radix index or a 1 x 5 row; the value is a
-lower bound on `F` over the box from the centre value, the gradient and the second-order remainder
-`|e^{ix} − 1 − ix| ≤ x²/2` of every polynomial (a term whose arc over the box exceeds a radian is
-enclosed by its rectangle instead), plus `offset`, at scale `2^scale`, clamped at `0`.
+grouped into the caller's bins `[K_i, K_{i+1})`; a bin costs `W_i max |T|`, `W_i = ∑ b_k k^{-sigma}`
+over its rough `k`, and its coefficients are taken at the centre `k_c = ⌊√(K_a K_b)⌋` and expanded
+in `ε_k` about `ε_c` to Taylor order `order`: `(m/d)^{ε_k} = (m/d)^{ε_c} ∑_r (δ ln(m/d))^r / r!`
+plus a remainder, so `|T_k| ≤ ∑_r |T^{(r)}|` with `T^{(r)}` the component whose terms carry
+`(δ ln j)^r / r!`, `δ` the largest `|ε_k − ε_c|` over the bin; the remainder,
+`(δ ln j)^{order+1} / (order+1)! e^{δ ln j}` times each term's size, is a loss. A term whose cutoff
+condition `mk/d ≤ N` depends on `k` in the bin or on `N` is hulled with `0`. Terms with `m > m0`
+are not evaluated: their `ℓ¹` mass is a loss too, as is any tail component whose weighted mass is
+at most `prune` (scale `2^48`). A member is a `θ` box of the grid `g2 × g3 × g5 × g7` on the
+torus, as a mixed-radix index or a 1 x 4 row; `ψ` is sampled at `npsi` boxes inside the operation
+and the value is the minimum over them: a lower bound on `F` over the box from the centre value,
+the gradient and the second-order remainder `|e^{ix} − 1 − ix| ≤ x²/2` of every component (the
+head precisely, a tail component with the first-order term by the triangle inequality
+`|∂_p T| ≤ |∂_p S| + |∂_p A|`, capped by its mass; a term whose arc over the box exceeds a radian is
+enclosed by its rectangle instead), minus the losses, plus `offset`, at scale `2^scale`, clamped
+at `0`.
 
 Arguments to `exp` above `7` make an operation `.invalid`, as they do in the backend, whose
 128-bit words this limit protects. Members are single natural numbers (a `range` family or an
-`explicit` family of 1 x 1 `lk.naturals` members; `phaseBound` also takes 1 x 5 members);
+`explicit` family of 1 x 1 `lk.naturals` members; `phaseBound` also takes 1 x 4 members);
 anything else is `.invalid`.
 -/
 
@@ -361,7 +370,7 @@ def smoothNumbers (limit : Nat) : List (Nat × List Nat) :=
 
 def isRough (k : Nat) : Bool := Nat.gcd k 210 = 1
 
-/-- One term of a polynomial: its smooth index, both coefficient enclosures, the half-angle it
+/-- One term of a component: its exponent vector, both coefficient enclosures, the half-angle it
 sweeps over a box (radians at scale `S`) and that half-angle in table steps. -/
 structure Term where
   v : List Nat
@@ -370,23 +379,29 @@ structure Term where
   vh : Int
   X : Nat
 
-/-- A polynomial: its weight, its second-order constant and its terms. -/
+/-- A component: its weight, its second-order constant, the `ℓ¹` mass of its terms (which `|T|`
+never exceeds) and the terms over the low `m ≤ m0`. -/
 structure Poly where
   W : Int
   Q : Int
+  mass : Int
   terms : List Term
 
 structure PhaseParams where
   base : Params
   sigmaHiNum : Int
   g : List Nat
+  npsi : Nat
+  m0 : Nat
+  order : Nat
+  prune : Int
   offset : Int
   mollifier : List (Nat × Int × Int)
   bins : List Nat
 
 def PhaseParams.valid (P : PhaseParams) : Bool :=
-  P.base.valid ∧ P.base.sigmaNum ≤ P.sigmaHiNum ∧ P.g.length = 5 ∧ P.g.all (0 < ·) ∧
-  0 ≤ P.offset ∧
+  P.base.valid ∧ P.base.sigmaNum ≤ P.sigmaHiNum ∧ P.g.length = 4 ∧ P.g.all (0 < ·) ∧
+  0 < P.npsi ∧ 0 < P.m0 ∧ P.order ≤ 3 ∧ 0 ≤ P.prune ∧ 0 ≤ P.offset ∧
   P.mollifier.all (fun (d, _, den) => 1 ≤ d ∧ d ≤ P.base.nPlus ∧ 0 < den ∧
     (smoothNumbers d).any fun (m, _) => m = d) ∧
   (P.mollifier.map (·.1)).Nodup ∧
@@ -395,23 +410,32 @@ def PhaseParams.valid (P : PhaseParams) : Bool :=
 
 def PhaseParams.sigmaIv (P : PhaseParams) : Iv :=
   (fdiv (S * P.base.sigmaNum) P.base.sigmaDen, cdiv (S * P.sigmaHiNum) P.base.sigmaDen)
-def PhaseParams.M (P : PhaseParams) : Nat := 4 * P.g.foldl Nat.lcm 1
-def PhaseParams.h (P : PhaseParams) : List Int := P.g.map fun (x : Nat) => cdiv piU (Int.ofNat x)
+/-- The five grid sizes: the four of `θ` and `npsi`. -/
+def PhaseParams.g5 (P : PhaseParams) : List Nat := P.g ++ [P.npsi]
+def PhaseParams.M (P : PhaseParams) : Nat := 4 * P.g5.foldl Nat.lcm 1
+def PhaseParams.h (P : PhaseParams) : List Int := P.g5.map fun (x : Nat) => cdiv piU (Int.ofNat x)
 def PhaseParams.dmax (P : PhaseParams) : Nat := P.mollifier.foldl (fun a (d, _, _) => max a d) 1
 def PhaseParams.smooth (P : PhaseParams) : List (Nat × List Nat) :=
   smoothNumbers (P.dmax * P.base.nPlus)
 def PhaseParams.lnN (P : PhaseParams) : Iv := lnBounds P.base.nMinus
 def PhaseParams.circle (P : PhaseParams) (J : Nat) : Iv × Iv := unitCircle P.M J
+/-- `ε_k = (t/2) ln k` enclosed. -/
+def PhaseParams.eps (P : PhaseParams) (k : Nat) : Iv := iscale (lnBounds k) P.base.tNum (2 * P.base.tDen)
 
-/-- The coefficient enclosures of `T_k` over rough `k ∈ [ka, kb]` and the cell's cutoffs, and the
-second-order constant; `none` past the exponential limit or when the mass exceeds `16`. -/
-def PhaseParams.polynomial (P : PhaseParams) (ka kb : Nat) (head : Bool) : Option Poly := do
+/-- The component with weight `W` at the bin centre `kc`: coefficient enclosures over the cell's
+cutoffs (a term whose cutoff condition depends on `k ∈ [ka, kb]` or on `N` is hulled with `0`),
+every term times `(δ ln j)^r / r!`; terms with `m > m0` and, in the `r = 0` pass of a tail bin,
+the Taylor remainder go to the returned loss. `none` past the exponential limit or when the mass
+exceeds `16`; `some (none, loss)` when the component is pruned. -/
+def PhaseParams.polynomial (P : PhaseParams) (kc W : Int) (ka kb : Nat) (r : Nat) (head : Bool)
+    (delta : Int) : Option (Option Poly × Int) := do
   let B := P.base
-  let Lk : Iv := if head then (0, 0) else ((lnBounds ka).1, (lnBounds kb).2)
+  let Lk : Iv := if head then (0, 0) else lnBounds kc.toNat
   let h4 := P.h.getD 4 0
-  let (terms, mass, Q) ← P.smooth.foldlM (fun (acc : List Term × Int × Int) (m, v) => do
+  let (terms, massLow, massHigh, rem, Q) ← P.smooth.foldlM
+    (fun (acc : List Term × Int × Int × Int × Int) (m, v) => do
     let Lm := lnBounds m
-    let (cS, cA) ← P.mollifier.foldlM (fun (c : Iv × Iv) (d, num, den) => do
+    let (cS, cA, rem) ← P.mollifier.foldlM (fun (c : Iv × Iv × Int) (d, num, den) => do
       if m % d ≠ 0 then pure c else
       let j := m / d
       if j * ka > B.nPlus then pure c else
@@ -425,19 +449,33 @@ def PhaseParams.polynomial (P : PhaseParams) (ka kb : Nat) (head : Bool) : Optio
       let main := iscale main num den
       let part ← iexp ePart
       let part := iscale (iscale part num den) B.cNum B.cDen
+      let (main, part) := (List.range r).foldl (fun (mp : Iv × Iv) (q : Nat) =>
+        let den : Int := S * (Int.ofNat q + 1)
+        (iscale (imul mp.1 Lj) delta den, iscale (imul mp.2 Lj) delta den))
+        (main, part)
       let main := if certain then main else (min main.1 0, max main.2 0)
       let part := if certain then part else (min part.1 0, max part.2 0)
-      pure (iadd c.1 main, iadd c.2 part)) ((0, 0), (0, 0))
-    if cS = (0, 0) ∧ cA = (0, 0) then pure acc else
-    let vh := ((v.zip P.h).map fun (vp, hp) => vp * hp).sum
-    let X := ((v.zip P.g).map fun (vp, gx) => vp * (P.M / (2 * gx))).sum
+      let rem ← if r = 0 ∧ !head ∧ 1 < j then do
+          let x := cdiv (delta * Lj.2) S
+          let ex ← expUpper x
+          let factor := cdiv (powfact x (P.order + 1) false * ex) S
+          pure (c.2.2 + cdiv ((absUpper main + absUpper part) * factor) S)
+        else pure c.2.2
+      pure (iadd c.1 main, iadd c.2.1 part, rem)) ((0, 0), (0, 0), acc.2.2.2.1)
+    let (terms, massLow, massHigh, _, Q) := acc
+    if cS = (0, 0) ∧ cA = (0, 0) then pure (terms, massLow, massHigh, rem, Q) else
     let aS := absUpper cS
     let aA := absUpper cA
-    let Q := acc.2.2 + (if vh ≤ S then cdiv (aS * cdiv (vh * vh) S) S else 0)
+    if m > P.m0 then pure (terms, massLow, massHigh + aS + aA, rem, Q) else
+    let vh := ((v.zip P.h).map fun (vp, hp) => vp * hp).sum
+    let X := ((v.zip P.g).map fun (vp, gx) => vp * (P.M / (2 * gx))).sum
+    let Q := Q + (if vh ≤ S then cdiv (aS * cdiv (vh * vh) S) S else 0)
       + (if vh + h4 ≤ S then cdiv (aA * cdiv ((vh + h4) * (vh + h4)) S) S else 0)
-    pure ({ v, cS, cA, vh, X } :: acc.1, acc.2.1 + aS + aA, Q)) ([], 0, 0)
-  if mass > 16 * S then none else
-  pure { W := 1, Q := cdiv Q 2, terms := terms.reverse }
+    pure ({ v, cS, cA, vh, X } :: terms, massLow + aS + aA, massHigh, rem, Q)) ([], 0, 0, 0, 0)
+  if massLow + massHigh > 16 * S then none else
+  let loss := cdiv (W * (massHigh + rem)) S
+  if !head ∧ cdiv (W * massLow) S ≤ P.prune then pure (none, loss + cdiv (W * massLow) S) else
+  pure (some { W, Q := cdiv Q 2, mass := massLow, terms := terms.reverse }, loss)
 
 /-- Enclosures of `cos` and `sin` over the arc of table steps `[J − X, J + X]`: an extremum lies
 inside when the arc holds a step congruent to it, otherwise the ends are extreme. -/
@@ -455,88 +493,131 @@ def PhaseParams.arc (P : PhaseParams) (J X : Nat) : Iv × Iv :=
   let sinLo := if contains (3 * M / 4) then -S else min sa.1 sb.1
   ((cosLo, cosHi), (sinLo, sinHi))
 
-/-- The box of a member: a mixed-radix index, or five coordinates. -/
+/-- The `θ` box of a member: a mixed-radix index, or four coordinates. -/
 def PhaseParams.boxOf (P : PhaseParams) (member : List Nat) : Option (List Nat) :=
   match member with
   | [i] =>
     let (js, rest) := P.g.reverse.foldl (fun (acc : List Nat × Nat) gx => (acc.2 % gx :: acc.1, acc.2 / gx)) ([], i)
     if rest = 0 then some js else none
   | js =>
-    if js.length = 5 ∧ (js.zip P.g).all (fun (j, gx) => j < gx) then some js else none
+    if js.length = 4 ∧ (js.zip P.g).all (fun (j, gx) => j < gx) then some js else none
 
-/-- The complex interval `Tre + i Tim` and the five gradient components of a polynomial on the box. -/
-structure Eval where
-  Tre : Iv
-  Tim : Iv
+/-- A complex interval and its four `θ` gradient components. -/
+structure Part where
+  T : Iv × Iv
   G : List (Iv × Iv)
 
-def PhaseParams.evaluate (P : PhaseParams) (poly : Poly) (js : List Nat) : Eval :=
+/-- The `S` and `A` parts of a component on the `θ` box: centre values and gradients, the terms
+whose arc over the box exceeds a radian enclosed by their rectangle (with no gradient). -/
+def PhaseParams.evaluate (P : PhaseParams) (poly : Poly) (js : List Nat) : Part × Part :=
   let steps := (js.zip P.g).map fun (j, gx) => (2 * j + 1) * (P.M / (2 * gx))
-  let s4 := steps.getD 4 0
-  let g4 := P.g.getD 4 1
   let h4 := P.h.getD 4 0
-  let one (e : Eval) (term : Term) (c : Iv) (JJ XX : Nat) (taylor part : Bool) : Eval :=
+  let one (e : Part) (term : Term) (c : Iv) (J : Nat) (partner : Bool) : Part :=
     if c = (0, 0) then e else
+    let taylor := if partner then term.vh + h4 ≤ S else term.vh ≤ S
     if !taylor then
-      let (cs, sn) := P.arc JJ XX
-      { e with Tre := iadd e.Tre (imul c cs), Tim := iadd e.Tim (imul c sn) }
+      let (cs, sn) := P.arc J (if partner then term.X + P.M / (2 * P.npsi) else term.X)
+      { e with T := (iadd e.T.1 (imul c cs), iadd e.T.2 (imul c sn)) }
     else
-      let (cs, sn) := P.circle JJ
+      let (cs, sn) := P.circle J
       let wre := imul c cs
       let wim := imul c sn
-      let G := (List.range 5).map fun p =>
+      let G := (List.range 4).map fun p =>
         let (g0, g1) := e.G.getD p ((0, 0), (0, 0))
-        if p < 4 then
-          let vp : Int := term.v.getD p 0
-          if vp = 0 then (g0, g1)
-          else (iadd g0 (-vp * wim.2, -vp * wim.1), iadd g1 (vp * wre.1, vp * wre.2))
-        else if part then (iadd g0 (-wim.2, -wim.1), iadd g1 wre) else (g0, g1)
-      { Tre := iadd e.Tre wre, Tim := iadd e.Tim wim, G := G }
-  poly.terms.foldl (fun e term =>
+        let vp : Int := term.v.getD p 0
+        if vp = 0 then (g0, g1)
+        else (iadd g0 (-vp * wim.2, -vp * wim.1), iadd g1 (vp * wre.1, vp * wre.2))
+      { T := (iadd e.T.1 wre, iadd e.T.2 wim), G := G }
+  let zero : Part := { T := ((0, 0), (0, 0)), G := List.replicate 4 ((0, 0), (0, 0)) }
+  poly.terms.foldl (fun (e : Part × Part) term =>
     let J := ((term.v.zip steps).map fun (vp, sp) => vp * sp).sum % P.M
-    let e := one e term term.cS J term.X (decide (term.vh ≤ S)) false
-    one e term term.cA ((J + s4) % P.M) (term.X + P.M / (2 * g4)) (decide (term.vh + h4 ≤ S)) true)
-    { Tre := (0, 0), Tim := (0, 0), G := List.replicate 5 ((0, 0), (0, 0)) }
+    (one e.1 term term.cS J false, one e.2 term term.cA J true)) (zero, zero)
 
 def modUpper (z : Iv × Iv) : Int :=
   let ar := absUpper z.1
   let ai := absUpper z.2
   sqrtUpper (cdiv (ar * ar) S + cdiv (ai * ai) S)
 
-/-- `(upper bound on |T|, lower bound on dist(T, (−∞, 0]))` over the box. -/
-def PhaseParams.bounds (P : PhaseParams) (poly : Poly) (js : List Nat) : Int × Int :=
-  let e := P.evaluate poly js
-  let hg := P.h.zip e.G
-  let A := iadd (isq e.Tre) (isq e.Tim)
-  let B := (hg.map fun (h, g) => cdiv (h * absUpper (iadd (imul e.Tre g.1) (imul e.Tim g.2))) S).sum
+/-- `z e^{iψ}` for the enclosure `(cs, sn)` of `e^{iψ}`. -/
+def rotate (z : Iv × Iv) (cs sn : Iv) : Iv × Iv :=
+  (isub (imul z.1 cs) (imul z.2 sn), iadd (imul z.1 sn) (imul z.2 cs))
+
+/-- `e^{iψ}` at the centre of the `ψ` box `jpsi`. -/
+def PhaseParams.psiCircle (P : PhaseParams) (jpsi : Nat) : Iv × Iv :=
+  P.circle ((2 * jpsi + 1) * (P.M / (2 * P.npsi)))
+
+/-- `(upper bound on |T|, lower bound on dist(T, (−∞, 0]))` of a component over the `θ` box and
+the `ψ` box, precisely: the five gradient components of `T = S + e^{iψ} A` are
+`∂_p S + e^{iψ} ∂_p A` and `i e^{iψ} A`. -/
+def PhaseParams.bounds (P : PhaseParams) (poly : Poly) (parts : Part × Part) (jpsi : Nat) :
+    Int × Int :=
+  let (cs, sn) := P.psiCircle jpsi
+  let Ar := rotate parts.2.T cs sn
+  let Tre := iadd parts.1.T.1 Ar.1
+  let Tim := iadd parts.1.T.2 Ar.2
+  let G := ((List.range 4).map fun p =>
+    let gs := parts.1.G.getD p ((0, 0), (0, 0))
+    let ga := rotate (parts.2.G.getD p ((0, 0), (0, 0))) cs sn
+    (iadd gs.1 ga.1, iadd gs.2 ga.2)) ++ [((-Ar.2.2, -Ar.2.1), Ar.1)]
+  let hg := P.h.zip G
+  let A := iadd (isq Tre) (isq Tim)
+  let B := (hg.map fun (h, g) => cdiv (h * absUpper (iadd (imul Tre g.1) (imul Tim g.2))) S).sum
   let Cc := (hg.map fun (h, g) => cdiv (h * modUpper g) S).sum
-  let upper := sqrtUpper (A.2 + 2 * B + cdiv (Cc * Cc) S) + poly.Q
+  let upper := min (sqrtUpper (A.2 + 2 * B + cdiv (Cc * Cc) S) + poly.Q) poly.mass
   let lowerMod := sqrtLower (max 0 (A.1 - 2 * B)) - poly.Q
-  let reMargin := e.Tre.1 - (hg.map fun (h, g) => cdiv (h * absUpper g.1) S).sum - poly.Q
-  let imLower := absLower e.Tim - (hg.map fun (h, g) => cdiv (h * absUpper g.2) S).sum - poly.Q
+  let reMargin := Tre.1 - (hg.map fun (h, g) => cdiv (h * absUpper g.1) S).sum - poly.Q
+  let imLower := absLower Tim - (hg.map fun (h, g) => cdiv (h * absUpper g.2) S).sum - poly.Q
   let dist := max 0 (max imLower (if reMargin ≥ 0 then lowerMod else 0))
   (upper, dist)
 
-/-- The head and the bins' polynomials, computed once per request. -/
-def PhaseParams.polys (P : PhaseParams) : Option (Poly × List Poly) := do
-  let head ← P.polynomial 1 1 true
-  let tail ← (P.bins.zip P.bins.tail).foldlM (fun (acc : List Poly) (lo, hi) => do
+/-- Upper bound on `|T|` of a tail component over the `θ` box and the `ψ` box, the first-order
+term by the triangle inequality so that only the centre value depends on `ψ`:
+`|T(c)| + ∑_p h_p (|∂_p S| + |∂_p A|) + h_ψ |A(c)| + Q`, capped by the mass. -/
+def PhaseParams.tailUpper (P : PhaseParams) (poly : Poly) (parts : Part × Part) (jpsi : Nat) : Int :=
+  let (cs, sn) := P.psiCircle jpsi
+  let Ar := rotate parts.2.T cs sn
+  let T := (iadd parts.1.T.1 Ar.1, iadd parts.1.T.2 Ar.2)
+  let first := ((List.range 4).map fun p =>
+    cdiv (P.h.getD p 0 * (modUpper (parts.1.G.getD p ((0, 0), (0, 0))) + modUpper (parts.2.G.getD p ((0, 0), (0, 0))))) S).sum
+    + cdiv (P.h.getD 4 0 * modUpper parts.2.T) S
+  min (modUpper T + first + poly.Q) poly.mass
+
+/-- The head and the bins' components with the total loss, computed once per request: for each
+bin its rough range `[ka, kb]`, weight `W`, centre `kc` and `δ`, then one component per Taylor
+order. -/
+def PhaseParams.polys (P : PhaseParams) : Option (Poly × List Poly × Int) := do
+  let (head, loss) ← P.polynomial 1 S 1 1 0 true 0
+  let head ← head
+  let (tail, loss) ← (P.bins.zip P.bins.tail).foldlM (fun (acc : List Poly × Int) (lo, hi) => do
     let ks := ((List.range (min hi (P.base.nPlus + 1) - lo)).map (lo + ·)).filter isRough
     match ks with
     | [] => pure acc
-    | k0 :: _ =>
+    | ka :: _ =>
+      let kb := ks.getLastD ka
       let W ← ks.foldlM (fun w k => do
         let g ← P.base.gUpper (lnBounds k)
         pure (w + g)) (0 : Int)
-      let poly ← P.polynomial k0 (ks.getLastD k0) false
-      pure ({ poly with W := W } :: acc)) []
-  pure (head, tail.reverse)
+      let kc := Nat.sqrt (ka * kb)
+      let ec := P.eps kc
+      let ea := P.eps ka
+      let eb := P.eps kb
+      let delta := max (max (ec.2 - ea.1) (eb.2 - ec.1)) 0
+      (List.range (P.order + 1)).foldlM (fun (acc : List Poly × Int) r => do
+        let (poly, l) ← P.polynomial kc W ka kb r false delta
+        pure (match poly with | some q => q :: acc.1 | none => acc.1, acc.2 + l)) acc) ([], loss)
+  if loss > 16 * S then none else
+  pure (head, tail.reverse, loss)
 
-def PhaseParams.phaseBound (P : PhaseParams) (head : Poly) (tail : List Poly) (member : List Nat) :
-    Option Nat := do
+def PhaseParams.phaseBound (P : PhaseParams) (head : Poly) (tail : List Poly) (loss : Int)
+    (member : List Nat) : Option Nat := do
   let js ← P.boxOf member
-  let F := tail.foldl (fun F poly => F - cdiv (poly.W * (P.bounds poly js).1) S) (P.bounds head js).2
-  let v := fdiv (F + P.offset * S) (2 ^ (K - P.base.scale))
+  let hp := P.evaluate head js
+  let tp := tail.map fun poly => (poly, P.evaluate poly js)
+  let Fs := (List.range P.npsi).map fun jpsi =>
+    tp.foldl (fun F (poly, parts) => F - cdiv (poly.W * P.tailUpper poly parts jpsi) S)
+      (P.bounds head hp jpsi).2
+  let best := Fs.foldl min (Fs.headD 0)
+  let v := fdiv (best - loss + P.offset * S) (2 ^ (K - P.base.scale))
   if v < 0 then some 0 else if v ≥ 2 ^ 64 then none else some v.toNat
 
 /-- The mollifier rows `(d, sign, num, den)` as `(d, ±num, den)`; `none` for a malformed row. -/
@@ -556,7 +637,7 @@ inductive Op
       scale : Nat)
   | sigmaLower (tNum tDen yNum yDen scale : Nat)
   | phaseBound (tNum tDen sigmaNum sigmaHiNum sigmaDen yNum yDen nMinus nPlus cNum cDen
-      g2 g3 g5 g7 gpsi offset scale : Nat) (mollifier bins : List (List Nat))
+      g2 g3 g5 g7 npsi m0 order prune offset scale : Nat) (mollifier bins : List (List Nat))
 
 /-- No operation materialises a per-member value; every reduction is over integers. -/
 inductive Value
@@ -575,23 +656,24 @@ def Op.params : Op → Params
   | .sigmaLower tNum tDen yNum yDen scale =>
     { tNum, tDen, sigmaNum := 0, sigmaDen := 1, yNum, yDen, nMinus := 1, nPlus := 1,
       primes := [], cNum := 1, cDen := 1, n0 := 0, width := 1, scale }
-  | .phaseBound tNum tDen sigmaNum _ sigmaDen yNum yDen nMinus nPlus cNum cDen _ _ _ _ _ _ scale _ _ =>
+  | .phaseBound tNum tDen sigmaNum _ sigmaDen yNum yDen nMinus nPlus cNum cDen _ _ _ _ _ _ _ _ _ scale _ _ =>
     { tNum, tDen, sigmaNum, sigmaDen, yNum, yDen, nMinus, nPlus, primes := [], cNum, cDen,
       n0 := 0, width := 1, scale }
 
 /-- The phase-aware request, or `none` when it is not one. -/
 def Op.phaseParams : Op → Option PhaseParams
-  | op@(.phaseBound _ _ _ sigmaHiNum _ _ _ _ _ _ _ g2 g3 g5 g7 gpsi offset _ mollifier bins) => do
+  | op@(.phaseBound _ _ _ sigmaHiNum _ _ _ _ _ _ _ g2 g3 g5 g7 npsi m0 order prune offset _ mollifier bins) => do
     let mollifier ← readMollifier mollifier
     let bins ← match bins with | [row] => some row | _ => none
-    pure { base := op.params, sigmaHiNum, g := [g2, g3, g5, g7, gpsi], offset, mollifier, bins }
+    pure { base := op.params, sigmaHiNum, g := [g2, g3, g5, g7], npsi, m0, order, prune, offset,
+           mollifier, bins }
   | _ => none
 
-/-- The boxes a family presents: single naturals or rows of five. -/
+/-- The boxes a family presents: single naturals or rows of four. -/
 def boxes? : Family → Option (List (List Nat))
   | .range a b => some ((List.range (b - a)).map fun i => [a + i])
   | .explicit p batch =>
-    if p = Lk.naturals ∧ batch.all fun m => m.length = 1 ∧ ((m.headD []).length = 1 ∨ (m.headD []).length = 5) then
+    if p = Lk.naturals ∧ batch.all fun m => m.length = 1 ∧ ((m.headD []).length = 1 ∨ (m.headD []).length = 4) then
       some (batch.map fun m => m.headD [])
     else none
   | _ => none
@@ -613,8 +695,8 @@ def run (op : Op) (f : Family) (red : Red) : Result Value :=
       if !P.valid then .invalid else
       match P.polys with
       | none => .invalid
-      | some (head, tail) =>
-        match bs.mapM (P.phaseBound head tail) with
+      | some (head, tail, loss) =>
+        match bs.mapM (P.phaseBound head tail loss) with
         | none => .invalid
         | some vs => reduceInt red f.members vs
     | _, _ => .invalid

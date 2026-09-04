@@ -155,21 +155,20 @@ def F (N : ℕ) (θ : Fin 4 → ℝ) (ψ : ℝ) : ℝ :=
   Metric.infDist (T Q 1 N θ ψ) {z : ℂ | z.im = 0 ∧ z.re ≤ 0}
     - ((roughs Q).map fun k => b Q.base k * (k : ℝ) ^ (-sigma Q.base) * ‖T Q k N θ ψ‖).sum
 
-/-- The box of the torus a member names: `θ_p ∈ 2π [j_p, j_p + 1] / g_p`, `ψ` likewise. -/
-def InBox (js : List ℕ) (θ : Fin 4 → ℝ) (ψ : ℝ) : Prop :=
-  (∀ i : Fin 4, 2 * π * (js.getD i 0 : ℝ) / (Q.g.getD i 1 : ℝ) ≤ θ i ∧
-    θ i ≤ 2 * π * ((js.getD i 0 : ℝ) + 1) / (Q.g.getD i 1 : ℝ)) ∧
-  2 * π * (js.getD 4 0 : ℝ) / (Q.g.getD 4 1 : ℝ) ≤ ψ ∧
-    ψ ≤ 2 * π * ((js.getD 4 0 : ℝ) + 1) / (Q.g.getD 4 1 : ℝ)
+/-- The `θ` box of the torus a member names: `θ_p ∈ 2π [j_p, j_p + 1] / g_p`. -/
+def InBox (js : List ℕ) (θ : Fin 4 → ℝ) : Prop :=
+  ∀ i : Fin 4, 2 * π * (js.getD i 0 : ℝ) / (Q.g.getD i 1 : ℝ) ≤ θ i ∧
+    θ i ≤ 2 * π * ((js.getD i 0 : ℝ) + 1) / (Q.g.getD i 1 : ℝ)
 
 /-- The value returned for a box, minus the offset, is below `F` at every point of the box, every
-cutoff of the cell, and every real part `sigma'` in `[sigma, sigmaHi]` (the reference is evaluated
-with `sigma` enclosed by that interval; the statement fixes the lower end for readability and the
-intended proof carries the interval). The clamp at `0` only weakens the bound. -/
-theorem phaseBound_spec (hQ : Q.valid = true) (head : Poly) (tail : List Poly)
-    (hp : Q.polys = some (head, tail)) (member js : List ℕ) (hj : Q.boxOf member = some js)
-    (o : ℕ) (h : Q.phaseBound head tail member = some o) (N : ℕ) (hc : InCell Q.base N)
-    (θ : Fin 4 → ℝ) (ψ : ℝ) (hb : InBox Q js θ ψ) :
+`ψ`, every cutoff of the cell, and every real part `sigma'` in `[sigma, sigmaHi]` (the reference
+is evaluated with `sigma` enclosed by that interval; the statement fixes the lower end for
+readability and the intended proof carries the interval). The clamp at `0` only weakens the
+bound. -/
+theorem phaseBound_spec (hQ : Q.valid = true) (head : Poly) (tail : List Poly) (loss : ℤ)
+    (hp : Q.polys = some (head, tail, loss)) (member js : List ℕ) (hj : Q.boxOf member = some js)
+    (o : ℕ) (h : Q.phaseBound head tail loss member = some o) (N : ℕ) (hc : InCell Q.base N)
+    (θ : Fin 4 → ℝ) (ψ : ℝ) (hb : InBox Q js θ) :
     (o : ℝ) / (2 : ℝ) ^ Q.base.scale - (Q.offset : ℝ) ≤ F Q N θ ψ := by
   sorry
 
