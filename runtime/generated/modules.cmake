@@ -18,7 +18,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/char_poly/backend
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/characters/backends/generic/characters_generic.cpp)
 # module characters: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/circuit_fires/backends/reduced_polynomial/circuit_fires.cpp)
-# module circuit_fires: backends ['reduced_polynomial']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/circuit_fires/backends/line_quotient/circuit_fires_line_quotient.cpp)
+# module circuit_fires: backends ['reduced_polynomial', 'line_quotient']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/circulants/backends/generic/circulants_generic.cpp)
 # module circulants: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/code_equivalence/backends/generic/code_equivalence_generic.cpp)

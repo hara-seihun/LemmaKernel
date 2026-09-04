@@ -1,13 +1,13 @@
 {
  "module": "circuit_fires",
  "fingerprint": {
-  "module": "3963d881f84e3ce4411d8ea12f80dcfd968010c0e5e2ab9311a4041bce7f6934",
-  "runtime": "f25e5156c69314958ed9268363560419664be4213b5167e5c33c5a22b2c597d1",
+  "module": "0d6a584141541dfe2c05c5e0c57b725d480ca82ba5e7b828b922e4cecab85ab7",
+  "runtime": "e78ee3c51fbe213b46fefc8792b6b1c1932d54cf4d1c3292ced2de12510c02b3",
   "dependencies": [],
-  "combined": "6a4e33e0fb8db828f6e1784250f27c4652f6d415f01bf9ea1026866de9108521"
+  "combined": "858c70254251a66dd3dcdb70f1c784ac007330c94bede0ac191d43c21ba6f770"
  },
- "measured_at": "2026-09-04T01:56:50+00:00",
- "commit": "32186328c0abc3178119541e19fc530d906fa30c",
+ "measured_at": "2026-09-04T03:25:19+00:00",
+ "commit": "8785a732e3862cb9128ce06ce856140fec0a75e6",
  "machine": {
   "host": "gmktec",
   "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
@@ -21,13 +21,13 @@
    "op": "circuit_fires.is_fire",
    "reduction": "all",
    "members": 1,
-   "naive_s": 0.0008312307763844728,
+   "naive_s": 0.0008481398690491915,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 1.0509975254535675e-05,
-   "kernel_all_threads_s": 7.960014045238495e-06,
+   "kernel_1_thread_s": 1.1828960850834846e-05,
+   "kernel_all_threads_s": 8.699949830770493e-06,
    "threads": 32,
-   "speedup_1_thread": 79.08969871510855,
-   "speedup_all_threads": 104.42579267579268,
+   "speedup_1_thread": 71.70028540497982,
+   "speedup_all_threads": 97.48790344163143,
    "answer": "Integers(values=[1])"
   }
  ]

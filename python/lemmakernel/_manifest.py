@@ -676,7 +676,16 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                 'summary': 'Portable C++: exact row reduction. Fire existence uses the reduced-polynomial '
                            'dual criterion and caches each scalar finite-difference row space across the '
                            'whole family. Bounded witness construction solves the direct equations with '
-                           'total defect normalized to one.'}],
+                           'total defect normalized to one.'},
+               {'accepts': 'the same explicit domain as reduced_polynomial; is_fire uses at most 8192 '
+                           "line-quotient coordinates and other operations share the module's direct "
+                           'routines',
+                'name': 'line_quotient',
+                'sources': ['backends/line_quotient/circuit_fires_line_quotient.cpp'],
+                'summary': 'Portable C++: chooses independent fibre covectors, solves their flatness '
+                           'equations as functions on line quotients, and tests the remaining equations with '
+                           'sequential dense nullspaces or sparse echelon reduction. Automatic selection '
+                           'prefers this backend where its exact h*p^(g-1) representation fits.'}],
   'module': {'cases': 'cases.py',
              'contract': 'lean/Circuit_fires/Contract.lean',
              'lean': 'lean',

@@ -44,6 +44,12 @@ sources = ["backends/reduced_polynomial/circuit_fires.cpp"]
 accepts = "explicit matrices over primes p <= 7, base dimension <= 5, fibre dimension <= 8, and at most 40 circuit rows; find_potential additionally requires at most 1024 unknowns and 2^24 augmented-matrix entries"
 summary = "Portable C++: exact row reduction. Fire existence uses the reduced-polynomial dual criterion and caches each scalar finite-difference row space across the whole family. Bounded witness construction solves the direct equations with total defect normalized to one."
 
+[[backends]]
+name = "line_quotient"
+sources = ["backends/line_quotient/circuit_fires_line_quotient.cpp"]
+accepts = "the same explicit domain as reduced_polynomial; is_fire uses at most 8192 line-quotient coordinates and other operations share the module's direct routines"
+summary = "Portable C++: chooses independent fibre covectors, solves their flatness equations as functions on line quotients, and tests the remaining equations with sequential dense nullspaces or sparse echelon reduction. Automatic selection prefers this backend where its exact h*p^(g-1) representation fits."
+
 [[rejections]]
 case = "natural-number configuration"
 error = "prime"

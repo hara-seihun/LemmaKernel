@@ -1,3 +1,4 @@
+#include "../circuit_fires_common.hpp"
 #include "../../../../runtime/src/reduce.hpp"
 
 #include <algorithm>
@@ -564,12 +565,24 @@ R run(const Request &req) {
     return assemble(req, reduction, accumulators, shared);
 }
 
+} // namespace
+
+bool configuration_is_circuit(const Entry *configuration, uint64_t rows, uint64_t base_dim,
+                              uint64_t fibre_dim, uint32_t prime) {
+    return circuit(configuration, rows, base_dim, fibre_dim, prime);
+}
+
+CircuitFireResult run_reduced_polynomial(const Request &request) {
+    return run(request);
+}
+
+namespace {
 BackendRegistration registration{Backend{
     "circuit_fires", "reduced_polynomial",
     [] { return true; },
     [](const Request &req) { return req.family->kind == Family::Kind::Explicit; },
-    run,
+    run_reduced_polynomial,
     0}};
-
 } // namespace
+
 } // namespace lk::circuit_fires
