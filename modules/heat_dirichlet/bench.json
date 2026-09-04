@@ -1,13 +1,13 @@
 {
  "module": "heat_dirichlet",
  "fingerprint": {
-  "module": "4519eeababe428cda6102db49e338f8f005cbb9619e9bb3067bde2d272f1baac",
-  "runtime": "e2c22f1525a9b6fdf085131519f3796a8f7149637270e406f140e9159e975320",
+  "module": "be1231feb82385b09d1eab644de852f4e3d42c4645181d9a85d2c8f0dd92da51",
+  "runtime": "c7ed22a15167866695936399da9a592ffe12232938ee811a10aab4447ea04871",
   "dependencies": [],
-  "combined": "1e15200ceace266e87c9e5e055bb5dc1ac27401c0694adf9e7414db94345dd42"
+  "combined": "19a56a550b6cca676ec42818d8d07d29e2a1addd6c3f055a12181126bb54dc01"
  },
- "measured_at": "2026-09-04T00:55:53+00:00",
- "commit": "32186328c0abc3178119541e19fc530d906fa30c",
+ "measured_at": "2026-09-04T01:10:00+00:00",
+ "commit": "35d226574880f35386b32d14e2f6748c8ef23f11",
  "machine": {
   "host": "gmktec",
   "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
@@ -21,14 +21,14 @@
    "op": "heat_dirichlet.mollified_term_upper",
    "reduction": "sum",
    "members": 4241999,
-   "naive_s": 579.8336879923335,
+   "naive_s": 618.4904747797781,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 7.642572507960722,
-   "kernel_all_threads_s": 0.40317586879245937,
+   "kernel_1_thread_s": 8.863380206050351,
+   "kernel_all_threads_s": 0.4673441951163113,
    "threads": 32,
-   "speedup_1_thread": 75.86891552397601,
-   "speedup_all_threads": 1438.1656564143507,
-   "answer": "Count(value=1171368389581, visited=4241999, family_size=4241999)"
+   "speedup_1_thread": 69.78042918181282,
+   "speedup_all_threads": 1323.4153355127262,
+   "answer": "Count(value=1122124142523, visited=4241999, family_size=4241999)"
   },
   {
    "case": "cell_blocks",
@@ -36,14 +36,14 @@
    "op": "heat_dirichlet.block_term_upper",
    "reduction": "sum",
    "members": 5060,
-   "naive_s": 2.9976736078970134,
+   "naive_s": 4.953000555047765,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.02678803913295269,
-   "kernel_all_threads_s": 0.0019480101764202118,
+   "kernel_1_thread_s": 0.036939918994903564,
+   "kernel_all_threads_s": 0.002664606086909771,
    "threads": 32,
-   "speedup_1_thread": 111.9034354481547,
-   "speedup_all_threads": 1538.8387823546848,
-   "answer": "Count(value=121372046011, visited=5060, family_size=5060)"
+   "speedup_1_thread": 134.08260466762553,
+   "speedup_all_threads": 1858.8115441828472,
+   "answer": "Count(value=113207442370, visited=5060, family_size=5060)"
   }
  ]
 }

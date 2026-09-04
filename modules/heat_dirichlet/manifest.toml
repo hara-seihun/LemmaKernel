@@ -8,27 +8,32 @@
 # integer. Real parameters are passed as rationals `x_num / x_den`.
 #
 # Notation, for t = t_num/t_den in (0, 1/2], sigma = sigma_num/sigma_den (a lower bound on Re s),
-# y in [y_lo, y_hi] = [y_lo_num, y_hi_num] / y_den within [0, 1], the cutoff N in [N_-, N_+] =
-# [n_minus, n_plus] (the polynomial is truncated at N, so beta and alpha keep only the divisors
-# with n/d <= N, and the bounds take the worst such set over the cell), the mollifier
+# the height y = y_num/y_den in [0, 1], the cutoff N in [N_-, N_+] = [n_minus, n_plus] (the
+# polynomial is truncated at N, so beta and alpha keep only the divisors with n/d <= N, and the
+# bounds take the worst such set over the cell), the mollifier
 # primes chosen by the bitmask `primes` (bit i selects the i-th of 2, 3, 5, 7) with product D,
 # and C = c_num/c_den:
 #
 #   b_n        = exp((t/4) ln^2 n)
 #   g(n)       = b_n n^(-sigma)
 #   rho_d(n)   = b_{n/d} / b_n
+#   pi_d(n)    = min(1, n / (d N_-))^y
 #   lambda_d   = prod_{p | d} (-b_p)
 #   beta(n)    = sum_{d | gcd(n, D), n/d <= N} lambda_d rho_d(n)
-#   alpha(n,y) = C (n / N_-)^y sum_{d | gcd(n, D), n/d <= N} lambda_d d^(-y) rho_d(n)
-#   r(y)       = (1 - C N_-^(-y)) / (1 + C N_-^(-y))
-#   term(n,y)  = max(|beta(n) - alpha(n,y)|, r(y) |beta(n) + alpha(n,y)|) g(n)
+#   alpha(n)   = C sum_{d | gcd(n, D), n/d <= N} lambda_d pi_d(n) rho_d(n)
+#   r          = (1 - C N_-^(-y)) / (1 + C N_-^(-y))
+#   term(n)    = max(|beta(n) - alpha(n)|, r |beta(n) + alpha(n)|) g(n)
+#
+# Everything is evaluated at the one height y. A caller certifies every height above y with the
+# same value: the partner sum's weight at a greater height is still at most pi_d(n), and Re s only
+# grows with the height.
 #
 # Arguments to exp above 7 are refused, which keeps every intermediate below 2^63 at scale 2^48.
 
 [module]
 name = "heat_dirichlet"
 version = 1
-summary = "Rigorous fixed-point upper bounds on the summands of heat-weighted Dirichlet polynomials: the weight b_n n^(-sigma), the mollified summand max(|beta - alpha|, r |beta + alpha|) b_n n^(-sigma) enclosed over an interval of y, that summand summed over a block of consecutive n, and the lower bound on Re s consumed by the others. Members are 1 x 1 natural numbers; values are integers at scale 2^scale with every rounding directed, so a value is a true upper bound and the same integer in every implementation. Real parameters are rationals x_num / x_den."
+summary = "Rigorous fixed-point upper bounds on the summands of heat-weighted Dirichlet polynomials: the weight b_n n^(-sigma), the mollified summand max(|beta - alpha|, r |beta + alpha|) b_n n^(-sigma) at a height y over a range of cutoffs, that summand summed over a block of consecutive n, and the lower bound on Re s consumed by the others. Members are 1 x 1 natural numbers; values are integers at scale 2^scale with every rounding directed, so a value is a true upper bound and the same integer in every implementation. Real parameters are rationals x_num / x_den."
 
 lean = "lean"
 contract = "lean/Heat_dirichlet/Contract.lean"
@@ -46,23 +51,23 @@ summary = "An upper bound on 2^scale exp((t/4) ln^2 n - sigma ln n) for the memb
 [[operations]]
 name = "mollified_term_upper"
 value = "integer"
-args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_den = "int", y_lo_num = "int", y_hi_num = "int", y_den = "int", n_minus = "int", n_plus = "int", primes = "int", c_num = "int", c_den = "int", scale = "int" }
+args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_den = "int", y_num = "int", y_den = "int", n_minus = "int", n_plus = "int", primes = "int", c_num = "int", c_den = "int", scale = "int" }
 families = ["range", "explicit"]
-summary = "An upper bound on 2^scale sup term(n, y) over y in [y_lo, y_hi] and cutoffs N in [N_-, N_+], for the member n >= 1, where term(n, y) = max(|beta(n) - alpha(n, y)|, r(y) |beta(n) + alpha(n, y)|) b_n n^(-sigma) is the n-th summand of the mollified heat Dirichlet polynomial, with beta, alpha, r as in the module description."
+summary = "An upper bound on 2^scale sup term(n) over cutoffs N in [N_-, N_+], for the member n >= 1, where term(n) = max(|beta(n) - alpha(n)|, r |beta(n) + alpha(n)|) b_n n^(-sigma) is the n-th summand of the mollified heat Dirichlet polynomial at height y, with beta, alpha, r as in the module description."
 
 [[operations]]
 name = "block_term_upper"
 value = "integer"
-args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_den = "int", y_lo_num = "int", y_hi_num = "int", y_den = "int", n_minus = "int", n_plus = "int", primes = "int", c_num = "int", c_den = "int", n0 = "int", width = "int", scale = "int" }
+args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_den = "int", y_num = "int", y_den = "int", n_minus = "int", n_plus = "int", primes = "int", c_num = "int", c_den = "int", n0 = "int", width = "int", scale = "int" }
 families = ["range", "explicit"]
-summary = "For the member k, an upper bound on 2^scale sup over y in [y_lo, y_hi] and cutoffs N in [N_-, N_+] of the sum of term(n, y) over the block n0 + k width <= n < n0 + (k+1) width, obtained without visiting every n: rho_d decreases in n, (n/N_-)^y increases, and b_n n^(-sigma) is quasi-convex, so the block's ends enclose every summand. Blocks must start at 1 or above."
+summary = "For the member k, an upper bound on 2^scale sup over cutoffs N in [N_-, N_+] of the sum of term(n) over the block n0 + k width <= n < n0 + (k+1) width, obtained without visiting every n: rho_d decreases in n, pi_d increases, and b_n n^(-sigma) is quasi-convex, so the block's ends enclose every summand. Blocks must start at 1 or above."
 
 [[operations]]
 name = "sigma_lower"
 value = "integer"
-args = { t_num = "int", t_den = "int", y_lo_num = "int", y_hi_num = "int", y_den = "int", scale = "int" }
+args = { t_num = "int", t_den = "int", y_num = "int", y_den = "int", scale = "int" }
 families = ["range", "explicit"]
-summary = "A lower bound on 2^scale ((1 + y_lo)/2 + (t/4) ln(N^2 - 1) - t / (144 (N^2 - 1)^2)) for the member N >= 2, rounded down and clamped at 0: the lower bound on Re s_* across a cell whose x-range starts at x_N = 4 pi N^2 - pi t / 4, so that the other operations may take sigma = value / 2^scale."
+summary = "A lower bound on 2^scale ((1 + y)/2 + (t/4) ln(N^2 - 1) - t / (144 (N^2 - 1)^2)) for the member N >= 2, rounded down and clamped at 0: the lower bound on Re s_* at heights y and above across a cell whose x-range starts at x_N = 4 pi N^2 - pi t / 4, so that the other operations may take sigma = value / 2^scale."
 
 [[backends]]
 name = "generic"

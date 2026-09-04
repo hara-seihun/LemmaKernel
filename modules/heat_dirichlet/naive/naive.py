@@ -8,22 +8,25 @@ reference; the three must return the same integer, so nothing here is "approxima
 
     naive.run(op, family, reduction, **args) -> interchange object
 
-Notation, for a fixed rational t = t_num/t_den in (0, 1/2] and a lower bound sigma on Re s_*:
+Notation, for a fixed rational t = t_num/t_den in (0, 1/2], a lower bound sigma on Re s_*, and
+the height y = y_num/y_den in [0, 1]:
 
     b_n        = exp((t/4) ln^2 n)                      the heat weight
     g(n)       = b_n n^(-sigma)                         weight_upper
     rho_d(n)   = exp(-(t/4) ln d (2 ln n - ln d))       = b_{n/d} / b_n for d | n, in (0, 1]
+    pi_d(n)    = min(1, n / (d N_-))^y                  the partner sum's weight, in (0, 1]
     lambda_d   = prod_{p | d} (-b_p)                    d squarefree over the chosen primes, D = prod p
-    beta(n)    = sum_{d | gcd(n, D), n/d <= N} lambda_d rho_d(n)  mollified coefficient over b_n
-    alpha(n,y) = C (n / N_-)^y sum_{d | gcd(n, D), n/d <= N} lambda_d d^(-y) rho_d(n)
-    r(y)       = (1 - C N_-^(-y)) / (1 + C N_-^(-y))
-    term(n,y)  = max(|beta - alpha|, r |beta + alpha|) g(n)
+    beta(n)    = sum_{d | gcd(n, D), n/d <= N} lambda_d rho_d(n)         mollified coefficient over b_n
+    alpha(n)   = C sum_{d | gcd(n, D), n/d <= N} lambda_d pi_d(n) rho_d(n)
+    r          = (1 - C N_-^(-y)) / (1 + C N_-^(-y))
+    term(n)    = max(|beta - alpha|, r |beta + alpha|) g(n)
 
-`mollified_term_upper` bounds sup over y in [y_lo, y_hi] and cutoffs N in [N_-, N_+] of term(n, y);
-`block_term_upper` bounds
-the sum of that over a block of consecutive n using only that rho_d decreases in n, (n / N_-)^y
-increases, and g is quasi-convex; `sigma_lower` gives the lower bound on Re s_* that the other
-operations consume.
+Everything is evaluated at the one height y; the caller's argument (the partner sum's weight at a
+height y' >= y is at most pi_d(n) with y, and sigma only grows with the height) is what makes one
+value cover every height above y. `mollified_term_upper` bounds sup over cutoffs N in [N_-, N_+]
+of term(n); `block_term_upper` bounds the sum of that over a block of consecutive n using only that
+rho_d decreases in n, pi_d increases, and g is quasi-convex; `sigma_lower` gives the lower bound
+on Re s_* that the other operations consume.
 """
 from __future__ import annotations
 
@@ -168,8 +171,7 @@ class Params:
             raise ValueError(f"scale must be between 1 and {K}")
         self.sigma_num = int(args.get("sigma_num", 0))
         self.sigma_den = int(args.get("sigma_den", 1))
-        self.y_lo_num = int(args.get("y_lo_num", 0))
-        self.y_hi_num = int(args.get("y_hi_num", 0))
+        self.y_num = int(args.get("y_num", 0))
         self.y_den = int(args.get("y_den", 1))
         self.n_minus = int(args.get("n_minus", 1))
         self.n_plus = int(args.get("n_plus", self.n_minus))
@@ -181,8 +183,8 @@ class Params:
         self.width = int(args.get("width", 1))
         if self.sigma_den <= 0 or self.y_den <= 0 or self.c_den <= 0 or self.t_den <= 0:
             raise ValueError("denominators must be positive")
-        if self.y_lo_num < 0 or self.y_hi_num < self.y_lo_num or self.y_hi_num > self.y_den:
-            raise ValueError("need 0 <= y_lo <= y_hi <= 1")
+        if self.y_num < 0 or self.y_num > self.y_den:
+            raise ValueError("need 0 <= y <= 1")
         if self.n_minus < 1 or self.width < 1:
             raise ValueError("n_minus and width must be positive")
         if self.n_plus < self.n_minus:
@@ -229,27 +231,16 @@ class Params:
         delta = imul(lnd, isub((2 * lnn[0], 2 * lnn[1]), lnd))
         return iexp(iscale(delta, -self.t_num, 4 * self.t_den))
 
-    def ypow_interval(self, base: tuple[int, int]) -> tuple[int, int]:
-        """exp(y * base) over y in [y_lo, y_hi], base an interval for a logarithm."""
-        lo = min(base[0] * self.y_lo_num, base[0] * self.y_hi_num) // self.y_den
-        hi = cdiv(max(base[1] * self.y_lo_num, base[1] * self.y_hi_num), self.y_den)
-        return iexp((lo, hi))
-
-    def ratio_pow_interval(self, n: int) -> tuple[int, int]:
-        """(n / N_-)^y over the y interval."""
-        return self.ypow_interval(isub(ln_bounds(n), ln_bounds(self.n_minus)))
-
-    def divisor_pow_interval(self, d: int) -> tuple[int, int]:
-        """d^(-y) over the y interval."""
-        lnd = ln_bounds(d)
-        return self.ypow_interval((-lnd[1], -lnd[0]))
+    def pi_interval(self, n: int, d: int) -> tuple[int, int]:
+        """pi_d(n) = min(1, n / (d N_-))^y, increasing in n."""
+        base = isub(isub(ln_bounds(n), ln_bounds(d)), ln_bounds(self.n_minus))
+        clamped = (min(base[0], 0), min(base[1], 0))
+        return iexp(iscale(clamped, self.y_num, self.y_den))
 
     def wc_interval(self) -> tuple[int, int]:
-        """C N_-^(-y) over the y interval."""
+        """C N_-^(-y)."""
         lnN = ln_bounds(self.n_minus)
-        lo = -cdiv(lnN[1] * self.y_hi_num, self.y_den)
-        hi = -(lnN[0] * self.y_lo_num) // self.y_den
-        return iscale(iexp((lo, hi)), self.c_num, self.c_den)
+        return iscale(iexp(iscale((-lnN[1], -lnN[0]), self.y_num, self.y_den)), self.c_num, self.c_den)
 
     def r_upper(self) -> int:
         a = self.wc_interval()[0]
@@ -257,9 +248,9 @@ class Params:
             a = 0
         return cdiv((S - a) * S, S + a) if a < S else 0
 
-    def coefficient_upper(self, divs: list[int], rho: dict, ratio: tuple[int, int], lo: int, hi: int) -> int:
+    def coefficient_upper(self, divs: list[int], rho: dict, pi: dict, lo: int, hi: int) -> int:
         """Upper bound on max(|beta - alpha|, r |beta + alpha|) over every n in [lo, hi] and every
-        cutoff N in [N_-, N_+], from enclosures of rho_d and (n / N_-)^y valid on [lo, hi].
+        cutoff N in [N_-, N_+], from enclosures of rho_d and pi_d valid on [lo, hi].
 
         The polynomial is truncated at N, so only the divisors d with n / d <= N contribute to
         beta_n and alpha_n: the set {d : d >= n / N}, an upper set of the divisors. As n and N
@@ -272,18 +263,18 @@ class Params:
             above_ok = j == len(divs) or lo <= divs[j] * self.n_plus
             if not (above_ok and below * self.n_minus < hi):
                 continue
-            best = max(best, self.coefficient_of(divs[j:], rho, ratio))
+            best = max(best, self.coefficient_of(divs[j:], rho, pi))
         return best
 
-    def coefficient_of(self, divs: list[int], rho: dict, ratio: tuple[int, int]) -> int:
+    def coefficient_of(self, divs: list[int], rho: dict, pi: dict) -> int:
         """max(|beta - alpha|, r |beta + alpha|) over the given divisor set."""
         beta = (0, 0)
         alpha = (0, 0)
         for d in divs:
             lam = self.lambda_interval(d)
             beta = iadd(beta, imul(lam, rho[d]))
-            alpha = iadd(alpha, imul(imul(lam, self.divisor_pow_interval(d)), rho[d]))
-        alpha = iscale(imul(alpha, ratio), self.c_num, self.c_den)
+            alpha = iadd(alpha, imul(imul(lam, pi[d]), rho[d]))
+        alpha = iscale(alpha, self.c_num, self.c_den)
         diff = abs_upper(isub(beta, alpha))
         summ = abs_upper(iadd(beta, alpha))
         return max(diff, cdiv(self.r_upper() * summ, S))
@@ -291,7 +282,8 @@ class Params:
     def term_upper(self, n: int) -> int:
         divs = divisors_of(self.primes, n)
         rho = {d: self.rho_interval(n, d) for d in divs}
-        coeff = self.coefficient_upper(divs, rho, self.ratio_pow_interval(n), n, n)
+        pi = {d: self.pi_interval(n, d) for d in divs}
+        coeff = self.coefficient_upper(divs, rho, pi, n, n)
         return cdiv(coeff * self.g_upper(n), S)
 
     def block_upper(self, k: int) -> int:
@@ -300,12 +292,13 @@ class Params:
         if a < 1:
             raise ValueError("blocks must start at 1 or above")
         g_max = max(self.g_upper(a), self.g_upper(b - 1))
-        # rho_d decreases in n and (n / N_-)^y increases, so the block ends enclose both for every
-        # n in the block, whatever its residue class.
-        ratio = (self.ratio_pow_interval(a)[0], self.ratio_pow_interval(b - 1)[1])
-
+        # rho_d decreases in n and pi_d increases, so the block ends enclose both for every n in
+        # the block, whatever its residue class.
         def rho(d):
             return self.rho_interval(b - 1, d)[0], self.rho_interval(a, d)[1]
+
+        def pi(d):
+            return self.pi_interval(a, d)[0], self.pi_interval(b - 1, d)[1]
 
         # The residue class c mod D fixes the divisors of gcd(n, D), so the coefficient bound is
         # one per gcd class; count the members of each class.
@@ -319,16 +312,16 @@ class Params:
             if counts[e] == 0:
                 continue
             divs = divisors_of(self.primes, e)
-            coeff = self.coefficient_upper(divs, {d: rho(d) for d in divs}, ratio, a, b - 1)
+            coeff = self.coefficient_upper(divs, {d: rho(d) for d in divs}, {d: pi(d) for d in divs}, a, b - 1)
             total += counts[e] * cdiv(coeff * g_max, S)
         return total
 
     def sigma_lower(self, n: int) -> int:
-        """(1+y_lo)/2 + (t/4) ln(N^2 - 1) - t / (144 (N^2 - 1)^2), rounded down, for N >= 2."""
+        """(1+y)/2 + (t/4) ln(N^2 - 1) - t / (144 (N^2 - 1)^2), rounded down, for N >= 2."""
         if n < 2:
             raise ValueError("sigma_lower needs a cutoff of at least 2")
         m = n * n - 1
-        half = (S * (self.y_den + self.y_lo_num)) // (2 * self.y_den)
+        half = (S * (self.y_den + self.y_num)) // (2 * self.y_den)
         main = (self.t_num * ln_bounds(m)[0]) // (4 * self.t_den)
         corr = cdiv(S * self.t_num, self.t_den * 144 * m * m)
         return half + main - corr

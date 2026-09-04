@@ -143,12 +143,12 @@ I abs_upper(Iv a) { return std::max(iabs(a.lo), iabs(a.hi)); }
 /* ---- the parameters and the operations ---- */
 
 struct Params {
-    I t_num, t_den, sigma_num, sigma_den, y_lo_num, y_hi_num, y_den, c_num, c_den;
+    I t_num, t_den, sigma_num, sigma_den, y_num, y_den, c_num, c_den;
     uint64_t n_minus, n_plus, n0, width, scale;
     std::vector<uint64_t> primes;
     uint64_t D = 1;
-    /* Fixed per request: lambda_d (index = subset mask over `primes`), d^(-y), C N_-^(-y), r. */
-    std::vector<Iv> lambda_by_mask, dpow_by_mask, lnd_by_mask;
+    /* Fixed per request: lambda_d and ln d (index = subset mask over `primes`), r, ln N_-. */
+    std::vector<Iv> lambda_by_mask, lnd_by_mask;
     std::vector<uint64_t> d_by_mask;
     I r_upper = 0;
     Iv lnN{0, 0}; /* bounds on ln N_- */
@@ -164,8 +164,7 @@ struct Params {
         scale = arg(req, "scale", K);
         sigma_num = arg(req, "sigma_num", 0);
         sigma_den = arg(req, "sigma_den", 1);
-        y_lo_num = arg(req, "y_lo_num", 0);
-        y_hi_num = arg(req, "y_hi_num", 0);
+        y_num = arg(req, "y_num", 0);
         y_den = arg(req, "y_den", 1);
         n_minus = arg(req, "n_minus", 1);
         n_plus = arg(req, "n_plus", n_minus);
@@ -177,7 +176,7 @@ struct Params {
         if (t_den <= 0 || sigma_den <= 0 || y_den <= 0 || c_den <= 0) return fail(INVALID, "denominators must be positive");
         if (!(0 < t_num && 2 * t_num <= t_den)) return fail(INVALID, "t must be a rational in (0, 1/2]");
         if (scale < 1 || scale > (uint64_t)K) return fail(INVALID, "scale must be between 1 and 48");
-        if (y_hi_num < y_lo_num || y_hi_num > y_den) return fail(INVALID, "need 0 <= y_lo <= y_hi <= 1");
+        if (y_num > y_den) return fail(INVALID, "need 0 <= y <= 1");
         if (n_minus < 1 || width < 1) return fail(INVALID, "n_minus and width must be positive");
         if (n_plus < n_minus) return fail(INVALID, "need n_minus <= n_plus");
         for (int i = 0; i < 4; ++i)
@@ -202,10 +201,11 @@ struct Params {
         Iv delta = imul(lnd, isub({2 * lnn.lo, 2 * lnn.hi}, lnd));
         return iexp(iscale(delta, -t_num, 4 * t_den));
     }
-    std::optional<Iv> ypow_interval(Iv base) const {
-        I lo = fdiv(std::min(base.lo * y_lo_num, base.lo * y_hi_num), y_den);
-        I hi = cdiv(std::max(base.hi * y_lo_num, base.hi * y_hi_num), y_den);
-        return iexp({lo, hi});
+    /* pi_d(n) = min(1, n / (d N_-))^y from bounds on ln n and ln d; increasing in n. */
+    std::optional<Iv> pi_interval(Iv lnn, Iv lnd) const {
+        Iv base = isub(isub(lnn, lnd), lnN);
+        Iv clamped{std::min<I>(base.lo, 0), std::min<I>(base.hi, 0)};
+        return iexp(iscale(clamped, y_num, y_den));
     }
 
     /* The quantities that do not depend on the member: computed once, in the same rounding as the
@@ -213,8 +213,8 @@ struct Params {
     Status precompute() {
         size_t subsets = (size_t)1 << primes.size();
         lambda_by_mask.resize(subsets);
-        dpow_by_mask.resize(subsets);
         lnd_by_mask.resize(subsets);
+        lnN = ln_bounds(n_minus);
         d_by_mask.resize(subsets);
         for (size_t mask = 0; mask < subsets; ++mask) {
             uint64_t d = 1;
@@ -228,15 +228,9 @@ struct Params {
             }
             d_by_mask[mask] = d;
             lambda_by_mask[mask] = lam;
-            Iv lnd = ln_bounds(d);
-            lnd_by_mask[mask] = lnd;
-            auto dp = ypow_interval({-lnd.hi, -lnd.lo});
-            if (!dp) return fail(INVALID, "exponent exceeds 7");
-            dpow_by_mask[mask] = *dp;
+            lnd_by_mask[mask] = ln_bounds(d);
         }
-        lnN = ln_bounds(n_minus);
-        I lo = -cdiv(lnN.hi * y_hi_num, y_den), hi = -fdiv(lnN.lo * y_lo_num, y_den);
-        auto w = iexp({lo, hi});
+        auto w = iexp(iscale({-lnN.hi, -lnN.lo}, y_num, y_den));
         if (!w) return fail(INVALID, "exponent exceeds 7");
         Iv wc = iscale(*w, c_num, c_den);
         I a = wc.lo < 0 ? 0 : wc.lo;
@@ -260,29 +254,29 @@ struct Params {
      * an upper set {d >= n / N} of the divisors (in increasing order). The threshold ranges over
      * [lo / N_+, hi / N_-]; every upper set whose cut lies there can occur, and the bound is the
      * largest over them. Beyond D N_+ only the empty set is left and the bound is 0. */
-    I coefficient_upper(const std::vector<size_t> &masks, const std::vector<Iv> &rho, Iv ratio, uint64_t lo,
-                        uint64_t hi) const {
+    I coefficient_upper(const std::vector<size_t> &masks, const std::vector<Iv> &rho, const std::vector<Iv> &pi,
+                        uint64_t lo, uint64_t hi) const {
         I best = 0;
         for (size_t j = 0; j <= masks.size(); ++j) {
             unsigned __int128 below = j > 0 ? d_by_mask[masks[j - 1]] : 0;
             bool above_ok = j == masks.size() || (unsigned __int128)lo <= (unsigned __int128)d_by_mask[masks[j]] * n_plus;
             if (!(above_ok && below * n_minus < hi)) continue;
             std::vector<size_t> sub(masks.begin() + j, masks.end());
-            std::vector<Iv> rsub(rho.begin() + j, rho.end());
-            best = std::max(best, coefficient_of(sub, rsub, ratio));
+            std::vector<Iv> rsub(rho.begin() + j, rho.end()), psub(pi.begin() + j, pi.end());
+            best = std::max(best, coefficient_of(sub, rsub, psub));
         }
         return best;
     }
 
     /* max(|beta - alpha|, r |beta + alpha|) over the given divisor set. */
-    I coefficient_of(const std::vector<size_t> &masks, const std::vector<Iv> &rho, Iv ratio) const {
+    I coefficient_of(const std::vector<size_t> &masks, const std::vector<Iv> &rho, const std::vector<Iv> &pi) const {
         Iv beta{0, 0}, alpha{0, 0};
         for (size_t i = 0; i < masks.size(); ++i) {
             Iv lam = lambda_by_mask[masks[i]];
             beta = iadd(beta, imul(lam, rho[i]));
-            alpha = iadd(alpha, imul(imul(lam, dpow_by_mask[masks[i]]), rho[i]));
+            alpha = iadd(alpha, imul(imul(lam, pi[i]), rho[i]));
         }
-        alpha = iscale(imul(alpha, ratio), c_num, c_den);
+        alpha = iscale(alpha, c_num, c_den);
         I diff = abs_upper(isub(beta, alpha)), summ = abs_upper(iadd(beta, alpha));
         return std::max(diff, cdiv(r_upper * summ, S));
     }
@@ -290,16 +284,16 @@ struct Params {
     std::optional<I> term_upper(uint64_t n) const {
         auto masks = divisor_masks(n);
         Iv lnn = ln_bounds(n);
-        std::vector<Iv> rho;
+        std::vector<Iv> rho, pi;
         for (size_t mask : masks) {
-            auto r = rho_interval(lnn, lnd_by_mask[mask]);
-            if (!r) return std::nullopt;
+            auto r = rho_interval(lnn, lnd_by_mask[mask]), q = pi_interval(lnn, lnd_by_mask[mask]);
+            if (!r || !q) return std::nullopt;
             rho.push_back(*r);
+            pi.push_back(*q);
         }
-        auto ratio = ypow_interval(isub(lnn, lnN));
         auto g = exp_upper(g_exponent(lnn).hi);
-        if (!ratio || !g) return std::nullopt;
-        return cdiv(coefficient_upper(masks, rho, *ratio, n, n) * *g, S);
+        if (!g) return std::nullopt;
+        return cdiv(coefficient_upper(masks, rho, pi, n, n) * *g, S);
     }
 
     std::optional<I> block_upper(uint64_t k) const {
@@ -309,16 +303,15 @@ struct Params {
         auto ga = exp_upper(g_exponent(lna).hi), gb = exp_upper(g_exponent(lnb).hi);
         if (!ga || !gb) return std::nullopt;
         I g_max = std::max(*ga, *gb);
-        /* rho_d decreases in n and (n / N_-)^y increases: the block ends enclose both for every
-         * member, whatever its residue class. */
-        auto rlo = ypow_interval(isub(lna, lnN)), rhi = ypow_interval(isub(lnb, lnN));
-        if (!rlo || !rhi) return std::nullopt;
-        Iv ratio{rlo->lo, rhi->hi};
-        std::vector<Iv> rho_by_mask(d_by_mask.size());
+        /* rho_d decreases in n and pi_d increases: the block ends enclose both for every member,
+         * whatever its residue class. */
+        std::vector<Iv> rho_by_mask(d_by_mask.size()), pi_by_mask(d_by_mask.size());
         for (size_t mask = 0; mask < d_by_mask.size(); ++mask) {
             auto lo = rho_interval(lnb, lnd_by_mask[mask]), hi = rho_interval(lna, lnd_by_mask[mask]);
-            if (!lo || !hi) return std::nullopt;
+            auto plo = pi_interval(lna, lnd_by_mask[mask]), phi = pi_interval(lnb, lnd_by_mask[mask]);
+            if (!lo || !hi || !plo || !phi) return std::nullopt;
             rho_by_mask[mask] = {lo->lo, hi->hi};
+            pi_by_mask[mask] = {plo->lo, phi->hi};
         }
         /* The class c mod D fixes the divisors of gcd(n, D): one coefficient bound per gcd. */
         std::vector<I> count_by_gcd(d_by_mask.size(), 0);
@@ -334,16 +327,19 @@ struct Params {
         for (size_t emask = 0; emask < d_by_mask.size(); ++emask) {
             if (count_by_gcd[emask] == 0) continue;
             auto masks = divisor_masks(d_by_mask[emask]);
-            std::vector<Iv> rho;
-            for (size_t mask : masks) rho.push_back(rho_by_mask[mask]);
-            total += count_by_gcd[emask] * cdiv(coefficient_upper(masks, rho, ratio, a, b - 1) * g_max, S);
+            std::vector<Iv> rho, pi;
+            for (size_t mask : masks) {
+                rho.push_back(rho_by_mask[mask]);
+                pi.push_back(pi_by_mask[mask]);
+            }
+            total += count_by_gcd[emask] * cdiv(coefficient_upper(masks, rho, pi, a, b - 1) * g_max, S);
         }
         return total;
     }
 
     I sigma_lower(uint64_t n) const {
         unsigned __int128 m = (unsigned __int128)n * n - 1;
-        I half = fdiv(S * (y_den + y_lo_num), 2 * y_den);
+        I half = fdiv(S * (y_den + y_num), 2 * y_den);
         I main = fdiv(t_num * ln_bounds(m).lo, 4 * t_den);
         I corr = cdiv(S * t_num, t_den * 144 * (I)m * (I)m);
         return half + main - corr;

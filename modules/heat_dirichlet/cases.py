@@ -1,10 +1,10 @@
 """heat_dirichlet cases: the inputs the harness runs against the backend, the naive implementation
 and the Lean reference.
 
-The parameters are those of the Dirichlet-polynomial barrier at t = 0.1579 with cutoff
-N_- = 7 * 10^5 and mollifier primes {2, 3}: t_num/t_den = 1579/10000, y in a narrow band around
-0.2, C = 1.03. `sigma_num / sigma_den` is what `sigma_lower` returns for that cutoff at scale 40,
-so a case chain reproduces how a caller uses the module. The oracle cases are a few members each
+The parameters are those of a canopy cell at t = 0.1579 with cutoffs from N_- = 7 * 10^5 and
+mollifier primes {2, 3}: t_num/t_den = 1579/10000, height y = 0.2, C = 1.03. `sigma_num /
+sigma_den` is what `sigma_lower` returns for that cutoff and height at scale 40, so a case chain
+reproduces how a caller uses the module. The oracle cases are a few members each
 because every member costs the Lean kernel a few hundred big-integer operations per exponential.
 """
 from __future__ import annotations
@@ -16,11 +16,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import lemmakernel as lk  # noqa: E402
 from tools.harness import Case  # noqa: E402
 
-SIGMA = 1822769433543  # sigma_lower at N = 700000, y_lo = 0.199, scale 40: about 1.6576
+SIGMA = 1828020623414  # sigma_lower at N = 700000, y = 0.2, scale 40: about 1.6624
 BASE = {"t_num": 1579, "t_den": 10000, "sigma_num": SIGMA, "sigma_den": 1 << 40, "scale": 48}
-CELL = {**BASE, "y_lo_num": 199, "y_hi_num": 201, "y_den": 1000, "n_minus": 700_000, "n_plus": 707_000,
+CELL = {**BASE, "y_num": 2, "y_den": 10, "n_minus": 700_000, "n_plus": 707_000,
         "primes": 0b11, "c_num": 103, "c_den": 100}
-SIGMA_ARGS = {"t_num": 1579, "t_den": 10000, "y_lo_num": 199, "y_hi_num": 201, "y_den": 1000, "scale": 40}
+SIGMA_ARGS = {"t_num": 1579, "t_den": 10000, "y_num": 2, "y_den": 10, "scale": 40}
 
 
 def cases(ctx, rng):

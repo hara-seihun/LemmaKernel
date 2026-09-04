@@ -8,20 +8,24 @@ real quantity is an integer at scale `S = 2^48`, every rounding is a floor or a 
 that the final value bounds the real one from above, and the algorithm is the backend's and the
 naive implementation's step for step, so that the three return the same integer.
 
-Notation, for `t = tNum / tDen`, a lower bound `sigma` on `Re s`, `y ∈ [yLo, yHi]`, cutoffs
-`N ∈ [N₋, N₊]`, the mollifier primes with product `D`, and a constant `C`:
+Notation, for `t = tNum / tDen`, a lower bound `sigma` on `Re s`, the height `y = yNum / yDen`,
+cutoffs `N ∈ [N₋, N₊]`, the mollifier primes with product `D`, and a constant `C`:
 
 * `g(n) = exp((t/4) ln² n − sigma ln n)`, the heat weight `b_n = exp((t/4) ln² n)` times `n^{-sigma}`;
 * `ρ_d(n) = exp(−(t/4) ln d (2 ln n − ln d)) = b_{n/d} / b_n` for `d ∣ n`, decreasing in `n`;
+* `π_d(n) = min(1, n / (d N₋))^y`, the partner sum's weight, increasing in `n`;
 * `λ_d = ∏_{p ∣ d} (−b_p)`;
-* `β(n) = ∑ λ_d ρ_d(n)` and `α(n, y) = C (n/N₋)^y ∑ λ_d d^{-y} ρ_d(n)`, both over the divisors
+* `β(n) = ∑ λ_d ρ_d(n)` and `α(n) = C ∑ λ_d π_d(n) ρ_d(n)`, both over the divisors
   `d ∣ gcd(n, D)` with `n / d ≤ N` (the polynomial is truncated at `N`);
-* `r(y) = (1 − C N₋^{-y}) / (1 + C N₋^{-y})`;
-* `term(n, y) = max(|β − α|, r |β + α|) g(n)`.
+* `r = (1 − C N₋^{-y}) / (1 + C N₋^{-y})`;
+* `term(n) = max(|β − α|, r |β + α|) g(n)`.
 
-`weightUpper` bounds `g(n)`; `mollifiedTermUpper` bounds `term(n, y)` over the cell; `blockTermUpper`
-bounds its sum over a block of consecutive `n`, using that `ρ_d` decreases in `n`, `(n/N₋)^y`
-increases and `g` is quasi-convex; `sigmaLower` is the lower bound on `Re s` the others consume.
+Everything is at the one height `y`; that one value covers every greater height is the caller's
+argument (the partner weight at a greater height is still at most `π_d(n)`, and `Re s` grows with
+the height). `weightUpper` bounds `g(n)`; `mollifiedTermUpper` bounds `term(n)` over the cutoffs;
+`blockTermUpper` bounds its sum over a block of consecutive `n`, using that `ρ_d` decreases in
+`n`, `π_d` increases and `g` is quasi-convex; `sigmaLower` is the lower bound on `Re s` the others
+consume.
 
 Arguments to `exp` above `7` make an operation `.invalid`, as they do in the backend, whose
 128-bit words this limit protects. Members are single natural numbers (a `range` family or an
@@ -121,8 +125,7 @@ structure Params where
   tDen : Int
   sigmaNum : Int
   sigmaDen : Int
-  yLoNum : Int
-  yHiNum : Int
+  yNum : Int
   yDen : Int
   nMinus : Nat
   nPlus : Nat
@@ -139,7 +142,7 @@ def Params.valid (P : Params) : Bool :=
   0 < P.tDen ∧ 0 < P.sigmaDen ∧ 0 < P.yDen ∧ 0 < P.cDen ∧
   0 < P.tNum ∧ 2 * P.tNum ≤ P.tDen ∧
   1 ≤ P.scale ∧ P.scale ≤ K ∧
-  0 ≤ P.yLoNum ∧ P.yLoNum ≤ P.yHiNum ∧ P.yHiNum ≤ P.yDen ∧
+  0 ≤ P.yNum ∧ P.yNum ≤ P.yDen ∧
   1 ≤ P.nMinus ∧ 1 ≤ P.width ∧ P.nMinus ≤ P.nPlus
 
 /-- The primes selected by the bitmask, in increasing order. -/
@@ -179,52 +182,43 @@ def Params.lambdaInterval (P : Params) (d : Nat) : Option Iv :=
 def Params.rhoInterval (P : Params) (lnn lnd : Iv) : Option Iv :=
   iexp (iscale (imul lnd (isub (2 * lnn.1, 2 * lnn.2) lnd)) (-P.tNum) (4 * P.tDen))
 
-/-- `exp(y · base)` over `y ∈ [yLo, yHi]`. -/
-def Params.ypowInterval (P : Params) (base : Iv) : Option Iv :=
-  iexp (fdiv (min (base.1 * P.yLoNum) (base.1 * P.yHiNum)) P.yDen,
-        cdiv (max (base.2 * P.yLoNum) (base.2 * P.yHiNum)) P.yDen)
-
-/-- `d^{-y}` over the `y` interval. -/
-def Params.divisorPowInterval (P : Params) (d : Nat) : Option Iv :=
-  let lnd := lnBounds d
-  P.ypowInterval (-lnd.2, -lnd.1)
-
-/-- `(n / N₋)^y` from bounds on `ln n`. -/
-def Params.ratioPowInterval (P : Params) (lnn : Iv) : Option Iv :=
-  P.ypowInterval (isub lnn (lnBounds P.nMinus))
+/-- `π_d(n) = min(1, n / (d N₋))^y` from bounds on `ln n` and `ln d`. -/
+def Params.piInterval (P : Params) (lnn lnd : Iv) : Option Iv :=
+  let base := isub (isub lnn lnd) (lnBounds P.nMinus)
+  iexp (iscale (min base.1 0, min base.2 0) P.yNum P.yDen)
 
 /-- Upper bound on `r = (1 − C N₋^{-y}) / (1 + C N₋^{-y})`. -/
 def Params.rUpper (P : Params) : Option Int := do
   let lnN := lnBounds P.nMinus
-  let w ← iexp (-(cdiv (lnN.2 * P.yHiNum) P.yDen), -(fdiv (lnN.1 * P.yLoNum) P.yDen))
+  let w ← iexp (iscale (-lnN.2, -lnN.1) P.yNum P.yDen)
   let wc := iscale w P.cNum P.cDen
   let a := max wc.1 0
   pure (if a < S then cdiv ((S - a) * S) (S + a) else 0)
 
-/-- `max(|β − α|, r |β + α|)` over the divisor set `divs`, whose `ρ` enclosures are `rho`. -/
-def Params.coefficientOf (P : Params) (divs : List Nat) (rho : List Iv) (ratio : Iv) : Option Int := do
-  let pairs := divs.zip rho
-  let beta ← pairs.foldlM (fun acc (d, r) => do
+/-- `max(|β − α|, r |β + α|)` over the divisor set `divs`, whose `ρ` and `π` enclosures are `rho`
+and `pi`. -/
+def Params.coefficientOf (P : Params) (divs : List Nat) (rho pi : List Iv) : Option Int := do
+  let triples := divs.zip (rho.zip pi)
+  let beta ← triples.foldlM (fun acc (d, r, _) => do
     let lam ← P.lambdaInterval d
     pure (iadd acc (imul lam r))) ((0, 0) : Iv)
-  let alphaSum ← pairs.foldlM (fun acc (d, r) => do
+  let alphaSum ← triples.foldlM (fun acc (d, r, q) => do
     let lam ← P.lambdaInterval d
-    let dp ← P.divisorPowInterval d
-    pure (iadd acc (imul (imul lam dp) r))) ((0, 0) : Iv)
-  let alpha := iscale (imul alphaSum ratio) P.cNum P.cDen
+    pure (iadd acc (imul (imul lam q) r))) ((0, 0) : Iv)
+  let alpha := iscale alphaSum P.cNum P.cDen
   let rU ← P.rUpper
   pure (max (absUpper (isub beta alpha)) (cdiv (rU * absUpper (iadd beta alpha)) S))
 
 /-- Upper bound on the coefficient over every `n ∈ [lo, hi]` and cutoff `N ∈ [N₋, N₊]`: the
 truncation keeps the upper set `{d : d ≥ n / N}` of the divisors, whose cut ranges over
 `[lo / N₊, hi / N₋]`, and the bound is the largest over the upper sets whose cut lies there. -/
-def Params.coefficientUpper (P : Params) (divs : List Nat) (rho : List Iv) (ratio : Iv)
+def Params.coefficientUpper (P : Params) (divs : List Nat) (rho pi : List Iv)
     (lo hi : Nat) : Option Int :=
   (List.range (divs.length + 1)).foldlM (fun best j => do
     let below := if j = 0 then 0 else divs.getD (j - 1) 0
     let aboveOk := j = divs.length ∨ lo ≤ divs.getD j 0 * P.nPlus
     if aboveOk ∧ below * P.nMinus < hi then
-      let c ← P.coefficientOf (divs.drop j) (rho.drop j) ratio
+      let c ← P.coefficientOf (divs.drop j) (rho.drop j) (pi.drop j)
       pure (max best c)
     else pure best) 0
 
@@ -233,9 +227,9 @@ def Params.termUpper (P : Params) (n : Nat) : Option Int := do
   let divs := P.divisorsOf n
   let lnn := lnBounds n
   let rho ← divs.mapM fun d => P.rhoInterval lnn (lnBounds d)
-  let ratio ← P.ratioPowInterval lnn
+  let pi ← divs.mapM fun d => P.piInterval lnn (lnBounds d)
   let g ← P.gUpper lnn
-  let coeff ← P.coefficientUpper divs rho ratio n n
+  let coeff ← P.coefficientUpper divs rho pi n n
   pure (cdiv (coeff * g) S)
 
 /-- Members of `[a, b)` in the class `c mod D`. -/
@@ -251,9 +245,6 @@ def Params.blockUpper (P : Params) (k : Nat) : Option Int := do
   let ga ← P.gUpper lna
   let gb ← P.gUpper lnb
   let gMax := max ga gb
-  let rlo ← P.ratioPowInterval lna
-  let rhi ← P.ratioPowInterval lnb
-  let ratio : Iv := (rlo.1, rhi.2)
   -- one coefficient per gcd class, weighted by how many members of the block fall in it
   (P.divisorsOf P.D).foldlM (fun total e => do
     let count := (List.range P.D).foldl
@@ -264,13 +255,17 @@ def Params.blockUpper (P : Params) (k : Nat) : Option Int := do
       let lo ← P.rhoInterval lnb (lnBounds d)
       let hi ← P.rhoInterval lna (lnBounds d)
       pure ((lo.1, hi.2) : Iv)
-    let coeff ← P.coefficientUpper divs rho ratio a (b - 1)
+    let pi ← divs.mapM fun d => do
+      let lo ← P.piInterval lna (lnBounds d)
+      let hi ← P.piInterval lnb (lnBounds d)
+      pure ((lo.1, hi.2) : Iv)
+    let coeff ← P.coefficientUpper divs rho pi a (b - 1)
     pure (total + count * cdiv (coeff * gMax) S)) 0
 
-/-- `(1 + yLo)/2 + (t/4) ln(N² − 1) − t / (144 (N² − 1)²)`, rounded down. -/
+/-- `(1 + y)/2 + (t/4) ln(N² − 1) − t / (144 (N² − 1)²)`, rounded down. -/
 def Params.sigmaLower (P : Params) (n : Nat) : Int :=
   let m : Int := n * n - 1
-  let half := fdiv (S * (P.yDen + P.yLoNum)) (2 * P.yDen)
+  let half := fdiv (S * (P.yDen + P.yNum)) (2 * P.yDen)
   let main := fdiv (P.tNum * (lnBounds (n * n - 1)).1) (4 * P.tDen)
   let corr := cdiv (S * P.tNum) (P.tDen * 144 * m * m)
   half + main - corr
@@ -279,11 +274,10 @@ def Params.sigmaLower (P : Params) (n : Nat) : Int :=
 
 inductive Op
   | weightUpper (tNum tDen sigmaNum sigmaDen scale : Nat)
-  | mollifiedTermUpper (tNum tDen sigmaNum sigmaDen yLoNum yHiNum yDen nMinus nPlus primes cNum cDen
+  | mollifiedTermUpper (tNum tDen sigmaNum sigmaDen yNum yDen nMinus nPlus primes cNum cDen scale : Nat)
+  | blockTermUpper (tNum tDen sigmaNum sigmaDen yNum yDen nMinus nPlus primes cNum cDen n0 width
       scale : Nat)
-  | blockTermUpper (tNum tDen sigmaNum sigmaDen yLoNum yHiNum yDen nMinus nPlus primes cNum cDen n0
-      width scale : Nat)
-  | sigmaLower (tNum tDen yLoNum yHiNum yDen scale : Nat)
+  | sigmaLower (tNum tDen yNum yDen scale : Nat)
 
 /-- No operation materialises a per-member value; every reduction is over integers. -/
 inductive Value
@@ -291,16 +285,16 @@ inductive Value
 
 def Op.params : Op → Params
   | .weightUpper tNum tDen sigmaNum sigmaDen scale =>
-    { tNum, tDen, sigmaNum, sigmaDen, yLoNum := 0, yHiNum := 0, yDen := 1, nMinus := 1, nPlus := 1,
+    { tNum, tDen, sigmaNum, sigmaDen, yNum := 0, yDen := 1, nMinus := 1, nPlus := 1,
       primes := [], cNum := 1, cDen := 1, n0 := 0, width := 1, scale }
-  | .mollifiedTermUpper tNum tDen sigmaNum sigmaDen yLoNum yHiNum yDen nMinus nPlus primes cNum cDen scale =>
-    { tNum, tDen, sigmaNum, sigmaDen, yLoNum, yHiNum, yDen, nMinus, nPlus, primes := primesOf primes,
+  | .mollifiedTermUpper tNum tDen sigmaNum sigmaDen yNum yDen nMinus nPlus primes cNum cDen scale =>
+    { tNum, tDen, sigmaNum, sigmaDen, yNum, yDen, nMinus, nPlus, primes := primesOf primes,
       cNum, cDen, n0 := 0, width := 1, scale }
-  | .blockTermUpper tNum tDen sigmaNum sigmaDen yLoNum yHiNum yDen nMinus nPlus primes cNum cDen n0 width scale =>
-    { tNum, tDen, sigmaNum, sigmaDen, yLoNum, yHiNum, yDen, nMinus, nPlus, primes := primesOf primes,
+  | .blockTermUpper tNum tDen sigmaNum sigmaDen yNum yDen nMinus nPlus primes cNum cDen n0 width scale =>
+    { tNum, tDen, sigmaNum, sigmaDen, yNum, yDen, nMinus, nPlus, primes := primesOf primes,
       cNum, cDen, n0, width, scale }
-  | .sigmaLower tNum tDen yLoNum yHiNum yDen scale =>
-    { tNum, tDen, sigmaNum := 0, sigmaDen := 1, yLoNum, yHiNum, yDen, nMinus := 1, nPlus := 1,
+  | .sigmaLower tNum tDen yNum yDen scale =>
+    { tNum, tDen, sigmaNum := 0, sigmaDen := 1, yNum, yDen, nMinus := 1, nPlus := 1,
       primes := [], cNum := 1, cDen := 1, n0 := 0, width := 1, scale }
 
 /-- The numbers a family presents, or `none` when its members are not single naturals. -/
