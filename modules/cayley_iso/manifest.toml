@@ -2,8 +2,8 @@
 
 [module]
 name = "cayley_iso"
-version = 1
-summary = "Fixed-size undirected Cayley graph classification for finite groups. For every group-table member and k, inverse-closed identity-free k-subsets are partitioned both by Aut(G) and by unlabelled graph isomorphism. The group is CI at k exactly when those class counts agree."
+version = 2
+summary = "Undirected Cayley graph classification for finite groups, at one valency or across every inverse-closed connection set. Connection sets are partitioned both by Aut(G) and by unlabelled graph isomorphism."
 lean = "lean"
 contract = "lean/Cayley_iso/Contract.lean"
 reference = "lean/Cayley_iso/Reference.lean"
@@ -38,11 +38,31 @@ args = { k = "int" }
 families = ["group_tables"]
 summary = "The negation of is_ci. Use the hits reduction to return the group-table members forming non-CI (G,k) pairs; k is the request argument. This separate predicate keeps the shared rule that hits returns true members."
 
+[[operations]]
+name = "is_ci_group"
+value = "boolean"
+args = {}
+families = ["group_tables"]
+summary = "Whether every isomorphism between simple undirected Cayley graphs of G is induced on connection sets by an automorphism of G. Complementary valencies are identified before enumeration."
+
+[[operations]]
+name = "is_non_ci_group"
+value = "boolean"
+args = {}
+families = ["group_tables"]
+summary = "The negation of is_ci_group. With hits, returns the non-CI group-table members."
+
 [[backends]]
 name = "generic"
 sources = ["backends/generic/cayley_iso_generic.cpp"]
 accepts = "validated finite group tables; exhaustive inverse-closed connection sets and exact canonical forms"
-summary = "Portable C++: propagated table-automorphism search shared with automorphisms, canonical graph labelling shared with the runtime graph code, complement symmetry, and one fixed-k connection-set pass per group."
+summary = "Portable C++: generator-first table-automorphism search shared with automorphisms, one representative per Aut(G)-orbit, canonical graph labelling shared with the runtime graph code, and complement symmetry."
+
+[[backends]]
+name = "nauty"
+sources = ["backends/nauty/cayley_iso_nauty.cpp"]
+accepts = "validated finite group tables when LemmaKernel was built with nauty; calls are serialized when the installed nauty library does not provide thread-local state"
+summary = "Nauty canonical labelling, parallel across Aut(G)-orbit representatives; otherwise the same exact enumeration as the generic backend."
 
 [[rejections]]
 case = "matrix is not a group family"

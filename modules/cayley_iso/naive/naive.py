@@ -80,13 +80,26 @@ def class_counts(table, k):
     return len(aut_keys), len(iso_keys)
 
 
+def is_ci_group(table):
+    for k in range(len(table)):
+        aut_count, iso_count = class_counts(table, k)
+        if aut_count != iso_count:
+            return False
+    return True
+
+
 def run(op: str, family: Family, reduction: str = "all", prefix: int | None = None, **args):
     op = op.removeprefix("cayley_iso.")
     if family.kind != "group_tables":
         raise ValueError("cayley_iso operations need a group_tables family")
     tables = list(itertools.islice(rt.iter_members(family), prefix))
-    counts = [class_counts(table, args["k"]) for table in tables]
+    if op in ("is_ci_group", "is_non_ci_group"):
+        flags = [is_ci_group(table) for table in tables]
+        if op == "is_non_ci_group":
+            flags = [not flag for flag in flags]
+        return rt.reduce_bool(reduction, flags, tables, rt.NATURALS, **args)
 
+    counts = [class_counts(table, args["k"]) for table in tables]
     if op == "aut_class_count":
         return rt.reduce_int(reduction, [aut for aut, _ in counts], tables, rt.NATURALS)
     if op == "iso_class_count":

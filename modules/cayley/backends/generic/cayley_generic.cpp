@@ -1,3 +1,4 @@
+#include "../../../../runtime/src/group_table.hpp"
 #include "../../../../runtime/src/reduce.hpp"
 
 #include <deque>
@@ -260,86 +261,12 @@ struct Canonicalizer {
     }
 };
 
-uint64_t element_order(const GroupModel &g, uint64_t x) {
-    uint64_t y = g.identity;
-    for (uint64_t k = 1; k <= g.order; ++k) {
-        y = g.mul(x, y);
-        if (y == g.identity) return k;
-    }
-    return 0;
-}
-
-std::vector<uint8_t> generated_by(const GroupModel &g, const std::vector<uint32_t> &gens) {
-    std::vector<uint8_t> seen(g.order, 0);
-    std::deque<uint32_t> q;
-    seen[g.identity] = 1;
-    q.push_back((uint32_t)g.identity);
-    while (!q.empty()) {
-        uint32_t a = q.front();
-        q.pop_front();
-        for (uint32_t x : gens) {
-            uint32_t b = g.mul(x, a);
-            if (!seen[b]) { seen[b] = 1; q.push_back(b); }
-        }
-    }
-    return seen;
-}
-
 Result<std::vector<std::vector<uint32_t>>> group_automorphisms(const GroupModel &g) {
     using A = Result<std::vector<std::vector<uint32_t>>>;
-    std::vector<uint32_t> gens;
-    std::vector<uint8_t> span(g.order, 0);
-    span[g.identity] = 1;
-    for (uint32_t x = 0; x < g.order; ++x) {
-        if (span[x]) continue;
-        gens.push_back(x);
-        span = generated_by(g, gens);
-    }
-    std::vector<uint64_t> orders(g.order);
-    for (uint64_t x = 0; x < g.order; ++x) orders[x] = element_order(g, x);
-    std::vector<std::vector<uint32_t>> candidates(gens.size());
-    for (uint64_t i = 0; i < gens.size(); ++i)
-        for (uint32_t x = 0; x < g.order; ++x)
-            if (orders[x] == orders[gens[i]]) candidates[i].push_back(x);
-
-    std::vector<std::vector<uint32_t>> auts;
-    std::vector<uint32_t> images(gens.size());
-    uint64_t tried = 0;
-    bool too_many = false;
-    auto extend = [&]() {
-        if (++tried > (1ULL << 26)) { too_many = true; return; }
-        std::vector<int64_t> phi(g.order, -1);
-        phi[g.identity] = (int64_t)g.identity;
-        std::deque<uint32_t> q;
-        q.push_back((uint32_t)g.identity);
-        bool ok = true;
-        while (!q.empty() && ok) {
-            uint32_t a = q.front();
-            q.pop_front();
-            for (uint64_t i = 0; i < gens.size(); ++i) {
-                uint32_t b = g.mul(gens[i], a);
-                uint32_t image = g.mul(images[i], (uint32_t)phi[a]);
-                if (phi[b] < 0) { phi[b] = image; q.push_back(b); }
-                else if ((uint32_t)phi[b] != image) { ok = false; break; }
-            }
-        }
-        if (!ok || std::any_of(phi.begin(), phi.end(), [](int64_t x) { return x < 0; })) return;
-        std::vector<uint8_t> used(g.order, 0);
-        for (int64_t x : phi) {
-            if (used[x]) return;
-            used[x] = 1;
-        }
-        auts.emplace_back(phi.begin(), phi.end());
-    };
-    auto enumerate = [&](auto &self, uint64_t i) -> void {
-        if (too_many) return;
-        if (i == gens.size()) { extend(); return; }
-        for (uint32_t x : candidates[i]) { images[i] = x; self(self, i + 1); if (too_many) return; }
-    };
-    enumerate(enumerate, 0);
-    if (too_many) return A::failure(INVALID, "is_ci_set needs more than 2^26 candidate generator images for Aut(G)");
-    if (auts.empty()) return A::failure(INTERNAL, "failed to find the identity automorphism of G");
-    return A::success(std::move(auts));
+    auto automorphisms = group_table::automorphisms(g.table.data(), g.order);
+    if (automorphisms.empty())
+        return A::failure(INTERNAL, "failed to find the identity automorphism of G");
+    return A::success(std::move(automorphisms));
 }
 
 std::string set_key(const std::vector<uint8_t> &s) {
@@ -428,6 +355,135 @@ Result<GroupModel> setup_group(const Request &req) {
     return GroupModel::build(*it->second->matrix);
 }
 
+struct NonCiWitnessData {
+    std::vector<uint8_t> target;
+    Graph target_graph;
+    std::vector<uint32_t> isomorphism;
+    std::vector<std::vector<uint32_t>> automorphisms;
+};
+
+Result<NonCiWitnessData> setup_non_ci_witness(const Request &req, const GroupModel &group,
+                                                   bool enumerate_all_automorphisms) {
+    using W = Result<NonCiWitnessData>;
+    auto target_it = req.handle_args.find("target");
+    auto map_it = req.handle_args.find("isomorphism");
+    if (target_it == req.handle_args.end() || !target_it->second->matrix ||
+        target_it->second->matrix->p != 0)
+        return W::failure(INVALID, "target must be a nonempty orbits.perms connection set");
+    if (map_it == req.handle_args.end() || !map_it->second->matrix ||
+        map_it->second->matrix->p != 0)
+        return W::failure(INVALID, "isomorphism must be one permutation");
+    const Matrix &target_perms = *target_it->second->matrix;
+    const Matrix &map = *map_it->second->matrix;
+    if (target_perms.count == 0 || target_perms.cols != group.action_n)
+        return W::failure(INVALID, "target must be a nonempty connection set on the group's points");
+    if (map.count != 1 || map.cols != group.action_n)
+        return W::failure(INVALID, "isomorphism must be one permutation on the group's points");
+
+    Matrix target_member{0, 1, target_perms.count, target_perms.cols, target_perms.entries};
+    auto selected = connection_set(group, target_member);
+    if (!selected.ok) return W::failure(selected.error.status, selected.error.message);
+    if (group.order != group.action_n)
+        return W::failure(INVALID, "is_non_ci_witness needs a regular permutation representation of G");
+    std::vector<uint32_t> point_to_group(group.action_n, UINT32_MAX);
+    for (uint32_t element = 0; element < group.order; ++element) {
+        uint32_t point = group.elements[element * group.action_n];
+        if (point_to_group[point] != UINT32_MAX)
+            return W::failure(INVALID, "is_non_ci_witness needs a regular permutation representation of G");
+        point_to_group[point] = element;
+    }
+    std::vector<uint32_t> induced(group.order);
+    for (uint32_t element = 0; element < group.order; ++element) {
+        uint32_t point = group.elements[element * group.action_n];
+        uint32_t image = map.entries[point];
+        if (point_to_group[image] == UINT32_MAX)
+            return W::failure(INTERNAL, "regular action point has no group element");
+        induced[element] = point_to_group[image];
+    }
+    std::vector<std::vector<uint32_t>> automorphisms;
+    if (enumerate_all_automorphisms) {
+        auto found = group_automorphisms(group);
+        if (!found.ok) return W::failure(found.error.status, found.error.message);
+        automorphisms = std::move(found.value);
+    }
+    return W::success(NonCiWitnessData{
+        selected.value, cayley_graph(group, selected.value), std::move(induced),
+        std::move(automorphisms)});
+}
+
+Result<std::vector<std::vector<uint32_t>>> supplied_automorphisms(
+    const Request &req, const GroupModel &group) {
+    using A = Result<std::vector<std::vector<uint32_t>>>;
+    auto it = req.handle_args.find("automorphisms");
+    if (it == req.handle_args.end() || !it->second->matrix || it->second->matrix->p != 0)
+        return A::failure(INVALID, "automorphisms must be permutation generators");
+    const Matrix &generators = *it->second->matrix;
+    if (generators.count == 0 || generators.cols != group.action_n)
+        return A::failure(INVALID, "automorphisms must act on the regular representation's points");
+    std::vector<uint32_t> point_to_group(group.action_n, UINT32_MAX);
+    for (uint32_t element = 0; element < group.order; ++element)
+        point_to_group[group.elements[element * group.action_n]] = element;
+    std::vector<std::vector<uint32_t>> induced;
+    induced.reserve(generators.count);
+    for (uint64_t generator = 0; generator < generators.count; ++generator) {
+        const Entry *point_map = generators.at(generator);
+        std::vector<uint32_t> map(group.order);
+        for (uint32_t element = 0; element < group.order; ++element) {
+            uint32_t point = group.elements[element * group.action_n];
+            map[element] = point_to_group[point_map[point]];
+        }
+        if (map[group.identity] != group.identity)
+            return A::failure(INVALID, "a supplied automorphism does not fix the identity");
+        for (uint32_t x = 0; x < group.order; ++x)
+            for (uint32_t y = 0; y < group.order; ++y)
+                if (map[group.mul(x, y)] != group.mul(map[x], map[y]))
+                    return A::failure(INVALID, "a supplied permutation is not a group automorphism");
+        induced.push_back(std::move(map));
+    }
+    return A::success(std::move(induced));
+}
+
+bool same_selected_set(const std::vector<uint8_t> &source, const std::vector<uint8_t> &target,
+                       const std::vector<uint32_t> &mapping) {
+    for (uint64_t x = 0; x < source.size(); ++x)
+        if (source[x] != target[mapping[x]]) return false;
+    return true;
+}
+
+bool separated_under(const std::vector<uint8_t> &source, const std::vector<uint8_t> &target,
+                     const std::vector<std::vector<uint32_t>> &generators) {
+    std::unordered_set<std::string> seen;
+    std::deque<std::vector<uint8_t>> queue;
+    seen.insert(set_key(source));
+    queue.push_back(source);
+    std::vector<uint8_t> image(source.size());
+    while (!queue.empty()) {
+        auto current = std::move(queue.front());
+        queue.pop_front();
+        if (current == target) return false;
+        for (const auto &generator : generators) {
+            std::fill(image.begin(), image.end(), 0);
+            for (uint64_t x = 0; x < current.size(); ++x)
+                if (current[x]) image[generator[x]] = 1;
+            std::string key = set_key(image);
+            if (seen.insert(key).second) queue.push_back(image);
+        }
+    }
+    return true;
+}
+
+bool is_non_ci_witness(const GroupModel &group, const std::vector<uint8_t> &source,
+                       const Graph &source_graph, const NonCiWitnessData &data) {
+    if (!inverse_closed(group, source) || !inverse_closed(group, data.target)) return false;
+    for (uint64_t x = 0; x < group.order; ++x)
+        for (uint64_t y = 0; y < group.order; ++y)
+            if (source_graph.adj(x, y) !=
+                data.target_graph.adj(data.isomorphism[x], data.isomorphism[y])) return false;
+    for (const auto &automorphism : data.automorphisms)
+        if (same_selected_set(source, data.target, automorphism)) return false;
+    return true;
+}
+
 R run(const Request &req) {
     auto group = setup_group(req);
     if (!group.ok) return R::failure(group.error.status, group.error.message);
@@ -444,6 +500,18 @@ R run(const Request &req) {
         auto built = build_ci_data(group.value, req.family->rows());
         if (!built.ok) return R::failure(built.error.status, built.error.message);
         ci = std::make_shared<CiData>(std::move(built.value));
+    }
+    std::shared_ptr<NonCiWitnessData> non_ci_witness;
+    std::vector<std::vector<uint32_t>> automorphism_generators;
+    if (req.op == "is_non_ci_witness" || req.op == "is_separated_witness") {
+        auto built = setup_non_ci_witness(req, group.value, req.op == "is_non_ci_witness");
+        if (!built.ok) return R::failure(built.error.status, built.error.message);
+        non_ci_witness = std::make_shared<NonCiWitnessData>(std::move(built.value));
+        if (req.op == "is_separated_witness") {
+            auto supplied = supplied_automorphisms(req, group.value);
+            if (!supplied.ok) return R::failure(supplied.error.status, supplied.error.message);
+            automorphism_generators = std::move(supplied.value);
+        }
     }
 
     uint32_t threads = std::max<uint32_t>(1, std::min<uint64_t>(req.threads, size ? size : 1));
@@ -470,6 +538,24 @@ R run(const Request &req) {
                 auto value = is_ci_set(group.value, *ci, selected.value);
                 if (!value.ok) return fail(value.error.status, value.error.message);
                 accs[t].boolean(i, value.value);
+            } else if (req.op == "is_non_ci_witness" || req.op == "is_separated_witness") {
+                bool value = inverse_closed(group.value, selected.value) &&
+                             inverse_closed(group.value, non_ci_witness->target);
+                if (value)
+                    for (uint64_t x = 0; x < group.value.order && value; ++x)
+                        for (uint64_t y = 0; y < group.value.order; ++y)
+                            if (graph.adj(x, y) != non_ci_witness->target_graph.adj(
+                                    non_ci_witness->isomorphism[x],
+                                    non_ci_witness->isomorphism[y])) {
+                                value = false;
+                                break;
+                            }
+                if (value && req.op == "is_non_ci_witness")
+                    value = is_non_ci_witness(group.value, selected.value, graph, *non_ci_witness);
+                else if (value)
+                    value = separated_under(
+                        selected.value, non_ci_witness->target, automorphism_generators);
+                accs[t].boolean(i, value);
             } else return fail(INTERNAL, "unknown cayley operation " + req.op);
         }
         return ok();

@@ -52,11 +52,16 @@ def isCI (table : Mat) (k : Nat) : Bool :=
   let result := counts table k
   result.1 == result.2
 
+def isCIGroup (table : Mat) : Bool :=
+  (List.range table.length).all fun k => isCI table k
+
 inductive Op
   | autClassCount (k : Nat)
   | isoClassCount (k : Nat)
   | isCi (k : Nat)
   | isNonCi (k : Nat)
+  | isCiGroup
+  | isNonCiGroup
 
 inductive Value deriving DecidableEq, Repr
 
@@ -69,6 +74,8 @@ def run (op : Op) (family : Family) (red : Red) : Result Value :=
       | .isoClassCount k => reduceInt red tables (tables.map fun table => isoClassCount table k)
       | .isCi k => reduceBool red tables (tables.map fun table => isCI table k)
       | .isNonCi k => reduceBool red tables (tables.map fun table => !isCI table k)
+      | .isCiGroup => reduceBool red tables (tables.map isCIGroup)
+      | .isNonCiGroup => reduceBool red tables (tables.map fun table => !isCIGroup table)
   | _ => .invalid
 
 end Cayley_iso

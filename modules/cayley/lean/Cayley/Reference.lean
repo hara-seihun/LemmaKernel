@@ -177,6 +177,41 @@ def isCISet (es : List Perm) (s : List Nat) : Bool :=
     if graphIsomorphic es s t then automorphic es s t else true
 
 
+def inducedGroupMap (es : List Perm) (pointMap : Perm) : Perm :=
+  let points := es.map fun element => element.getD 0 0
+  (List.range es.length).map fun element =>
+    points.idxOf (pointMap.getD (points.getD element 0) 0)
+
+
+def isRegularAction (es : List Perm) : Bool :=
+  let points := es.map fun element => element.getD 0 0
+  points.length = (es.headD []).length && points.Nodup
+
+
+def isNonCIWitness (es : List Perm) (source target : List Nat) (pointMap : Perm) : Bool :=
+  isRegularAction es && isPermutation (es.headD []).length pointMap &&
+  inverseClosed es source && inverseClosed es target &&
+  preservesGraph es source target (inducedGroupMap es pointMap) &&
+  !automorphic es source target
+
+
+def separatedUnder (es : List Perm) (source target : List Nat)
+    (pointAutomorphisms : List Perm) : Bool :=
+  let induced := pointAutomorphisms.map (inducedGroupMap es)
+  pointAutomorphisms.all (isPermutation (es.headD []).length) &&
+  induced.all (preservesGroup es) &&
+  !(permElements induced).any fun automorphism =>
+    sameSet es.length (source.map (automorphism.getD · 0)) target
+
+
+def isSeparatedWitness (es : List Perm) (source target : List Nat) (pointMap : Perm)
+    (pointAutomorphisms : List Perm) : Bool :=
+  isRegularAction es && isPermutation (es.headD []).length pointMap &&
+  inverseClosed es source && inverseClosed es target &&
+  preservesGraph es source target (inducedGroupMap es pointMap) &&
+  separatedUnder es source target pointAutomorphisms
+
+
 /-! ## Operations and reductions -/
 
 inductive Op
@@ -186,12 +221,15 @@ inductive Op
   | diameter (group : Group)
   | autOrder (group : Group)
   | isCiSet (group : Group)
+  | isNonCiWitness (group : Group) (target isomorphism : List Perm)
+  | isSeparatedWitness (group : Group) (target isomorphism automorphisms : List Perm)
 
 inductive Value deriving DecidableEq, Repr
 
 
 def Op.group : Op → Group
-  | .connected g | .isRegularOfDegree _ g | .girth g | .diameter g | .autOrder g | .isCiSet g => g
+  | .connected g | .isRegularOfDegree _ g | .girth g | .diameter g | .autOrder g |
+    .isCiSet g | .isNonCiWitness g _ _ | .isSeparatedWitness g _ _ _ => g
 
 def run (op : Op) (f : Family) (red : Red) : Result Value :=
   match groupGenerators op.group with
@@ -209,5 +247,23 @@ def run (op : Op) (f : Family) (red : Red) : Result Value :=
       | .diameter _ => reduceInt red ms (sets.map (diameter es))
       | .autOrder _ => reduceInt red ms (sets.map (autOrder es))
       | .isCiSet _ => reduceBool red ms (sets.map (isCISet es))
+      | .isNonCiWitness _ target isomorphism =>
+          match isomorphism with
+          | [pointMap] =>
+              if !validMember es target then .invalid
+              else
+                let targetSet := memberIndices es target
+                reduceBool red ms (sets.map fun source =>
+                  isNonCIWitness es source targetSet pointMap)
+          | _ => .invalid
+      | .isSeparatedWitness _ target isomorphism automorphisms =>
+          match isomorphism with
+          | [pointMap] =>
+              if !validMember es target then .invalid
+              else
+                let targetSet := memberIndices es target
+                reduceBool red ms (sets.map fun source =>
+                  isSeparatedWitness es source targetSet pointMap automorphisms)
+          | _ => .invalid
 
 end Cayley

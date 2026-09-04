@@ -2,7 +2,7 @@
 # Lk is the runtime's reference (families, reductions) and contract; then one library
 # per module: its executable reference and contract (against Mathlib).
 name = "LemmaKernel"
-defaultTargets = ["Lk", "Automorphisms", "Bilinear_invariants", "Boolean_functions", "Burnside", "Cayley", "Cayley_iso", "Char_poly", "Characters", "Circulants", "Code_equivalence", "Continued_fractions_and_pell", "Coset_enumeration", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Graph_polynomials", "Graphs", "Hadamard", "Heat_dirichlet", "Hypergraphs", "Integer_partitions", "Latin_squares", "Lattice_of_subspaces", "Lattices_small", "Linear_codes", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Polytopes_small", "Posets", "Projective_sets", "Quadratic_forms", "Quantum_codes", "Residues", "Set_systems", "Sieve_ranges", "Simplicial_complexes", "Small_groups", "Spreads_and_partitions", "Strongly_regular", "Subgroups", "Subspace_orbits", "Sum_free_and_additive", "Vertex_transitive", "Words_and_growth", "Young"]
+defaultTargets = ["Lk", "Automorphisms", "Bilinear_invariants", "Boolean_functions", "Burnside", "Cayley", "Cayley_iso", "Char_poly", "Characters", "Circuit_fires", "Circulants", "Code_equivalence", "Continued_fractions_and_pell", "Coset_enumeration", "Designs", "Difference_sets", "Elliptic_curves_fp", "Gfp", "Gfq", "Graph_iso", "Graph_polynomials", "Graphs", "Hadamard", "Heat_dirichlet", "Hypergraphs", "Integer_partitions", "Latin_squares", "Lattice_of_subspaces", "Lattices_small", "Linear_codes", "Matchings_and_flows", "Matrix_groups", "Orbits", "Perm_groups", "Permutation_statistics", "Polynomials_fq", "Polytopes_small", "Posets", "Projective_sets", "Quadratic_forms", "Quantum_codes", "Residues", "Set_systems", "Sieve_ranges", "Simplicial_complexes", "Small_groups", "Spreads_and_partitions", "Strongly_regular", "Subgroups", "Subspace_orbits", "Sum_free_and_additive", "Vertex_transitive", "Words_and_growth", "Young"]
 
 [[require]]
 name = "mathlib"
@@ -53,6 +53,11 @@ roots = ["Char_poly"]
 name = "Characters"
 srcDir = "modules/characters/lean"
 roots = ["Characters"]
+
+[[lean_lib]]
+name = "Circuit_fires"
+srcDir = "modules/circuit_fires/lean"
+roots = ["Circuit_fires"]
 
 [[lean_lib]]
 name = "Circulants"

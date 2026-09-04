@@ -42,6 +42,43 @@ def cases(ctx, rng):
         Case("C4 singletons", singles, "diameter", {"group": C4}),
         Case("C4 singletons", singles, "aut_order", {"group": C4}),
         Case("C4 singletons", singles, "is_ci_set", {"group": C4, "limit": 3}),
+        Case(
+            "C4 automorphic witness",
+            ctx.explicit(lk.perms(4, [[2, 3, 0, 1]])),
+            "is_non_ci_witness",
+            {
+                "group": C4,
+                "target": ctx.perms(4, [[2, 3, 0, 1]]),
+                "isomorphism": ctx.perms(4, [list(range(4))]),
+                "limit": 1,
+            },
+        ),
+        Case(
+            "C4 separated witness",
+            ctx.explicit(lk.perms(4, [[2, 3, 0, 1]])),
+            "is_separated_witness",
+            {
+                "group": C4,
+                "target": ctx.perms(4, [[2, 3, 0, 1]]),
+                "isomorphism": ctx.perms(4, [list(range(4))]),
+                "automorphisms": ctx.perms(4, [list(range(4))]),
+                "limit": 1,
+            },
+        ),
+        Case(
+            "C4xC2 non-CI witness",
+            ctx.explicit(lk.perms(8, [c4xc2()[1]])),
+            "is_non_ci_witness",
+            {
+                "group": ctx.perms(8, c4xc2()),
+                "target": ctx.perms(8, [[c4xc2()[0][c4xc2()[0][x]] for x in range(8)]]),
+                "isomorphism": ctx.perms(8, [[0, 4, 1, 5, 2, 6, 3, 7]]),
+                "limit": 1,
+            },
+            oracle=False,
+            bench="all",
+            what="a supplied non-CI witness for C4 x C2, including graph isomorphism and full automorphism separation",
+        ),
         Case("C4 pairs", pairs, "connected", {"group": C4, "limit": 2}, reductions=["all", "hits"]),
         Case("C4 pairs", pairs, "girth", {"group": C4}, reductions=["all", "histogram"]),
     ]
@@ -54,6 +91,17 @@ def cases(ctx, rng):
         Case("identity is not a connection", identity_family, "connected", {"group": C4}, reductions=["count"], oracle=False),
         Case("element outside G", outside_family, "connected", {"group": C4}, reductions=["count"], oracle=False),
         Case("range is not a connection family", ctx.range(0, 3), "connected", {"group": C4}, reductions=["count"], oracle=False),
+        Case(
+            "two witness isomorphisms",
+            ctx.explicit(lk.perms(8, [c4xc2()[1]])),
+            "is_non_ci_witness",
+            {
+                "group": ctx.perms(8, c4xc2()),
+                "target": ctx.perms(8, [[c4xc2()[0][c4xc2()[0][x]] for x in range(8)]]),
+                "isomorphism": ctx.perms(8, [list(range(8)), list(range(8))]),
+            },
+            reductions=["all"], oracle=False,
+        ),
     ]
 
     D6gens = dihedral(6)
@@ -87,3 +135,12 @@ def invariants(ctx):
     group = ctx.perms(8, generators)
     ci = ctx.value("cayley.is_ci_set", connection_family(ctx, generators, 1), group=group).values
     assert ci == [0] * 7
+
+    a, b = generators
+    source = ctx.explicit(lk.perms(8, [b]))
+    target = ctx.perms(8, [[a[a[x]] for x in range(8)]])
+    mapping = ctx.perms(8, [[0, 4, 1, 5, 2, 6, 3, 7]])
+    assert ctx.value(
+        "cayley.is_non_ci_witness", source,
+        group=group, target=target, isomorphism=mapping,
+    ).values == [1]

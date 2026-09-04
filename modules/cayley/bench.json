@@ -1,13 +1,13 @@
 {
  "module": "cayley",
  "fingerprint": {
-  "module": "4da24db3f6a172ebf7b065e7c206f82d00f060b974226e281488ddb4f0a0cf7e",
-  "runtime": "dd3af420d38ffc7e9cb7cf9cc54f025abd78a5df0848777eb4bafcddcff521f0",
+  "module": "c0d524372604faa971c74cff9e96b37c19d363eaa370d609d668c89bdef65800",
+  "runtime": "9826bc08b6918093d2bbaed339fef9f3472b75956f1045d7c5b91e71f2d16945",
   "dependencies": [],
-  "combined": "6343fcb2f09df6195bd10e973306b4db430d81439dadbb09d638f8d1d957667a"
+  "combined": "8112818e26719e0a28453b8b1e4f01c04edad5c7bb0bb495b10f66302865cd21"
  },
- "measured_at": "2026-09-03T05:20:52+00:00",
- "commit": "70d1ac9cfedb0c2401f66d8045b2a6f5c819001b",
+ "measured_at": "2026-09-04T02:06:57+00:00",
+ "commit": "32186328c0abc3178119541e19fc530d906fa30c",
  "machine": {
   "host": "gmktec",
   "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
@@ -16,18 +16,33 @@
  "naive_limit_s": 10.0,
  "rows": [
   {
+   "case": "C4xC2 non-CI witness",
+   "what": "a supplied non-CI witness for C4 x C2, including graph isomorphism and full automorphism separation",
+   "op": "cayley.is_non_ci_witness",
+   "reduction": "all",
+   "members": 1,
+   "naive_s": 0.005181069020181894,
+   "naive_extrapolated": false,
+   "kernel_1_thread_s": 2.1799001842737198e-05,
+   "kernel_all_threads_s": 1.756916753947735e-05,
+   "threads": 32,
+   "speedup_1_thread": 237.67459893619295,
+   "speedup_all_threads": 294.8955326733723,
+   "answer": "Integers(values=[1])"
+  },
+  {
    "case": "D6 triples",
    "what": "connected simple Cayley graphs from all 3-subsets of the 11 nonidentity elements of D_12",
    "op": "cayley.connected",
    "reduction": "count",
    "members": 165,
-   "naive_s": 0.002726155798882246,
+   "naive_s": 0.002371606882661581,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 9.086704812943935e-05,
-   "kernel_all_threads_s": 0.0004143060650676489,
+   "kernel_1_thread_s": 8.273706771433353e-05,
+   "kernel_all_threads_s": 0.0005037919618189335,
    "threads": 32,
-   "speedup_1_thread": 30.001588639688833,
-   "speedup_all_threads": 6.580052837114786,
+   "speedup_1_thread": 28.664381614901238,
+   "speedup_all_threads": 4.7075123511278925,
    "answer": "Count(value=132, visited=165, family_size=165)"
   },
   {
@@ -36,13 +51,13 @@
    "op": "cayley.aut_order",
    "reduction": "histogram",
    "members": 7,
-   "naive_s": 0.15021336497738957,
+   "naive_s": 0.12573388405144215,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.0017316800076514482,
-   "kernel_all_threads_s": 0.0012066180352121592,
+   "kernel_1_thread_s": 0.0016088939737528563,
+   "kernel_all_threads_s": 0.0017371389549225569,
    "threads": 32,
-   "speedup_1_thread": 86.74429704891786,
-   "speedup_all_threads": 124.49123135390366,
+   "speedup_1_thread": 78.1492665785547,
+   "speedup_all_threads": 72.37986558021058,
    "answer": "Histogram(visited=7, family_size=7, bins=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, "
   },
   {
@@ -51,13 +66,13 @@
    "op": "cayley.is_ci_set",
    "reduction": "all",
    "members": 7,
-   "naive_s": 0.021884480956941843,
+   "naive_s": 0.01630285009741783,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.005426221992820501,
-   "kernel_all_threads_s": 0.003905324963852763,
+   "kernel_1_thread_s": 0.004935167031362653,
+   "kernel_all_threads_s": 0.00429032021202147,
    "threads": 32,
-   "speedup_1_thread": 4.033097242592997,
-   "speedup_all_threads": 5.603754145814259,
+   "speedup_1_thread": 3.303403915979808,
+   "speedup_all_threads": 3.799914526598102,
    "answer": "Integers(values=[0, 0, 0, 0, 0, 0, 0])"
   }
  ]

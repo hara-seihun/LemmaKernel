@@ -11,11 +11,14 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/burnside/backends
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/cayley/backends/generic/cayley_generic.cpp)
 # module cayley: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/cayley_iso/backends/generic/cayley_iso_generic.cpp)
-# module cayley_iso: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/cayley_iso/backends/nauty/cayley_iso_nauty.cpp)
+# module cayley_iso: backends ['generic', 'nauty']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/char_poly/backends/generic/char_poly_generic.cpp)
 # module char_poly: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/characters/backends/generic/characters_generic.cpp)
 # module characters: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/circuit_fires/backends/reduced_polynomial/circuit_fires.cpp)
+# module circuit_fires: backends ['reduced_polynomial']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/circulants/backends/generic/circulants_generic.cpp)
 # module circulants: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/code_equivalence/backends/generic/code_equivalence_generic.cpp)

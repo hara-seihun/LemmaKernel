@@ -73,4 +73,27 @@ theorem isCISet_spec (raw : Mat) (hraw : validMember es raw = true) :
       IsCISet (decodedSet decode (memberIndices es raw)) := by
   sorry
 
+/-- A checked pair is a concrete counterexample to the CI property of the source connection set. -/
+theorem isNonCIWitness_sound (source target : Mat) (pointMap : Perm)
+    (hsource : validMember es source = true) (htarget : validMember es target = true)
+    (checked : isNonCIWitness es (memberIndices es source) (memberIndices es target) pointMap = true) :
+    ¬ IsCISet (decodedSet decode (memberIndices es source)) := by
+  sorry
+
+/-- The supplied point permutations generate every automorphism of the indexed group model. -/
+def CompletePointAutomorphisms (es : List Perm) (pointAutomorphisms : List Perm) : Prop :=
+  ∀ groupMap : Perm, preservesGroup es groupMap = true →
+    groupMap ∈ permElements (pointAutomorphisms.map (inducedGroupMap es))
+
+/-- The supplied-generator variant has the same conclusion once a structural argument proves that
+those generators produce the full automorphism group. -/
+theorem isSeparatedWitness_sound_of_complete (source target : Mat) (pointMap : Perm)
+    (pointAutomorphisms : List Perm)
+    (hsource : validMember es source = true) (htarget : validMember es target = true)
+    (checked : isSeparatedWitness es (memberIndices es source) (memberIndices es target)
+      pointMap pointAutomorphisms = true)
+    (complete : CompletePointAutomorphisms es pointAutomorphisms) :
+    ¬ IsCISet (decodedSet decode (memberIndices es source)) := by
+  sorry
+
 end Cayley.Contract

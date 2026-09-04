@@ -393,8 +393,8 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                 'name': 'generic',
                 'sources': ['backends/generic/cayley_generic.cpp'],
                 'summary': 'Portable C++: group closure and multiplication table once per request, BFS '
-                           'invariants, and exact graph canonical forms by equitable partition refinement '
-                           'plus individualisation.'}],
+                           'invariants, exact graph canonical forms by equitable partition refinement plus '
+                           'individualisation, and direct verification of supplied non-CI witness pairs.'}],
   'module': {'cases': 'cases.py',
              'contract': 'lean/Cayley/Contract.lean',
              'lean': 'lean',
@@ -405,7 +405,7 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                         'nonidentity elements of the permutation group G. SimpleGraph.fromRel symmetrises S '
                         'when S is not inverse-closed. Girth and Mathlib-style diameter are 0 for acyclic '
                         'and disconnected graphs, respectively.',
-             'version': 1},
+             'version': 2},
   'operations': [{'args': {'group': 'group'},
                   'families': ['explicit', 'subsets', 'subsets_of'],
                   'name': 'connected',
@@ -442,6 +442,27 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'summary': 'Whether S is inverse-closed and every inverse-closed identity-free T of the '
                              'same size with Cay(G,T) isomorphic to Cay(G,S) is an Aut(G)-image of S. '
                              'Non-inverse-closed S returns false.',
+                  'value': 'boolean'},
+                 {'args': {'group': 'group', 'isomorphism': 'perms', 'target': 'perms'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'is_non_ci_witness',
+                  'summary': 'Whether S and target are inverse-closed connection sets, the supplied point '
+                             'permutation is an isomorphism Cay(G,S) -> Cay(G,target), and no automorphism '
+                             'of G maps S to target. The group generators must act regularly; target is a '
+                             'batch of its element permutations and isomorphism is one permutation on the '
+                             'regular action points.',
+                  'value': 'boolean'},
+                 {'args': {'automorphisms': 'perms',
+                           'group': 'group',
+                           'isomorphism': 'perms',
+                           'target': 'perms'},
+                  'families': ['explicit', 'subsets', 'subsets_of'],
+                  'name': 'is_separated_witness',
+                  'summary': 'Whether S and target are inverse-closed, the supplied point permutation is a '
+                             'Cayley-graph isomorphism, every supplied automorphism generator really is an '
+                             'automorphism of G, and target is outside the connection-set orbit they '
+                             'generate. When the supplied generators are known to generate Aut(G), a true '
+                             'result is a non-CI witness.',
                   'value': 'boolean'}],
   'rejections': [{'case': 'matrix group is unsupported', 'error': 'permutation group'},
                  {'case': 'identity is not a connection', 'error': 'identity'},
@@ -450,25 +471,31 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'C4 singletons',
                   'error': 'does not accept integer',
                   'op': 'girth',
-                  'reduction': 'count'}]},
+                  'reduction': 'count'},
+                 {'case': 'two witness isomorphisms', 'error': 'one permutation'}]},
  {'backends': [{'accepts': 'validated finite group tables; exhaustive inverse-closed connection sets and '
                            'exact canonical forms',
                 'name': 'generic',
                 'sources': ['backends/generic/cayley_iso_generic.cpp'],
-                'summary': 'Portable C++: propagated table-automorphism search shared with automorphisms, '
-                           'canonical graph labelling shared with the runtime graph code, complement '
-                           'symmetry, and one fixed-k connection-set pass per group.'}],
+                'summary': 'Portable C++: generator-first table-automorphism search shared with '
+                           'automorphisms, one representative per Aut(G)-orbit, canonical graph labelling '
+                           'shared with the runtime graph code, and complement symmetry.'},
+               {'accepts': 'validated finite group tables when LemmaKernel was built with nauty; calls are '
+                           'serialized when the installed nauty library does not provide thread-local state',
+                'name': 'nauty',
+                'sources': ['backends/nauty/cayley_iso_nauty.cpp'],
+                'summary': 'Nauty canonical labelling, parallel across Aut(G)-orbit representatives; '
+                           'otherwise the same exact enumeration as the generic backend.'}],
   'module': {'cases': 'cases.py',
              'contract': 'lean/Cayley_iso/Contract.lean',
              'lean': 'lean',
              'naive': 'naive/naive.py',
              'name': 'cayley_iso',
              'reference': 'lean/Cayley_iso/Reference.lean',
-             'summary': 'Fixed-size undirected Cayley graph classification for finite groups. For every '
-                        'group-table member and k, inverse-closed identity-free k-subsets are partitioned '
-                        'both by Aut(G) and by unlabelled graph isomorphism. The group is CI at k exactly '
-                        'when those class counts agree.',
-             'version': 1},
+             'summary': 'Undirected Cayley graph classification for finite groups, at one valency or across '
+                        'every inverse-closed connection set. Connection sets are partitioned both by Aut(G) '
+                        'and by unlabelled graph isomorphism.',
+             'version': 2},
   'operations': [{'args': {'k': 'int'},
                   'families': ['group_tables'],
                   'name': 'aut_class_count',
@@ -494,6 +521,19 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'summary': 'The negation of is_ci. Use the hits reduction to return the group-table '
                              'members forming non-CI (G,k) pairs; k is the request argument. This separate '
                              'predicate keeps the shared rule that hits returns true members.',
+                  'value': 'boolean'},
+                 {'args': {},
+                  'families': ['group_tables'],
+                  'name': 'is_ci_group',
+                  'summary': 'Whether every isomorphism between simple undirected Cayley graphs of G is '
+                             'induced on connection sets by an automorphism of G. Complementary valencies '
+                             'are identified before enumeration.',
+                  'value': 'boolean'},
+                 {'args': {},
+                  'families': ['group_tables'],
+                  'name': 'is_non_ci_group',
+                  'summary': 'The negation of is_ci_group. With hits, returns the non-CI group-table '
+                             'members.',
                   'value': 'boolean'}],
   'rejections': [{'case': 'matrix is not a group family', 'error': 'group_tables'},
                  {'case': 'order-four catalogue at k=1',
@@ -628,6 +668,61 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'error': 'does not accept',
                   'op': 'character_table',
                   'reduction': 'count'}]},
+ {'backends': [{'accepts': 'explicit matrices over primes p <= 7, base dimension <= 5, fibre dimension <= 8, '
+                           'and at most 40 circuit rows; find_potential additionally requires at most 1024 '
+                           'unknowns and 2^24 augmented-matrix entries',
+                'name': 'reduced_polynomial',
+                'sources': ['backends/reduced_polynomial/circuit_fires.cpp'],
+                'summary': 'Portable C++: exact row reduction. Fire existence uses the reduced-polynomial '
+                           'dual criterion and caches each scalar finite-difference row space across the '
+                           'whole family. Bounded witness construction solves the direct equations with '
+                           'total defect normalized to one.'}],
+  'module': {'cases': 'cases.py',
+             'contract': 'lean/Circuit_fires/Contract.lean',
+             'lean': 'lean',
+             'naive': 'naive/naive.py',
+             'name': 'circuit_fires',
+             'reference': 'lean/Circuit_fires/Reference.lean',
+             'summary': 'Concise circuit fires over finite prime fields. A member has rows [z_i | u_i], '
+                        'where z_i is a base-space direction and u_i is a fibre covector. The module checks '
+                        'the circuit conditions, decides whether the finite-difference equations admit '
+                        'nonzero total defect, constructs bounded explicit witnesses, and verifies supplied '
+                        'potentials.',
+             'version': 1},
+  'operations': [{'args': {'base_dim': 'int'},
+                  'families': ['explicit'],
+                  'name': 'is_circuit',
+                  'summary': 'Whether [z_i | u_i] is concise and circuit-minimal: the z_i and u_i span their '
+                             'spaces, the tensors u_i tensor z_i sum to zero and have rank k-1, and the z_i '
+                             'lie on distinct projective lines.',
+                  'value': 'boolean'},
+                 {'args': {'base_dim': 'int'},
+                  'families': ['explicit'],
+                  'name': 'is_fire',
+                  'summary': 'Whether the member is a concise circuit and there are a pointed potential c '
+                             'and constants lambda_i satisfying u_i(c(x+z_i)-c(x))=lambda_i for every x, '
+                             'with nonzero sum of the lambda_i.',
+                  'value': 'boolean'},
+                 {'args': {'base_dim': 'int'},
+                  'families': ['explicit'],
+                  'name': 'find_potential',
+                  'summary': 'For each configuration, one normalized witness or none. The vector contains '
+                             'the p^g*h entries c(x)_a in little-endian point order and row-major coordinate '
+                             'order, followed by the k defects lambda_i; c(0)=0 and the total defect is one. '
+                             'Explicit construction is bounded to 1024 unknowns and 2^24 augmented-matrix '
+                             'entries.',
+                  'value': 'gfp.solutions'},
+                 {'args': {'base_dim': 'int', 'defects': 'vector', 'potential': 'vectors'},
+                  'families': ['explicit'],
+                  'name': 'verifies_potential',
+                  'summary': 'Whether the member is a concise circuit and the supplied potential and defect '
+                             'vector witness a fire. Potential row sum_j x_j*p^j stores c(x), so row zero is '
+                             'c(0).',
+                  'value': 'boolean'}],
+  'rejections': [{'case': 'natural-number configuration', 'error': 'prime'},
+                 {'case': 'base dimension consumes every column', 'error': 'base_dim'},
+                 {'case': 'potential has the wrong number of rows', 'error': 'potential'},
+                 {'case': 'potential construction is too large', 'error': 'too large'}]},
  {'backends': [{'accepts': '1 <= n < 2^32; natural-number connection sets in explicit, subsets, or '
                            'subsets_of families; range families for is_ci',
                 'name': 'generic',

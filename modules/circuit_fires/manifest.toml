@@ -1,0 +1,61 @@
+# circuit_fires: exact concise-circuit fire tests over finite prime fields.
+
+[module]
+name = "circuit_fires"
+version = 1
+summary = "Concise circuit fires over finite prime fields. A member has rows [z_i | u_i], where z_i is a base-space direction and u_i is a fibre covector. The module checks the circuit conditions, decides whether the finite-difference equations admit nonzero total defect, constructs bounded explicit witnesses, and verifies supplied potentials."
+lean = "lean"
+contract = "lean/Circuit_fires/Contract.lean"
+reference = "lean/Circuit_fires/Reference.lean"
+naive = "naive/naive.py"
+cases = "cases.py"
+
+[[operations]]
+name = "is_circuit"
+value = "boolean"
+args = { base_dim = "int" }
+families = ["explicit"]
+summary = "Whether [z_i | u_i] is concise and circuit-minimal: the z_i and u_i span their spaces, the tensors u_i tensor z_i sum to zero and have rank k-1, and the z_i lie on distinct projective lines."
+
+[[operations]]
+name = "is_fire"
+value = "boolean"
+args = { base_dim = "int" }
+families = ["explicit"]
+summary = "Whether the member is a concise circuit and there are a pointed potential c and constants lambda_i satisfying u_i(c(x+z_i)-c(x))=lambda_i for every x, with nonzero sum of the lambda_i."
+
+[[operations]]
+name = "find_potential"
+value = "gfp.solutions"
+args = { base_dim = "int" }
+families = ["explicit"]
+summary = "For each configuration, one normalized witness or none. The vector contains the p^g*h entries c(x)_a in little-endian point order and row-major coordinate order, followed by the k defects lambda_i; c(0)=0 and the total defect is one. Explicit construction is bounded to 1024 unknowns and 2^24 augmented-matrix entries."
+
+[[operations]]
+name = "verifies_potential"
+value = "boolean"
+args = { base_dim = "int", defects = "vector", potential = "vectors" }
+families = ["explicit"]
+summary = "Whether the member is a concise circuit and the supplied potential and defect vector witness a fire. Potential row sum_j x_j*p^j stores c(x), so row zero is c(0)."
+
+[[backends]]
+name = "reduced_polynomial"
+sources = ["backends/reduced_polynomial/circuit_fires.cpp"]
+accepts = "explicit matrices over primes p <= 7, base dimension <= 5, fibre dimension <= 8, and at most 40 circuit rows; find_potential additionally requires at most 1024 unknowns and 2^24 augmented-matrix entries"
+summary = "Portable C++: exact row reduction. Fire existence uses the reduced-polynomial dual criterion and caches each scalar finite-difference row space across the whole family. Bounded witness construction solves the direct equations with total defect normalized to one."
+
+[[rejections]]
+case = "natural-number configuration"
+error = "prime"
+
+[[rejections]]
+case = "base dimension consumes every column"
+error = "base_dim"
+
+[[rejections]]
+case = "potential has the wrong number of rows"
+error = "potential"
+
+[[rejections]]
+case = "potential construction is too large"
+error = "too large"

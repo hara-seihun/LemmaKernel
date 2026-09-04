@@ -79,6 +79,11 @@ seconds each; on a shared machine use `pytest -n 8 tests` rather than `auto`.
 No test or bench script is written per module: a module ships `cases.py` and the manifest, and
 `tools/harness.py` derives the rest.
 
+`./deploy` builds the current checkout, checks its generated files, and atomically publishes the
+Python package, shared library, and C headers under `/srv/pi/lemmakernel/current`. The published
+Python package finds its colocated library without `LEMMAKERNEL_LIB`; a host only needs to put
+`/srv/pi/lemmakernel/current/python` on `PYTHONPATH`.
+
 Bench results are committed: `modules/NAME/bench.json` holds the rows and a fingerprint of the
 module tree, the module trees it includes, and the runtime, and [BENCHMARKS.md](BENCHMARKS.md)
 is generated from every record. `tools/bench.py` reruns a module only when its fingerprint
@@ -112,10 +117,11 @@ and committed; the build refuses to configure if they are stale.
 | [bilinear_invariants](modules/bilinear_invariants/manifest.toml) | rank, radical dimension, determinant square classes, nondegeneracy, and canonical congruence labels of symmetric and alternating forms over F_p | `generic` (symmetric Schur elimination and canonical-form assembly, portable C++) |
 | [boolean_functions](modules/boolean_functions/manifest.toml) | nonlinearity, algebraic degree, Walsh spectra, bent and APN tests, and domain-affine canonical forms for Boolean truth tables | `generic` (fast Walsh and Mobius transforms, prefix-pruned affine canonicalisation, portable C++) |
 | [burnside](modules/burnside/manifest.toml) | orbit counts, fixed counts, and canonical cycle indices for permutation groups on subsets and words, without enumerating the acted-on family | `generic` (cycle-type formulas, portable C++) |
-| [cayley](modules/cayley/manifest.toml) | simple undirected Cayley graphs of finite permutation groups: connectivity, regularity, girth, diameter, graph automorphism order, and the CI property of a connection set | `generic` (exact group closure, graph search, partition refinement and individualisation, portable C++) |
-| [cayley_iso](modules/cayley_iso/manifest.toml) | fixed-size inverse-closed Cayley connection sets: Aut(G)-class counts, unlabelled graph-isomorphism class counts, and CI or non-CI tests for group-table families | `generic` (shared exact table automorphisms and graph canonical forms, portable C++) |
+| [cayley](modules/cayley/manifest.toml) | simple undirected Cayley graphs of finite permutation groups: connectivity, regularity, girth, diameter, graph automorphism order, the CI property of a connection set, and exact separated-action non-CI witnesses | `generic` (exact group closure, graph search, partition refinement and individualisation, portable C++) |
+| [cayley_iso](modules/cayley_iso/manifest.toml) | fixed-size and whole-group inverse-closed Cayley CI tests, with Aut(G)-class and unlabelled graph-isomorphism class counts for group-table families | `nauty` (preferred exact canonical labelling when available); `generic` (portable exact fallback) |
 | [char_poly](modules/char_poly/manifest.toml) | characteristic and minimal polynomials, rational canonical form, GL conjugacy labels, regularity, semisimplicity, and element order | `generic` (portable C++; bounded rational-form factor search and element orders) |
 | [characters](modules/characters/manifest.toml) | exact ordinary character tables, induction, restriction, and Frobenius-Schur indicators for finite abelian permutation groups | `generic` (group closure and exact enumeration of the dual group, portable C++) |
+| [circuit_fires](modules/circuit_fires/manifest.toml) | concise-circuit conditions and fire existence over prime fields, with bounded potential construction and verification | `reduced_polynomial` (exact finite-field elimination with cached finite-difference row spaces, portable C++) |
 | [circulants](modules/circulants/manifest.toml) | exact character spectra of circulant graphs and digraphs, isomorphism at corrected-Adam orders, canonical connection sets, and the cyclic CI/DCI classification | `generic` (unit multipliers and character sums, portable C++) |
 | [code_equivalence](modules/code_equivalence/manifest.toml) | linear codes up to monomial equivalence: canonical form, canonical index, class representatives, orbit sizes, and monomial automorphism orders | `generic` (search over information sets rather than over the group, portable C++) |
 | [continued_fractions_and_pell](modules/continued_fractions_and_pell/manifest.toml) | continued fractions of `sqrt(d)`, their period statistics, fundamental units of `Z[sqrt d]`, fundamental Pell solutions, solvability of the negative Pell equation, and class numbers of imaginary quadratic orders, over ranges of naturals | `generic` (one continued-fraction walk per member with 128-bit convergents, portable C++) |
@@ -237,5 +243,5 @@ existing module faster, read [docs/adding-a-backend.md](docs/adding-a-backend.md
 
 ## Where it lives
 
-Source: `~/projects/LemmaKernel`, public remote `hara-seihun/LemmaKernel`. It is not yet
-deployed anywhere outside the checkout; the shared-library and `/srv/pi` publication step is open.
+Source: `~/projects/LemmaKernel`, public remote `hara-seihun/LemmaKernel`. `./deploy` publishes
+commit-addressed builds under `/srv/pi/lemmakernel` and switches `current` atomically.

@@ -2,7 +2,7 @@
 
 [module]
 name = "cayley"
-version = 1
+version = 2
 summary = "Simple undirected Cayley graphs Cay(G,S). A member is a fixed-size list of distinct nonidentity elements of the permutation group G. SimpleGraph.fromRel symmetrises S when S is not inverse-closed. Girth and Mathlib-style diameter are 0 for acyclic and disconnected graphs, respectively."
 lean = "lean"
 contract = "lean/Cayley/Contract.lean"
@@ -57,11 +57,25 @@ args = { group = "group" }
 families = ["explicit", "subsets", "subsets_of"]
 summary = "Whether S is inverse-closed and every inverse-closed identity-free T of the same size with Cay(G,T) isomorphic to Cay(G,S) is an Aut(G)-image of S. Non-inverse-closed S returns false."
 
+[[operations]]
+name = "is_non_ci_witness"
+value = "boolean"
+args = { group = "group", target = "perms", isomorphism = "perms" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Whether S and target are inverse-closed connection sets, the supplied point permutation is an isomorphism Cay(G,S) -> Cay(G,target), and no automorphism of G maps S to target. The group generators must act regularly; target is a batch of its element permutations and isomorphism is one permutation on the regular action points."
+
+[[operations]]
+name = "is_separated_witness"
+value = "boolean"
+args = { group = "group", target = "perms", isomorphism = "perms", automorphisms = "perms" }
+families = ["explicit", "subsets", "subsets_of"]
+summary = "Whether S and target are inverse-closed, the supplied point permutation is a Cayley-graph isomorphism, every supplied automorphism generator really is an automorphism of G, and target is outside the connection-set orbit they generate. When the supplied generators are known to generate Aut(G), a true result is a non-CI witness."
+
 [[backends]]
 name = "generic"
 sources = ["backends/generic/cayley_generic.cpp"]
 accepts = "finite groups given by permutation generators; graph invariants use adjacency matrices; is_ci_set exhausts inverse pairs and group automorphisms"
-summary = "Portable C++: group closure and multiplication table once per request, BFS invariants, and exact graph canonical forms by equitable partition refinement plus individualisation."
+summary = "Portable C++: group closure and multiplication table once per request, BFS invariants, exact graph canonical forms by equitable partition refinement plus individualisation, and direct verification of supplied non-CI witness pairs."
 
 [[rejections]]
 case = "matrix group is unsupported"
@@ -84,3 +98,7 @@ case = "C4 singletons"
 op = "girth"
 reduction = "count"
 error = "does not accept integer"
+
+[[rejections]]
+case = "two witness isomorphisms"
+error = "one permutation"

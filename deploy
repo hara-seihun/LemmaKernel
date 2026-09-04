@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Build this checkout and atomically publish its Python package, C ABI, and headers.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+python_bin=${PYTHON:-python3}
+build_dir=${LEMMAKERNEL_BUILD_DIR:-build}
+dest=${LEMMAKERNEL_DEPLOY_ROOT:-/srv/pi/lemmakernel}
+
+"$python_bin" tools/manifest.py check
+cmake -S . -B "$build_dir" -G Ninja \
+  -DLEMMAKERNEL_MARCH="${LEMMAKERNEL_MARCH:-native}"
+ninja -C "$build_dir"
+
+library="$build_dir/liblemmakernel.so"
+[[ -f $library ]] || { echo "deploy: $library was not built" >&2; exit 1; }
+
+commit=$(git rev-parse HEAD)
+[[ -z $(git status --porcelain) ]] || commit="$commit-dirty"
+if [[ ! -d $dest ]]; then
+  sudo -n install -d -o "$(id -un)" -g "$(id -gn)" -m 755 "$dest"
+fi
+[[ -w $dest ]] || { echo "deploy: $dest is not writable" >&2; exit 1; }
+
+version="$dest/$commit"
+stage="$dest/.stage.$$"
+trap 'rm -rf "$stage"' EXIT
+rm -rf "$stage"
+mkdir -p "$stage/python/lemmakernel" "$stage/lib" "$stage/include"
+rsync -a --exclude __pycache__ python/lemmakernel/ "$stage/python/lemmakernel/"
+cp "$library" "$stage/python/lemmakernel/liblemmakernel.so"
+ln -s ../python/lemmakernel/liblemmakernel.so "$stage/lib/liblemmakernel.so"
+cp -a runtime/include/lemmakernel "$stage/include/"
+cp README.md BENCHMARKS.md LICENSE "$stage/"
+printf '%s\n' "$commit" > "$stage/COMMIT"
+chmod -R a+rX,ug+w "$stage"
+rm -rf "$version"
+mv "$stage" "$version"
+
+ln -sfn "$commit" "$dest/.current.$$"
+mv -T "$dest/.current.$$" "$dest/current"
+
+find "$dest" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' |
+  sort -rn | tail -n +3 | cut -d' ' -f2- |
+  while read -r old; do rm -rf "$old"; done
+
+PYTHONPATH="$version/python${PYTHONPATH:+:$PYTHONPATH}" LEMMAKERNEL_LIB='' \
+  "$python_bin" - <<'PY'
+import lemmakernel as lk
+
+ctx = lk.Context()
+family = ctx.explicit(lk.matrix(2, [[[1, 0], [0, 1]]]))
+assert ctx.value("gfp.rank", family).values == [2]
+assert any(module["module"]["name"] == "circuit_fires" for module in lk.describe()["modules"])
+PY
+
+echo "LemmaKernel $commit published to $dest"

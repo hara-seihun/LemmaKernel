@@ -52,6 +52,10 @@ def IsCIAt (G : Type*) [Group G] [Fintype G] [DecidableEq G] (k : Nat) : Prop :=
   ∀ S T : Connection G k, Nonempty (cayleyGraph S ≃g cayleyGraph T) →
     ∃ automorphism : MulAut G, S.1.map automorphism.toEquiv.toEmbedding = T.1
 
+/-- The ordinary undirected CI property for every simple Cayley graph on `G`. -/
+def IsCIGroup (G : Type*) [Group G] [Fintype G] [DecidableEq G] : Prop :=
+  ∀ k, IsCIAt G k
+
 open Automorphisms.Contract
 
 /-- The reference Aut-class count is the cardinality of the Mathlib orbit quotient. -/
@@ -71,6 +75,12 @@ Aut(G)-class lies inside one graph-isomorphism class. -/
 theorem isCI_spec (xs : List G) (hnodup : xs.Nodup)
     (hcomplete : ∀ g : G, g ∈ xs) (k : Nat) :
     Cayley_iso.isCI (cayleyTable xs) k = true ↔ IsCIAt G k := by
+  sorry
+
+/-- Checking every possible connection-set cardinality decides the CI-group property. -/
+theorem isCIGroup_spec (xs : List G) (hnodup : xs.Nodup)
+    (hcomplete : ∀ g : G, g ∈ xs) :
+    Cayley_iso.isCIGroup (cayleyTable xs) = true ↔ IsCIGroup G := by
   sorry
 
 end Cayley_iso.Contract

@@ -25,8 +25,9 @@ public:
     }
 
     std::vector<std::vector<Entry>> run() {
+        generators_ = generators();
         bind(identity_, identity_);
-        descend();
+        descend(0);
         std::sort(found_.begin(), found_.end());
         return found_;
     }
@@ -40,6 +41,7 @@ private:
     std::vector<uint64_t> element_order_;
     std::vector<uint64_t> centralizer_size_;
     std::vector<uint64_t> trail_;
+    std::vector<uint64_t> generators_;
     std::vector<std::vector<Entry>> found_;
 
     Entry mul(uint64_t a, uint64_t b) const { return table_[a * order_ + b]; }
@@ -71,6 +73,54 @@ private:
                centralizer_size_[source] == centralizer_size_[target];
     }
 
+    std::vector<uint8_t> closure(const std::vector<uint64_t> &generators) const {
+        std::vector<uint8_t> reached(order_, 0);
+        std::vector<uint64_t> queue{identity_};
+        reached[identity_] = 1;
+        for (size_t head = 0; head < queue.size(); ++head) {
+            uint64_t x = queue[head];
+            for (uint64_t generator : generators) {
+                uint64_t products[2]{mul(x, generator), mul(generator, x)};
+                for (uint64_t product : products)
+                    if (!reached[product]) {
+                        reached[product] = 1;
+                        queue.push_back(product);
+                    }
+            }
+        }
+        return reached;
+    }
+
+    std::vector<uint64_t> generators() const {
+        std::vector<uint64_t> result;
+        auto reached = closure(result);
+        while (std::count(reached.begin(), reached.end(), uint8_t{1}) < (ptrdiff_t)order_) {
+            uint64_t best = order_;
+            size_t best_growth = 0;
+            size_t best_choices = SIZE_MAX;
+            for (uint64_t candidate = 0; candidate < order_; ++candidate) {
+                if (reached[candidate]) continue;
+                auto trial = result;
+                trial.push_back(candidate);
+                auto expanded = closure(trial);
+                size_t growth = std::count(expanded.begin(), expanded.end(), uint8_t{1});
+                size_t choices = 0;
+                for (uint64_t target = 0; target < order_; ++target)
+                    choices += compatible(candidate, target);
+                if (growth > best_growth ||
+                    (growth == best_growth && choices < best_choices) ||
+                    (growth == best_growth && choices == best_choices && candidate < best)) {
+                    best = candidate;
+                    best_growth = growth;
+                    best_choices = choices;
+                }
+            }
+            result.push_back(best);
+            reached = closure(result);
+        }
+        return result;
+    }
+
     bool bind(uint64_t source, uint64_t target) {
         if (image_[source] >= 0) return (uint64_t)image_[source] == target;
         if (preimage_[target] >= 0 || !compatible(source, target)) return false;
@@ -96,29 +146,21 @@ private:
         }
     }
 
-    void descend() {
-        uint64_t source = order_;
-        size_t fewest = SIZE_MAX;
-        for (uint64_t a = 0; a < order_; ++a) {
-            if (image_[a] >= 0) continue;
-            size_t choices = 0;
-            for (uint64_t b = 0; b < order_; ++b)
-                if (preimage_[b] < 0 && compatible(a, b)) ++choices;
-            if (choices < fewest) {
-                fewest = choices;
-                source = a;
-            }
-        }
-        if (source == order_) {
+    void descend(size_t generator_index) {
+        while (generator_index < generators_.size() && image_[generators_[generator_index]] >= 0)
+            ++generator_index;
+        if (generator_index == generators_.size()) {
+            if (std::find(image_.begin(), image_.end(), -1) != image_.end()) return;
             std::vector<Entry> automorphism(order_);
             for (uint64_t a = 0; a < order_; ++a) automorphism[a] = (Entry)image_[a];
             found_.push_back(std::move(automorphism));
             return;
         }
+        uint64_t source = generators_[generator_index];
         for (uint64_t target = 0; target < order_; ++target) {
             if (preimage_[target] >= 0 || !compatible(source, target)) continue;
             size_t mark = trail_.size();
-            if (bind(source, target)) descend();
+            if (bind(source, target)) descend(generator_index + 1);
             rollback(mark);
         }
     }

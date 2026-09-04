@@ -20,7 +20,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | orbits | bracelets_burnside | 32 | 0.115 s | 8.56e-06 s | 13,490× | 209× |
 | difference_sets | C31 (31,6,1) search | 736,281 | 800 s~ | 0.0696 s | 11,486× | 53,486× |
 | permutation_statistics | S8 Mahonian | 40,320 | 10.9 s~ | 0.00108 s | 10,050× | 5,490× |
-| cayley_iso | C4xC2 fixed-size census | 1 | 0.305 s | 3.13e-05 s | 9,742× | 10,754× |
+| cayley_iso | C4xC2 fixed-size census | 1 | 0.27 s | 3.05e-05 s | 8,846× | 3,476× |
 | elliptic_curves_fp | iso_classes_F_997 | 994,009 | 163 s~ | 0.03 s | 5,430× | 46,579× |
 | char_poly | explicit_6x6_charpoly | 10,000 | 20.7 s~ | 0.00624 s | 3,319× | 20,176× |
 | gfp | subsets_independent | 38,760 | 0.465 s | 0.000252 s | 1,845× | 1,452× |
@@ -35,6 +35,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | quantum_codes | distance census of three-spaces | 97,155 | 8.16 s | 0.0274 s | 297× | 2,732× |
 | small_groups | order64_subgroup_lattices | 18 | 3.8 s | 0.0128 s | 297× | 563× |
 | gfq | gf4_subset_ranks | 8,568 | 1.39 s | 0.00542 s | 257× | 537× |
+| cayley | C4xC2 non-CI witness | 1 | 0.00518 s | 2.18e-05 s | 238× | 295× |
 | linear_codes | grassmannian_3_7_binary | 11,811 | 0.358 s | 0.00187 s | 192× | 654× |
 | heat_dirichlet | cell_blocks | 5,060 | 4.95 s | 0.0369 s | 134× | 1,859× |
 | lattice_of_subspaces | g84_contains_line | 200,787 | 1.88 s | 0.0158 s | 119× | 731× |
@@ -42,7 +43,7 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | lattices_small | A4 vectors through norm 12 | 1 | 0.00405 s | 4.05e-05 s | 100× | 117× |
 | boolean_functions | quadratic_n6_bent | 2,097,152 | 221 s~ | 2.48 s | 89× | 1,179× |
 | integer_partitions | partition_rank_50 | 204,226 | 0.834 s | 0.00961 s | 87× | 390× |
-| cayley | C8 automorphisms | 7 | 0.15 s | 0.00173 s | 87× | 124× |
+| circuit_fires | binary Fano fire | 1 | 0.000831 s | 1.05e-05 s | 79× | 104× |
 | designs | complete 6-subsets of 12 | 924 | 0.0392 s | 0.000529 s | 74× | 75× |
 | strongly_regular | six-vertex graph census | 2,097,152 | 16.8 s~ | 0.229 s | 73× | 302× |
 | subspace_orbits | PG(4,2) line orbits | 155 | 0.497 s | 0.00732 s | 68× | 476× |
@@ -69,11 +70,13 @@ Measured on `gmktec` (AMD RYZEN AI MAX+ 395 w/ Radeon 8060S, 32 threads).
 | boolean_functions | quadratic_n6_bent | bent functions among all 2,097,152 zero-constant quadratic forms in six variables | 2,097,152 | 221 s~ | 2.48 s | 0.187 s | 89× | 1,179× |
 | burnside | binary_necklaces_60 | binary necklaces of length 60, counted from 60 cycle types instead of 2^60 words | 1,152,921,504,606,846,976 | 6.23e+13 s~ | 2.65e-05 s | 0.000363 s | 2.3e+18× | 1.7e+17× |
 | burnside | balanced_bracelets_60 | bracelets with 30 black beads among 60, counted without visiting the 60-choose-30 subsets | 118,264,581,564,861,424 | 1.58e+13 s~ | 9.33e-05 s | 0.000405 s | 1.7e+17× | 3.9e+16× |
-| cayley | D6 triples | connected simple Cayley graphs from all 3-subsets of the 11 nonidentity elements of D_12 | 165 | 0.00273 s | 9.09e-05 s | 0.000414 s | 30× | 6.6× |
-| cayley | C8 automorphisms | full graph automorphism orders for singleton connection sets of C_8 | 7 | 0.15 s | 0.00173 s | 0.00121 s | 87× | 124× |
-| cayley | C4xC2 singleton CI | which singleton connection sets of C_4 x C_2 satisfy the undirected CI condition | 7 | 0.0219 s | 0.00543 s | 0.00391 s | 4.0× | 5.6× |
-| cayley_iso | C4xC2 fixed-size census | the three inverse-closed singleton connections of C4xC2 | 1 | 0.305 s | 3.13e-05 s | 2.84e-05 s | 9,742× | 10,754× |
+| cayley | C4xC2 non-CI witness | a supplied non-CI witness for C4 x C2, including graph isomorphism and full automorphism separation | 1 | 0.00518 s | 2.18e-05 s | 1.76e-05 s | 238× | 295× |
+| cayley | D6 triples | connected simple Cayley graphs from all 3-subsets of the 11 nonidentity elements of D_12 | 165 | 0.00237 s | 8.27e-05 s | 0.000504 s | 29× | 4.7× |
+| cayley | C8 automorphisms | full graph automorphism orders for singleton connection sets of C_8 | 7 | 0.126 s | 0.00161 s | 0.00174 s | 78× | 72× |
+| cayley | C4xC2 singleton CI | which singleton connection sets of C_4 x C_2 satisfy the undirected CI condition | 7 | 0.0163 s | 0.00494 s | 0.00429 s | 3.3× | 3.8× |
+| cayley_iso | C4xC2 fixed-size census | the three inverse-closed singleton connections of C4xC2 | 1 | 0.27 s | 3.05e-05 s | 7.75e-05 s | 8,846× | 3,476× |
 | char_poly | explicit_6x6_charpoly | characteristic polynomials of 10,000 dense and structured 6x6 matrices over F_251 | 10,000 | 20.7 s~ | 0.00624 s | 0.00103 s | 3,319× | 20,176× |
+| circuit_fires | binary Fano fire | the seven-row binary Fano concise circuit | 1 | 0.000831 s | 1.05e-05 s | 7.96e-06 s | 79× | 104× |
 | circulants | canonical 5-subsets on Z31 | multiplier-isomorphism classes of valency-five circulant digraphs on 31 vertices | 142,506 | 0.888 s | 0.0776 s | 0.0317 s | 11× | 28× |
 | circulants | spectra of pairs on Z101 | exact character spectra of every valency-two circulant digraph on 101 vertices | 4,950 | 0.214 s | 0.00518 s | 0.0027 s | 41× | 79× |
 | code_equivalence | binary [6,3] classes | how many inequivalent binary [6,3] codes there are, out of 1395 subspaces | 1,395 | 8.78 s | 0.000491 s | 0.000531 s | 17,880× | 16,532× |
