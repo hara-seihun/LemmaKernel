@@ -308,6 +308,18 @@ int fail(char *err, size_t errlen, const char *what, hipError_t e) {
     return 1;
 }
 
+struct Prepared {
+    Params P;
+    Component *comps = nullptr;
+    Term *terms = nullptr;
+    Circle *circle = nullptr;
+    ~Prepared() {
+        if (comps) (void)hipFree(comps);
+        if (terms) (void)hipFree(terms);
+        if (circle) (void)hipFree(circle);
+    }
+};
+
 } // namespace
 
 extern "C" int lk_heat_dirichlet_phase_available() {
@@ -316,38 +328,47 @@ extern "C" int lk_heat_dirichlet_phase_available() {
     return n > 0;
 }
 
-extern "C" int lk_heat_dirichlet_phase_gpu(const Params *P, const Component *comps, const Term *terms,
-                                           const Circle *circle, const uint32_t *boxes, uint64_t nboxes,
-                                           uint64_t *out, char *err, size_t errlen) {
+extern "C" int lk_heat_dirichlet_phase_prepare(const Params *P, const Component *comps, const Term *terms,
+                                               const Circle *circle, void **out, char *err, size_t errlen) {
+    auto *prep = new Prepared;
+    prep->P = *P;
+    hipError_t e;
+#define LK_HIP(call, what) \
+    if ((e = (call)) != hipSuccess) { delete prep; return fail(err, errlen, what, e); }
+    LK_HIP(hipMalloc(&prep->comps, P->ncomp * sizeof(Component)), "hipMalloc components");
+    LK_HIP(hipMalloc(&prep->terms, (P->nterms ? P->nterms : 1) * sizeof(Term)), "hipMalloc terms");
+    LK_HIP(hipMalloc(&prep->circle, P->ncircle * sizeof(Circle)), "hipMalloc circle");
+    LK_HIP(hipMemcpy(prep->comps, comps, P->ncomp * sizeof(Component), hipMemcpyHostToDevice), "copy components");
+    if (P->nterms) LK_HIP(hipMemcpy(prep->terms, terms, P->nterms * sizeof(Term), hipMemcpyHostToDevice), "copy terms");
+    LK_HIP(hipMemcpy(prep->circle, circle, P->ncircle * sizeof(Circle), hipMemcpyHostToDevice), "copy circle");
+#undef LK_HIP
+    *out = prep;
+    return 0;
+}
+
+extern "C" void lk_heat_dirichlet_phase_release(void *handle) { delete static_cast<Prepared *>(handle); }
+
+extern "C" int lk_heat_dirichlet_phase_run(void *handle, const uint32_t *boxes, uint64_t nboxes, uint64_t *out,
+                                           char *err, size_t errlen) {
     if (!nboxes) return 0;
-    Component *d_comps = nullptr;
-    Term *d_terms = nullptr;
-    Circle *d_circle = nullptr;
+    const Prepared &prep = *static_cast<const Prepared *>(handle);
+    const Params &P = prep.P;
     uint32_t *d_boxes = nullptr;
     uint64_t *d_out = nullptr;
     hipError_t e;
     auto cleanup = [&] {
-        if (d_comps) (void)hipFree(d_comps);
-        if (d_terms) (void)hipFree(d_terms);
-        if (d_circle) (void)hipFree(d_circle);
         if (d_boxes) (void)hipFree(d_boxes);
         if (d_out) (void)hipFree(d_out);
     };
 #define LK_HIP(call, what) \
     if ((e = (call)) != hipSuccess) { cleanup(); return fail(err, errlen, what, e); }
-    LK_HIP(hipMalloc(&d_comps, P->ncomp * sizeof(Component)), "hipMalloc components");
-    LK_HIP(hipMalloc(&d_terms, (P->nterms ? P->nterms : 1) * sizeof(Term)), "hipMalloc terms");
-    LK_HIP(hipMalloc(&d_circle, P->ncircle * sizeof(Circle)), "hipMalloc circle");
     LK_HIP(hipMalloc(&d_boxes, nboxes * 4 * sizeof(uint32_t)), "hipMalloc boxes");
     LK_HIP(hipMalloc(&d_out, nboxes * sizeof(uint64_t)), "hipMalloc out");
-    LK_HIP(hipMemcpy(d_comps, comps, P->ncomp * sizeof(Component), hipMemcpyHostToDevice), "copy components");
-    if (P->nterms) LK_HIP(hipMemcpy(d_terms, terms, P->nterms * sizeof(Term), hipMemcpyHostToDevice), "copy terms");
-    LK_HIP(hipMemcpy(d_circle, circle, P->ncircle * sizeof(Circle), hipMemcpyHostToDevice), "copy circle");
     LK_HIP(hipMemcpy(d_boxes, boxes, nboxes * 4 * sizeof(uint32_t), hipMemcpyHostToDevice), "copy boxes");
-    unsigned block = P->npsi > 64 ? 32 : 64;
-    size_t shmem = (size_t)block * P->npsi * sizeof(int64_t);
+    unsigned block = P.npsi > 64 ? 32 : 64;
+    size_t shmem = (size_t)block * P.npsi * sizeof(int64_t);
     uint64_t grid = (nboxes + block - 1) / block;
-    phase_kernel<<<(unsigned)grid, block, shmem>>>(*P, d_comps, d_terms, d_circle, d_boxes, nboxes, d_out);
+    phase_kernel<<<(unsigned)grid, block, shmem>>>(P, prep.comps, prep.terms, prep.circle, d_boxes, nboxes, d_out);
     LK_HIP(hipGetLastError(), "launch");
     LK_HIP(hipDeviceSynchronize(), "kernel");
     LK_HIP(hipMemcpy(out, d_out, nboxes * sizeof(uint64_t), hipMemcpyDeviceToHost), "copy out");

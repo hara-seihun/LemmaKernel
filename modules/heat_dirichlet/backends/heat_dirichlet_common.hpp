@@ -585,15 +585,15 @@ struct PhaseParams : Params {
 
     Iv eps(uint64_t k) const { return iscale(ln_bounds(k), t_num, 2 * t_den); }
 
+    /* The setup is two stages. `precompute_phase` builds everything the grid does not enter:
+     * the smooth numbers, the bins' weights, every component's coefficient enclosures, masses,
+     * pruning and the loss. `regrid` then builds the cosine table and, per term, the arc's
+     * half-angle and table steps, and per component the second-order constant Q, from g and
+     * npsi. A refinement changes only the grid between rounds, and a backend that caches the
+     * first stage (hip) reruns just the second; the two stages together compute the same
+     * integers as one pass, since Q is accumulated over the same terms in the same order. */
     Status precompute_phase(uint32_t threads) {
         sigma_iv = {fdiv(S * sigma_num, sigma_den), cdiv(S * sigma_hi_num, sigma_den)};
-        uint64_t lcm = 1;
-        for (uint64_t x : g) lcm = std::lcm(lcm, x);
-        lcm = std::lcm(lcm, npsi);
-        if (lcm > (1u << 24)) return fail(INVALID, "grid too fine: lcm of sizes above 2^24");
-        M = 4 * lcm;
-        for (int i = 0; i < 4; ++i) h[i] = cdiv(PI_U, (I)g[i]);
-        h[4] = cdiv(PI_U, (I)npsi);
         uint64_t dmax = 1;
         for (auto &mu : mollifier) dmax = std::max(dmax, mu.d);
         smooth_up_to(dmax * n_plus, smooth);
@@ -602,8 +602,6 @@ struct PhaseParams : Params {
             for (uint64_t i = begin; i < end; ++i) lnsmooth[i] = ln_bounds(smooth[i].m);
             return ok();
         });
-        circle.resize(M);
-        for (uint64_t J = 0; J < M; ++J) circle[J] = unit_circle(M, J);
         lnN = ln_bounds(n_minus);
         /* One job per (bin, order): the head, then every bin's components; jobs run in
          * parallel and are assembled in order, so the loss and the components are the same
@@ -658,8 +656,38 @@ struct PhaseParams : Params {
         if (getenv("LK_PHASE_DEBUG")) {
             size_t terms = 0;
             for (auto &c : components) terms += c.terms.size();
-            fprintf(stderr, "phase_bound: %zu components, %zu terms, loss %.5f, M %llu\n", components.size(), terms,
-                    (double)loss / (double)S, (unsigned long long)M);
+            fprintf(stderr, "phase_bound: %zu components, %zu terms, loss %.5f\n", components.size(), terms,
+                    (double)loss / (double)S);
+        }
+        return ok();
+    }
+
+    /* The second stage: the table and every grid-dependent quantity, for the current g and npsi. */
+    Status regrid() {
+        uint64_t lcm = 1;
+        for (uint64_t x : g) lcm = std::lcm(lcm, x);
+        lcm = std::lcm(lcm, npsi);
+        if (lcm > (1u << 24)) return fail(INVALID, "grid too fine: lcm of sizes above 2^24");
+        M = 4 * lcm;
+        for (int i = 0; i < 4; ++i) h[i] = cdiv(PI_U, (I)g[i]);
+        h[4] = cdiv(PI_U, (I)npsi);
+        circle.resize(M);
+        for (uint64_t J = 0; J < M; ++J) circle[J] = unit_circle(M, J);
+        for (Poly &poly : components) {
+            I Q = 0;
+            for (Term &term : poly.terms) {
+                const Smooth &sm = smooth[term.idx];
+                I aS = abs_upper(term.cS), aA = abs_upper(term.cA);
+                term.vh = 0;
+                term.X = 0;
+                for (int p = 0; p < 4; ++p) {
+                    term.vh += sm.v[p] * h[p];
+                    term.X += sm.v[p] * (int64_t)(M / (2 * g[p]));
+                }
+                if (term.vh <= S) Q += cdiv(aS * cdiv(term.vh * term.vh, S), S);
+                if (term.vh + h[4] <= S) Q += cdiv(aA * cdiv((term.vh + h[4]) * (term.vh + h[4]), S), S);
+            }
+            poly.Q = cdiv(Q, 2);
         }
         return ok();
     }
@@ -677,7 +705,7 @@ struct PhaseParams : Params {
         Poly poly;
         poly.W = W;
         Iv Lk = is_head ? Iv{0, 0} : ln_bounds(kc);
-        I mass_low = 0, mass_high = 0, rem = 0, Q = 0;
+        I mass_low = 0, mass_high = 0, rem = 0;
         for (size_t idx = 0; idx < smooth.size(); ++idx) {
             const Smooth &sm = smooth[idx];
             Iv Lm = lnsmooth[idx];
@@ -720,16 +748,8 @@ struct PhaseParams : Params {
             if (zeroS && zeroA) continue;
             I aS = abs_upper(cS), aA = abs_upper(cA);
             if (sm.m > m0) { mass_high += aS + aA; continue; }
-            I vh = 0;
-            int64_t X = 0;
-            for (int p = 0; p < 4; ++p) {
-                vh += sm.v[p] * h[p];
-                X += sm.v[p] * (int64_t)(M / (2 * g[p]));
-            }
             mass_low += aS + aA;
-            if (vh <= S) Q += cdiv(aS * cdiv(vh * vh, S), S);
-            if (vh + h[4] <= S) Q += cdiv(aA * cdiv((vh + h[4]) * (vh + h[4]), S), S);
-            poly.terms.push_back({(uint32_t)idx, cS, cA, vh, X});
+            poly.terms.push_back({(uint32_t)idx, cS, cA, 0, 0}); /* vh, X and Q come from regrid */
         }
         if (mass_low + mass_high > 16 * S) return {false, std::nullopt};
         loss += cdiv(W * (mass_high + rem), S);
@@ -737,7 +757,6 @@ struct PhaseParams : Params {
             loss += cdiv(W * mass_low, S);
             return {true, std::nullopt};
         }
-        poly.Q = cdiv(Q, 2);
         poly.mass = mass_low;
         return {true, std::move(poly)};
     }

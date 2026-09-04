@@ -39,6 +39,8 @@ R run(const Request &req) {
         if (!st.ok) return R::failure(st.error.status, st.error.message);
         st = PP.precompute_phase(std::max<uint32_t>(1, req.threads));
         if (!st.ok) return R::failure(st.error.status, st.error.message);
+        st = PP.regrid();
+        if (!st.ok) return R::failure(st.error.status, st.error.message);
     } else {
         st = P.init(req);
         if (!st.ok) return R::failure(st.error.status, st.error.message);

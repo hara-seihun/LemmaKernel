@@ -1,13 +1,13 @@
 {
  "module": "heat_dirichlet",
  "fingerprint": {
-  "module": "0c1a99afacd504a8d886453a5d3a88c86abbbd0630598f0ef09c003975f3554a",
+  "module": "753c28a4f07253dd5008165a6a94a2e9c2e71476387de74b389dc121abaef3ce",
   "runtime": "ffa09a94385759dc5c3454bc40fd0cfee78c922599b4b30cd4126494e0046be3",
   "dependencies": [],
-  "combined": "267e4b23fcebda8f590abe9515421d88c650792a3eff5e3c2a67f541c3204b86"
+  "combined": "bc7d3d5b1f1b39a711898376e9f533f322b8464c535cb98f672ed490d01f1fab"
  },
- "measured_at": "2026-09-04T05:10:47+00:00",
- "commit": "f6d0574a701fd11e670ce73ac113f7747d2fae4c",
+ "measured_at": "2026-09-04T05:26:33+00:00",
+ "commit": "b6dfa4cd4edd4b34268c7dc1b2bc96a6583141a5",
  "machine": {
   "host": "gmktec",
   "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
@@ -21,13 +21,13 @@
    "op": "heat_dirichlet.mollified_term_upper",
    "reduction": "sum",
    "members": 4241999,
-   "naive_s": 611.8097890682437,
+   "naive_s": 695.67526146958,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 8.745282861869782,
-   "kernel_all_threads_s": 0.5954650810454041,
+   "kernel_1_thread_s": 8.839909726986662,
+   "kernel_all_threads_s": 0.47644883510656655,
    "threads": 32,
-   "speedup_1_thread": 69.95883366286404,
-   "speedup_all_threads": 1027.4486423186138,
+   "speedup_1_thread": 78.6971001916239,
+   "speedup_all_threads": 1460.1258523677143,
    "answer": "Count(value=1122124142523, visited=4241999, family_size=4241999)"
   },
   {
@@ -36,13 +36,13 @@
    "op": "heat_dirichlet.block_term_upper",
    "reduction": "sum",
    "members": 5060,
-   "naive_s": 5.261799510102719,
+   "naive_s": 4.934782051946968,
    "naive_extrapolated": false,
-   "kernel_1_thread_s": 0.03042342816479504,
-   "kernel_all_threads_s": 0.0020624068565666676,
+   "kernel_1_thread_s": 0.030903944047167897,
+   "kernel_all_threads_s": 0.0024043149314820766,
    "threads": 32,
-   "speedup_1_thread": 172.95222226768956,
-   "speedup_all_threads": 2551.290737494031,
+   "speedup_1_thread": 159.68130295651378,
+   "speedup_all_threads": 2052.4690785433218,
    "answer": "Count(value=113207442370, visited=5060, family_size=5060)"
   },
   {
@@ -51,13 +51,13 @@
    "op": "heat_dirichlet.phase_bound",
    "reduction": "min",
    "members": 2048,
-   "naive_s": 47.10794799089432,
+   "naive_s": 45.85650851964951,
    "naive_extrapolated": true,
-   "kernel_1_thread_s": 0.01093751098960638,
-   "kernel_all_threads_s": 0.008975860895588994,
+   "kernel_1_thread_s": 0.004844577983021736,
+   "kernel_all_threads_s": 0.004675324074923992,
    "threads": 32,
-   "speedup_1_thread": 4307.008060212211,
-   "speedup_all_threads": 5248.293009313967,
+   "speedup_1_thread": 9465.53212278919,
+   "speedup_all_threads": 9808.19891515114,
    "answer": "Extremum(p=18446744073709551615, rows=1, cols=1, value=0, index=0, visited=2048, family_size=2048, member=Matrix(p=18446"
   }
  ]

@@ -39,11 +39,15 @@ struct Params {
     uint32_t shift;          /* 48 - scale */
 };
 
-/* Values are written to out[i]; UINT64_MAX marks a value that does not fit 64 bits. Returns 0
- * on success, otherwise a nonzero code with a message in err. */
-using PhaseFn = int (*)(const Params *P, const Component *comps, const Term *terms, const Circle *circle,
-                        const uint32_t *boxes, uint64_t nboxes, uint64_t *out, char *err, size_t errlen);
-/* Nonzero when a device is usable. */
+/* A request prepared on the device: its parameters and tables in device memory, reused across
+ * the families of one refinement (the backend caches the last prepared request by its
+ * arguments). prepare returns 0 on success with the handle in *out, otherwise a nonzero code
+ * and a message in err; run writes values to out[i] with UINT64_MAX marking a value that does
+ * not fit 64 bits; release frees the handle. available is nonzero when a device is usable. */
+using PrepareFn = int (*)(const Params *P, const Component *comps, const Term *terms, const Circle *circle,
+                          void **out, char *err, size_t errlen);
+using RunFn = int (*)(void *handle, const uint32_t *boxes, uint64_t nboxes, uint64_t *out, char *err, size_t errlen);
+using ReleaseFn = void (*)(void *handle);
 using AvailableFn = int (*)();
 
 } // namespace lk::heat_dirichlet::gpu

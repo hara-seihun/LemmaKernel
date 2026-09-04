@@ -1638,7 +1638,10 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                 'summary': "AMD GPU: the request's setup as in generic, then one device thread per theta box "
                            'with the psi loop inside, 64-bit sums and 128-bit products at scale 2^48 with '
                            "the same directed roundings, so the value equals the generic backend's and the "
-                           "reference's."}],
+                           "reference's. The last request's setup is kept, its tables in device memory, and "
+                           'reused while the arguments repeat; when only the grid (g2, g3, g5, g7, npsi) '
+                           'changes, as between the rounds of a refinement, the coefficient stage is reused '
+                           'and only the grid stage is redone.'}],
   'module': {'cases': 'cases.py',
              'contract': 'lean/Heat_dirichlet/Contract.lean',
              'lean': 'lean',
