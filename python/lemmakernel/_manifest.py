@@ -1672,6 +1672,7 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                            'c_num': 'int',
                            'n_minus': 'int',
                            'n_plus': 'int',
+                           'plain': 'int',
                            'primes': 'int',
                            'scale': 'int',
                            'sigma_den': 'int',
@@ -1684,14 +1685,18 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                   'name': 'mollified_term_upper',
                   'summary': 'An upper bound on 2^scale sup term(n) over cutoffs N in [N_-, N_+], for the '
                              'member n >= 1, where term(n) = max(|beta(n) - alpha(n)|, r |beta(n) + '
-                             'alpha(n)|) b_n n^(-sigma) is the n-th summand of the mollified heat Dirichlet '
-                             'polynomial at height y, with beta, alpha, r as in the module description.',
+                             'alpha(n)|) b_n n^(-sigma) (plain = 0, the improved triangle inequality, at the '
+                             'height y only) or (|beta(n)| + C sum |lambda_d| pi_d rho_d) b_n n^(-sigma) '
+                             '(plain = 1, the plain one, at every height >= y) is the n-th summand of the '
+                             'mollified heat Dirichlet polynomial bound, with beta, alpha, r as in the '
+                             'module description.',
                   'value': 'integer'},
                  {'args': {'c_den': 'int',
                            'c_num': 'int',
                            'n0': 'int',
                            'n_minus': 'int',
                            'n_plus': 'int',
+                           'plain': 'int',
                            'primes': 'int',
                            'scale': 'int',
                            'sigma_den': 'int',
@@ -1782,6 +1787,7 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                  {'case': 'weight of 0', 'error': 'at least 1'},
                  {'case': 'sigma at 1', 'error': 'at least 2'},
                  {'case': 't above one half', 'error': 'rational in'},
+                 {'case': 'plain of 2', 'error': '0 or 1'},
                  {'case': 'exponent too large', 'error': 'exceeds 7'}]},
  {'backends': [{'accepts': 'natural-number edge matrices with 2 <= uniformity <= vertices <= 64',
                 'name': 'generic',

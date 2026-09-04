@@ -14,16 +14,21 @@ the height y = y_num/y_den in [0, 1]:
     b_n        = exp((t/4) ln^2 n)                      the heat weight
     g(n)       = b_n n^(-sigma)                         weight_upper
     rho_d(n)   = exp(-(t/4) ln d (2 ln n - ln d))       = b_{n/d} / b_n for d | n, in (0, 1]
-    pi_d(n)    = min(1, n / (d N_-))^y                  the partner sum's weight, in (0, 1]
+    pi_d(n)    = (n / (d N_-))^y                        the partner sum's weight (plain: min(1, .)^y)
     lambda_d   = prod_{p | d} (-b_p)                    d squarefree over the chosen primes, D = prod p
     beta(n)    = sum_{d | gcd(n, D), n/d <= N} lambda_d rho_d(n)         mollified coefficient over b_n
     alpha(n)   = C sum_{d | gcd(n, D), n/d <= N} lambda_d pi_d(n) rho_d(n)
     r          = (1 - C N_-^(-y)) / (1 + C N_-^(-y))
-    term(n)    = max(|beta - alpha|, r |beta + alpha|) g(n)
+    term(n)    = max(|beta - alpha|, r |beta + alpha|) g(n)                    plain = 0
+               = (|beta| + C sum_{d ...} |lambda_d| pi_d(n) rho_d(n)) g(n)    plain = 1
 
-Everything is evaluated at the one height y; the caller's argument (the partner sum's weight at a
-height y' >= y is at most pi_d(n) with y, and sigma only grows with the height) is what makes one
-value cover every height above y. `mollified_term_upper` bounds sup over cutoffs N in [N_-, N_+]
+The two modes are two theorems. With plain = 0 the partner polynomial is one honest Dirichlet
+polynomial at the cell's height y (the weight |gamma| m^y = |gamma| N_-^y (m/N_-)^y has the scalar
+|gamma| N_-^y <= C in front of every term), which is what the improved triangle inequality needs;
+the value covers every cutoff in [N_-, N_+] at the height y and no other height. With plain = 1
+the partner's coefficients are bounded term by term by C min(1, m/N_-)^y, which is valid at every
+height y' >= y and every cutoff in the cell, and the summand is the plain triangle inequality's; the
+value covers every height above y. `mollified_term_upper` bounds sup over cutoffs N in [N_-, N_+]
 of term(n); `block_term_upper` bounds the sum of that over a block of consecutive n using only that
 rho_d decreases in n, pi_d increases, and g is quasi-convex; `sigma_lower` gives the lower bound
 on Re s_* that the other operations consume.
@@ -214,6 +219,9 @@ class Params:
         self.c_den = int(args.get("c_den", 1))
         self.n0 = int(args.get("n0", 0))
         self.width = int(args.get("width", 1))
+        self.plain = int(args.get("plain", 0))
+        if self.plain not in (0, 1):
+            raise ValueError("plain must be 0 or 1")
         if self.sigma_den <= 0 or self.y_den <= 0 or self.c_den <= 0 or self.t_den <= 0:
             raise ValueError("denominators must be positive")
         if self.y_num < 0 or self.y_num > self.y_den:
@@ -264,11 +272,21 @@ class Params:
         delta = imul(lnd, isub((2 * lnn[0], 2 * lnn[1]), lnd))
         return iexp(iscale(delta, -self.t_num, 4 * self.t_den))
 
+    def lambda_abs_interval(self, d: int) -> tuple[int, int]:
+        """|lambda_d| = prod_{p | d} b_p."""
+        acc = (S, S)
+        for p in self.primes:
+            if d % p == 0:
+                acc = imul(acc, self.b_interval(p))
+        return acc
+
     def pi_interval(self, n: int, d: int) -> tuple[int, int]:
-        """pi_d(n) = min(1, n / (d N_-))^y, increasing in n."""
+        """pi_d(n) = (n / (d N_-))^y, increasing in n; in the plain mode min(1, n / (d N_-))^y,
+        the termwise bound that also covers every greater height."""
         base = isub(isub(ln_bounds(n), ln_bounds(d)), ln_bounds(self.n_minus))
-        clamped = (min(base[0], 0), min(base[1], 0))
-        return iexp(iscale(clamped, self.y_num, self.y_den))
+        if self.plain:
+            base = (min(base[0], 0), min(base[1], 0))
+        return iexp(iscale(base, self.y_num, self.y_den))
 
     def wc_interval(self) -> tuple[int, int]:
         """C N_-^(-y)."""
@@ -300,14 +318,20 @@ class Params:
         return best
 
     def coefficient_of(self, divs: list[int], rho: dict, pi: dict) -> int:
-        """max(|beta - alpha|, r |beta + alpha|) over the given divisor set."""
+        """max(|beta - alpha|, r |beta + alpha|) over the given divisor set; in the plain mode
+        |beta| + alpha_abs with alpha_abs = C sum |lambda_d| pi_d rho_d."""
         beta = (0, 0)
         alpha = (0, 0)
         for d in divs:
             lam = self.lambda_interval(d)
             beta = iadd(beta, imul(lam, rho[d]))
-            alpha = iadd(alpha, imul(imul(lam, pi[d]), rho[d]))
+            if self.plain:
+                alpha = iadd(alpha, imul(imul(self.lambda_abs_interval(d), pi[d]), rho[d]))
+            else:
+                alpha = iadd(alpha, imul(imul(lam, pi[d]), rho[d]))
         alpha = iscale(alpha, self.c_num, self.c_den)
+        if self.plain:
+            return abs_upper(beta) + alpha[1]
         diff = abs_upper(isub(beta, alpha))
         summ = abs_upper(iadd(beta, alpha))
         return max(diff, cdiv(self.r_upper() * summ, S))

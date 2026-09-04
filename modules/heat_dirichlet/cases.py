@@ -19,7 +19,8 @@ from tools.harness import Case  # noqa: E402
 SIGMA = 1828020623414  # sigma_lower at N = 700000, y = 0.2, scale 40: about 1.6624
 BASE = {"t_num": 1579, "t_den": 10000, "sigma_num": SIGMA, "sigma_den": 1 << 40, "scale": 48}
 CELL = {**BASE, "y_num": 2, "y_den": 10, "n_minus": 700_000, "n_plus": 707_000,
-        "primes": 0b11, "c_num": 103, "c_den": 100}
+        "primes": 0b11, "c_num": 103, "c_den": 100, "plain": 0}
+PLAIN = {**CELL, "plain": 1}
 SIGMA_ARGS = {"t_num": 1579, "t_den": 10000, "y_num": 2, "y_den": 10, "scale": 40}
 # A toy phase-aware cell, N in [20, 21] at y = 0.1 with the Euler mollifier on {2, 3} (rows are
 # d, sign, num, den) and two bins of rough k, on a 4 x 3 x 2 x 2 theta grid with 4 psi samples,
@@ -46,6 +47,11 @@ def cases(ctx, rng):
         Case("range 1..9", small, "mollified_term_upper", CELL, reductions=["all", "sum", "max"]),
         Case("explicit naturals", explicit, "weight_upper", BASE, reductions=["all", "max", "min"]),
         Case("explicit naturals", explicit, "mollified_term_upper", CELL, reductions=["all", "min"]),
+        # the plain mode: |beta| + alpha_abs with the capped pi, at the same members
+        Case("range 1..9 plain", small, "mollified_term_upper", PLAIN, reductions=["all", "sum"]),
+        Case("explicit naturals plain", explicit, "mollified_term_upper", PLAIN, reductions=["all", "min"]),
+        Case("plain blocks across the cutoff", ctx.range(0, 4), "block_term_upper",
+             {**PLAIN, "n0": 699_990, "width": 10}, reductions=["all", "sum"]),
         # Blocks of width 1 are the per-member bound; wider blocks exercise the residue classes.
         Case("unit blocks", ctx.range(0, 8), "block_term_upper", {**CELL, "n0": 1, "width": 1},
              reductions=["all", "sum"]),
@@ -132,6 +138,7 @@ def cases(ctx, rng):
              BASE, reductions=["sum"], oracle=False),
         Case("weight of 0", ctx.range(0, 3), "weight_upper", BASE, reductions=["sum"], oracle=False),
         Case("sigma at 1", ctx.range(1, 3), "sigma_lower", SIGMA_ARGS, reductions=["sum"], oracle=False),
+        Case("plain of 2", small, "mollified_term_upper", {**CELL, "plain": 2}, reductions=["sum"], oracle=False),
         Case("t above one half", small, "weight_upper", {**BASE, "t_num": 6, "t_den": 10}, reductions=["sum"],
              oracle=False),
         # With sigma = 0 the weight of 10^9 is exp(0.039 ln^2 10^9) = exp(17): past the exp limit.

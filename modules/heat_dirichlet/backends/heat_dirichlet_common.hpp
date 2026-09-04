@@ -180,11 +180,12 @@ inline I abs_upper(Iv a) { return std::max(iabs(a.lo), iabs(a.hi)); }
 
 struct Params {
     I t_num, t_den, sigma_num, sigma_den, y_num, y_den, c_num, c_den;
-    uint64_t n_minus, n_plus, n0, width, scale;
+    uint64_t n_minus, n_plus, n0, width, scale, plain;
     std::vector<uint64_t> primes;
     uint64_t D = 1;
-    /* Fixed per request: lambda_d and ln d (index = subset mask over `primes`), r, ln N_-. */
-    std::vector<Iv> lambda_by_mask, lnd_by_mask;
+    /* Fixed per request: lambda_d, |lambda_d| and ln d (index = subset mask over `primes`), r,
+     * ln N_-. */
+    std::vector<Iv> lambda_by_mask, lambda_abs_by_mask, lnd_by_mask;
     std::vector<uint64_t> d_by_mask;
     I r_upper = 0;
     Iv lnN{0, 0}; /* bounds on ln N_- */
@@ -209,6 +210,8 @@ struct Params {
         c_den = arg(req, "c_den", 1);
         n0 = arg(req, "n0", 0);
         width = arg(req, "width", 1);
+        plain = arg(req, "plain", 0);
+        if (plain > 1) return fail(INVALID, "plain must be 0 or 1");
         if (t_den <= 0 || sigma_den <= 0 || y_den <= 0 || c_den <= 0) return fail(INVALID, "denominators must be positive");
         if (!(0 < t_num && 2 * t_num <= t_den)) return fail(INVALID, "t must be a rational in (0, 1/2]");
         if (scale < 1 || scale > (uint64_t)K) return fail(INVALID, "scale must be between 1 and 48");
@@ -237,11 +240,12 @@ struct Params {
         Iv delta = imul(lnd, isub({2 * lnn.lo, 2 * lnn.hi}, lnd));
         return iexp(iscale(delta, -t_num, 4 * t_den));
     }
-    /* pi_d(n) = min(1, n / (d N_-))^y from bounds on ln n and ln d; increasing in n. */
+    /* pi_d(n) = (n / (d N_-))^y from bounds on ln n and ln d, increasing in n; in the plain mode
+     * min(1, n / (d N_-))^y, the termwise bound that also covers every greater height. */
     std::optional<Iv> pi_interval(Iv lnn, Iv lnd) const {
         Iv base = isub(isub(lnn, lnd), lnN);
-        Iv clamped{std::min<I>(base.lo, 0), std::min<I>(base.hi, 0)};
-        return iexp(iscale(clamped, y_num, y_den));
+        if (plain) base = Iv{std::min<I>(base.lo, 0), std::min<I>(base.hi, 0)};
+        return iexp(iscale(base, y_num, y_den));
     }
 
     /* The quantities that do not depend on the member: computed once, in the same rounding as the
@@ -249,21 +253,24 @@ struct Params {
     Status precompute() {
         size_t subsets = (size_t)1 << primes.size();
         lambda_by_mask.resize(subsets);
+        lambda_abs_by_mask.resize(subsets);
         lnd_by_mask.resize(subsets);
         lnN = ln_bounds(n_minus);
         d_by_mask.resize(subsets);
         for (size_t mask = 0; mask < subsets; ++mask) {
             uint64_t d = 1;
-            Iv lam{S, S};
+            Iv lam{S, S}, lam_abs{S, S};
             for (size_t i = 0; i < primes.size(); ++i) {
                 if (!(mask >> i & 1)) continue;
                 d *= primes[i];
                 auto b = b_interval(primes[i]);
                 if (!b) return fail(INVALID, "exponent exceeds 7");
                 lam = imul(lam, {-b->hi, -b->lo});
+                lam_abs = imul(lam_abs, *b);
             }
             d_by_mask[mask] = d;
             lambda_by_mask[mask] = lam;
+            lambda_abs_by_mask[mask] = lam_abs;
             lnd_by_mask[mask] = ln_bounds(d);
         }
         auto w = iexp(iscale({-lnN.hi, -lnN.lo}, y_num, y_den));
@@ -304,15 +311,17 @@ struct Params {
         return best;
     }
 
-    /* max(|beta - alpha|, r |beta + alpha|) over the given divisor set. */
+    /* max(|beta - alpha|, r |beta + alpha|) over the given divisor set; in the plain mode
+     * |beta| + alpha_abs with alpha_abs = C sum |lambda_d| pi_d rho_d. */
     I coefficient_of(const std::vector<size_t> &masks, const std::vector<Iv> &rho, const std::vector<Iv> &pi) const {
         Iv beta{0, 0}, alpha{0, 0};
         for (size_t i = 0; i < masks.size(); ++i) {
             Iv lam = lambda_by_mask[masks[i]];
             beta = iadd(beta, imul(lam, rho[i]));
-            alpha = iadd(alpha, imul(imul(lam, pi[i]), rho[i]));
+            alpha = iadd(alpha, imul(imul(plain ? lambda_abs_by_mask[masks[i]] : lam, pi[i]), rho[i]));
         }
         alpha = iscale(alpha, c_num, c_den);
+        if (plain) return abs_upper(beta) + alpha.hi;
         I diff = abs_upper(isub(beta, alpha)), summ = abs_upper(iadd(beta, alpha));
         return std::max(diff, cdiv(r_upper * summ, S));
     }

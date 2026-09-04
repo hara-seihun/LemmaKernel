@@ -17,16 +17,21 @@
 #   b_n        = exp((t/4) ln^2 n)
 #   g(n)       = b_n n^(-sigma)
 #   rho_d(n)   = b_{n/d} / b_n
-#   pi_d(n)    = min(1, n / (d N_-))^y
+#   pi_d(n)    = (n / (d N_-))^y                   (plain = 1: min(1, n / (d N_-))^y)
 #   lambda_d   = prod_{p | d} (-b_p)
 #   beta(n)    = sum_{d | gcd(n, D), n/d <= N} lambda_d rho_d(n)
 #   alpha(n)   = C sum_{d | gcd(n, D), n/d <= N} lambda_d pi_d(n) rho_d(n)
 #   r          = (1 - C N_-^(-y)) / (1 + C N_-^(-y))
-#   term(n)    = max(|beta(n) - alpha(n)|, r |beta(n) + alpha(n)|) g(n)
+#   term(n)    = max(|beta(n) - alpha(n)|, r |beta(n) + alpha(n)|) g(n)                 (plain = 0)
+#              = (|beta(n)| + C sum_{d ...} |lambda_d| pi_d(n) rho_d(n)) g(n)            (plain = 1)
 #
-# Everything is evaluated at the one height y. A caller certifies every height above y with the
-# same value: the partner sum's weight at a greater height is still at most pi_d(n), and Re s only
-# grows with the height.
+# Everything is evaluated at the one height y, and the two modes are two theorems of the caller's.
+# plain = 0 is the improved triangle inequality: the partner polynomial is one honest Dirichlet
+# polynomial at the height y (|gamma| m^y = |gamma| N_-^y (m/N_-)^y with the scalar
+# |gamma| N_-^y <= C in front), so the value covers every cutoff in [N_-, N_+] at the height y and
+# no other height. plain = 1 is the plain triangle inequality with the partner's coefficients
+# bounded term by term by C min(1, m/N_-)^y, valid at every height y' >= y; the value covers every
+# height above y (Re s grows with the height).
 #
 # `phase_bound` is the phase-aware bound: write n = m k with m 7-smooth and k coprime to 210, let
 # theta = (theta_2, theta_3, theta_5, theta_7) be the phases of p^(-iT) shared by every term and
@@ -101,14 +106,14 @@ summary = "An upper bound on 2^scale exp((t/4) ln^2 n - sigma ln n) for the memb
 [[operations]]
 name = "mollified_term_upper"
 value = "integer"
-args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_den = "int", y_num = "int", y_den = "int", n_minus = "int", n_plus = "int", primes = "int", c_num = "int", c_den = "int", scale = "int" }
+args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_den = "int", y_num = "int", y_den = "int", n_minus = "int", n_plus = "int", primes = "int", c_num = "int", c_den = "int", plain = "int", scale = "int" }
 families = ["range", "explicit"]
-summary = "An upper bound on 2^scale sup term(n) over cutoffs N in [N_-, N_+], for the member n >= 1, where term(n) = max(|beta(n) - alpha(n)|, r |beta(n) + alpha(n)|) b_n n^(-sigma) is the n-th summand of the mollified heat Dirichlet polynomial at height y, with beta, alpha, r as in the module description."
+summary = "An upper bound on 2^scale sup term(n) over cutoffs N in [N_-, N_+], for the member n >= 1, where term(n) = max(|beta(n) - alpha(n)|, r |beta(n) + alpha(n)|) b_n n^(-sigma) (plain = 0, the improved triangle inequality, at the height y only) or (|beta(n)| + C sum |lambda_d| pi_d rho_d) b_n n^(-sigma) (plain = 1, the plain one, at every height >= y) is the n-th summand of the mollified heat Dirichlet polynomial bound, with beta, alpha, r as in the module description."
 
 [[operations]]
 name = "block_term_upper"
 value = "integer"
-args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_den = "int", y_num = "int", y_den = "int", n_minus = "int", n_plus = "int", primes = "int", c_num = "int", c_den = "int", n0 = "int", width = "int", scale = "int" }
+args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_den = "int", y_num = "int", y_den = "int", n_minus = "int", n_plus = "int", primes = "int", c_num = "int", c_den = "int", n0 = "int", width = "int", plain = "int", scale = "int" }
 families = ["range", "explicit"]
 summary = "For the member k, an upper bound on 2^scale sup over cutoffs N in [N_-, N_+] of the sum of term(n) over the block n0 + k width <= n < n0 + (k+1) width, obtained without visiting every n: rho_d decreases in n, pi_d increases, and b_n n^(-sigma) is quasi-convex, so the block's ends enclose every summand. Blocks must start at 1 or above."
 
@@ -168,6 +173,10 @@ error = "at least 2"
 [[rejections]]
 case = "t above one half"
 error = "rational in"
+
+[[rejections]]
+case = "plain of 2"
+error = "0 or 1"
 
 [[rejections]]
 case = "exponent too large"

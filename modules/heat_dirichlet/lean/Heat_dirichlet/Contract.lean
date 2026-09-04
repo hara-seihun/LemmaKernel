@@ -61,8 +61,15 @@ def lam (d : ℕ) : ℝ := ((P.primes.filter fun p => d % p = 0).map fun p => -b
 /-- `ρ_d(n) = b_{n/d} / b_n`, written for every real `n` as `exp(−(t/4) ln d (2 ln n − ln d))`. -/
 def rho (n d : ℕ) : ℝ := exp (-(t P / 4) * log d * (2 * log n - log d))
 
-/-- `π_d(n) = min(1, n / (d N₋))^y`. -/
-def pi' (n d : ℕ) : ℝ := (min 1 ((n : ℝ) / (d * P.nMinus))) ^ y P
+/-- `π_d(n) = (n / (d N₋))^y`, the partner weight at the height `y` with the scalar `|γ| N₋^y ≤ C`
+taken out; in the plain mode `min(1, n / (d N₋))^y`, the termwise bound valid at every height
+`y' ≥ y`. -/
+def pi' (n d : ℕ) : ℝ :=
+  if P.plain = 1 then (min 1 ((n : ℝ) / (d * P.nMinus))) ^ y P
+  else ((n : ℝ) / (d * P.nMinus)) ^ y P
+
+/-- `|λ_d| = ∏_{p ∣ d} b_p`. -/
+def lamAbs (d : ℕ) : ℝ := ((P.primes.filter fun p => d % p = 0).map fun p => b P p).prod
 
 /-- The divisors of `gcd(n, D)` that survive truncation at the cutoff `N`: `n / d ≤ N`. -/
 def survivors (n N : ℕ) : List ℕ := (P.divisorsOf n).filter fun d => n ≤ d * N
@@ -74,12 +81,18 @@ def beta (n N : ℕ) : ℝ := ((survivors P n N).map fun d => lam P d * rho P n 
 def alpha (n N : ℕ) : ℝ :=
   C P * ((survivors P n N).map fun d => lam P d * pi' P n d * rho P n d).sum
 
+/-- `C ∑ |λ_d| π_d(n) ρ_d(n)` for the cutoff `N`: the plain mode's partner bound. -/
+def alphaAbs (n N : ℕ) : ℝ :=
+  C P * ((survivors P n N).map fun d => lamAbs P d * pi' P n d * rho P n d).sum
+
 /-- `r = (1 − C N₋^{-y}) / (1 + C N₋^{-y})`. -/
 def r : ℝ := (1 - C P * (P.nMinus : ℝ) ^ (-y P)) / (1 + C P * (P.nMinus : ℝ) ^ (-y P))
 
-/-- The `n`-th summand of the mollified polynomial bound, at cutoff `N`. -/
+/-- The `n`-th summand of the mollified polynomial bound, at cutoff `N`: the improved triangle
+inequality's (`plain = 0`) or the plain one's (`plain = 1`). -/
 def term (n N : ℕ) : ℝ :=
-  max |beta P n N - alpha P n N| (r P * |beta P n N + alpha P n N|) * g P n
+  if P.plain = 1 then (|beta P n N| + alphaAbs P n N) * g P n
+  else max |beta P n N - alpha P n N| (r P * |beta P n N + alpha P n N|) * g P n
 
 /-- The cell: cutoffs in `[N₋, N₊]`. -/
 def InCell (N : ℕ) : Prop := P.nMinus ≤ N ∧ N ≤ P.nPlus
