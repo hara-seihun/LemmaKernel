@@ -773,13 +773,417 @@ class PhaseParams(Params):
             raise ValueError("value does not fit in 64 bits")
         return v
 
-def numbers(family: Family, prefix: int | None, boxes: bool = False):
+
+# ---- barrier_lower --------------------------------------------------------------------------------
+#
+# A lower bound on |f_t(x + iy)| (or on Re f_t) over a box in (x, y, t), for the barrier of the
+# de Bruijn-Newman programme, where x is of order 10^13 and the cutoff N of order 10^6. With
+# s = (1 + y - ix)/2, tau = x/2 and A = (1/2) ln(x / 4 pi), the model's quantities are
+#
+#     alpha(s)  = A - i pi/4 + e_1,                                  |e_1| <= 2.01 / tau,
+#     kappa     = (t/2)(alpha(1 - conj s) - alpha(conj s)),          |kappa| <= t y / (2 (x - 6)),
+#     log gamma = -y A + i [ (x/2)(2A - 1) - pi/4 + (pi t/4) A ] + eps  (mod 2 pi i),
+#                                                                    |eps| <= (2 + t (4 + 4.2 A)) / x,
+#
+# (canon/barrier/design.md of the programme proves the three), and
+#
+#     f_t = sum_{n <= N} exp(c_1 L + c_2 L^2) + gamma sum_{n <= N} exp(d_1 L + d_2 L^2),   L = ln n,
+#     c_1 = -s - (t/2) alpha(s),   d_1 = y - conj(s) - (t/2) conj(alpha(s)) - kappa,   c_2 = d_2 = t/4.
+#
+# The moment method: with a centre (x_c, y_c, t_c), every term is w_n exp(dc_1 L + dc_2 L^2) with
+# w_n the term at the centre and dc the displacement of the exponent. Group n into dyadic ranges r
+# with centre L_r, L = L_r + l, |l| <= l_max; then exp(dc_1 L + dc_2 L^2) = P_r exp(a l + b l^2)
+# with P_r = exp(dc_1 L_r + dc_2 L_r^2), a = dc_1 + 2 dc_2 L_r, b = dc_2, and
+#
+#     sum_{n in r} w_n exp(...) = P_r sum_{j < J} q_j m_{r,j} + P_r * remainder,
+#     m_{r,j} = sum_{n in r} w_n l^j,     q_j = Taylor coefficients of exp(a l + b l^2),
+#     |remainder| <= (sum_{n in r} |w_n|) sum_{k >= ceil(J/2)} U^k / k!,    U = |a| l_max + |b| l_max^2.
+#
+# The moments are complex intervals computed once per request; a box costs the ranges times J.
+# Phases: (x_c/2) ln n needs ln n to about 2^-90, so ln n for n <= N is carried at scale 2^112 by
+# the recurrence ln n = ln(n-1) + 2 artanh(1/(2n-1)), whose series terms are integer divisions,
+# and (x/2)(ln(x/4 pi) - 1) at the grid abscissae uses ln at 2^112 by the mantissa series. Both
+# are reduced modulo 2 pi in exact integers and only then brought to scale 2^48.
+
+KH = 112
+SH = 1 << KH
+TWOPI_HL = 32624163332060752803334972325496544      # floor(2 pi 2^112); 2 pi 2^112 < TWOPI_HL + 1
+LN2_HL = 3599025928123676973540407451845618         # floor(ln 2 * 2^112)
+LN2_HU = LN2_HL + 1
+LN4PI_HL = 13141829246414126302627206044224549      # floor(ln(4 pi) * 2^112)
+LN4PI_HU = LN4PI_HL + 1
+LNH_TERMS = 36   # atanh series at 2^112; z < 1/3 so the tail is below 3^-73 / 73
+LN4PI_L = LN4PI_HL >> (KH - K)
+LN4PI_U = cdiv(LN4PI_HU, 1 << (KH - K))
+ABS_CAP = 1 << 60
+
+
+def ln_high(n: int) -> tuple[int, int]:
+    """(lower, upper) bounds on ln n at scale SH, for n >= 1, by the mantissa series."""
+    e = n.bit_length() - 1
+    m = (n << KH) >> e if e <= KH else n >> (e - KH)
+    m_hi = m + (1 if e > KH and (n & ((1 << (e - KH)) - 1)) else 0)
+    return 2 * _lnh_mantissa(m, True) + e * LN2_HL, 2 * _lnh_mantissa(m_hi, False) + e * LN2_HU + 1
+
+
+def _lnh_mantissa(m: int, lower: bool) -> int:
+    num = (m - SH) * SH
+    den = m + SH
+    z = num // den if lower else cdiv(num, den)
+    z2 = (z * z) // SH if lower else cdiv(z * z, SH)
+    acc = 0
+    power = z
+    for k in range(LNH_TERMS):
+        acc += power // (2 * k + 1) if lower else cdiv(power, 2 * k + 1)
+        power = (power * z2) // SH if lower else cdiv(power * z2, SH)
+    return acc
+
+
+def artanh_step(n: int) -> tuple[int, int]:
+    """(lower, upper) bounds on artanh(1/(2n-1)) at scale SH, n >= 2: p_k = floor(z^(2k+1) SH)
+    by successive division, terms p_k/(2k+1) rounded down and (p_k+1)/(2k+1) rounded up, until
+    p_k = 0, when the tail is below 2 ulps."""
+    d = 2 * n - 1
+    d2 = d * d
+    p = SH // d
+    lo = 0
+    hi = 0
+    k = 0
+    while p > 0:
+        lo += p // (2 * k + 1)
+        hi += cdiv(p + 1, 2 * k + 1)
+        p //= d2
+        k += 1
+    return lo, hi + 2
+
+
+def phase_of(num: int, lo_h: int, hi_h: int, den: int) -> tuple[int, int]:
+    """The angle num * [lo_h, hi_h] / den (the bracket at scale SH) modulo 2 pi, at scale S: the
+    lower end reduced exactly modulo TWOPI_HL, the width kept, and the quotient's worth of the
+    2 pi approximation error added on each side."""
+    lo = (num * lo_h) // den
+    hi = cdiv(num * hi_h, den)
+    r = lo % TWOPI_HL
+    qb = hi // TWOPI_HL + 1
+    return (r - qb) >> (KH - K), cdiv(r + (hi - lo) + qb, 1 << (KH - K))
+
+
+def reduce_2pi(a: tuple[int, int]) -> tuple[int, int]:
+    """The interval shifted by a multiple of 2 pi so that its lower end is in [0, 2 pi)."""
+    q = a[0] // (2 * PI_U)
+    if q >= 0:
+        return max(0, a[0] - q * 2 * PI_U), a[1] - q * 2 * PI_L
+    return max(0, a[0] + (-q) * 2 * PI_L), a[1] + (-q) * 2 * PI_U
+
+
+def cis(a: tuple[int, int]) -> tuple[tuple[int, int], tuple[int, int]]:
+    """Enclosures of cos and sin over an interval of angles of width below pi/2: reduce modulo
+    2 pi, then to the quadrant, where cos decreases and sin increases (or, when the reduced
+    interval straddles pi/2, sin is at most 1), then rotate."""
+    u = reduce_2pi(a)
+    qq = (2 * u[0]) // PI_U
+    v_lo = max(0, u[0] - cdiv(qq * PI_U, 2))
+    v_hi = u[1] - (qq * PI_L) // 2
+    if v_hi > PI_U or v_lo > v_hi:
+        raise ValueError("angle interval too wide")
+    c = (cos_bounds(v_hi)[0], cos_bounds(v_lo)[1])
+    if v_hi <= PI_L // 2:
+        s_ = (sin_bounds(v_lo)[0], sin_bounds(v_hi)[1])
+    else:
+        s_ = (min(sin_bounds(v_lo)[0], sin_bounds(v_hi)[0]), S)
+    neg = lambda z: (-z[1], -z[0])  # noqa: E731
+    qq %= 4
+    if qq == 0:
+        return c, s_
+    if qq == 1:
+        return neg(s_), c
+    if qq == 2:
+        return neg(c), neg(s_)
+    return s_, neg(c)
+
+
+def rat_iv(num: int, den: int) -> tuple[int, int]:
+    """The rational num/den (den > 0) as an interval at scale S."""
+    return (num * S) // den, cdiv(num * S, den)
+
+
+def cmul(a, b):
+    """Product of complex intervals ((re), (im))."""
+    return isub(imul(a[0], b[0]), imul(a[1], b[1])), iadd(imul(a[0], b[1]), imul(a[1], b[0]))
+
+
+def cadd(a, b):
+    return iadd(a[0], b[0]), iadd(a[1], b[1])
+
+
+def cscale(a, p):
+    """Complex interval times a real interval."""
+    return imul(a[0], p), imul(a[1], p)
+
+
+def cmod_upper(a) -> int:
+    return abs_upper(a[0]) + abs_upper(a[1])
+
+
+def rad(r: int) -> tuple[int, int]:
+    return -r, r
+
+
+class BarrierParams:
+    """The request: the box family [xa, xb] x [ya, yb] x [ta, tb] (one row of nine naturals:
+    numerators and denominators for x, y, t), its grid gx x gy x gt, the cutoff N, the number of
+    moments J, whether the real part or the modulus is bounded, the offset and the scale; then
+    the setup, everything a box does not depend on."""
+
+    def __init__(self, args: dict):
+        rows = read_rows(args["box"])
+        if len(rows) != 1 or len(rows[0]) != 9:
+            raise ValueError("box must be one row of nine naturals")
+        (self.xa, self.xb, self.xden, self.ya, self.yb, self.yden, self.ta, self.tb, self.tden) = rows[0]
+        self.gx, self.gy, self.gt = int(args["gx"]), int(args["gy"]), int(args["gt"])
+        self.N = int(args["n"])
+        self.J = int(args["jmax"])
+        self.real = int(args["real"])
+        self.offset = int(args["offset"])
+        self.scale = int(args["scale"])
+        if not (self.xden >= 1 and self.yden >= 1 and self.tden >= 1):
+            raise ValueError("denominators must be positive")
+        if not (self.xa <= self.xb and self.ya <= self.yb and self.ta <= self.tb):
+            raise ValueError("box ends reversed")
+        if self.xa < 200 * self.xden:
+            raise ValueError("x below 200, outside the model's region")
+        if self.yb > self.yden or 2 * self.tb > self.tden:
+            raise ValueError("y above 1 or t above 1/2")
+        if self.xa + self.xb >= 1 << 60:
+            raise ValueError("x too large")
+        if not (self.gx >= 1 and self.gy >= 1 and self.gt >= 1 and self.N >= 1):
+            raise ValueError("grid and cutoff must be positive")
+        if not (2 <= self.J <= 24):
+            raise ValueError("jmax must be in [2, 24]")
+        if self.real not in (0, 1):
+            raise ValueError("real must be 0 or 1")
+        if not (0 <= self.scale <= K):
+            raise ValueError("scale must be in [0, 48]")
+        self.setup()
+
+    # rationals of the family: centres and grid points
+    def x_at(self, i: int) -> tuple[int, int]:
+        return self.xa * self.gx + i * (self.xb - self.xa), self.xden * self.gx
+
+    def y_at(self, j: int) -> tuple[int, int]:
+        return self.ya * self.gy + j * (self.yb - self.ya), self.yden * self.gy
+
+    def t_at(self, k: int) -> tuple[int, int]:
+        return self.ta * self.gt + k * (self.tb - self.ta), self.tden * self.gt
+
+    def setup(self):
+        xc_num, xc_den = self.xa + self.xb, 2 * self.xden
+        tc_num, tc_den = self.ta + self.tb, 2 * self.tden
+        yc_num, yc_den = self.ya + self.yb, 2 * self.yden
+        self.Tc = rat_iv(tc_num, tc_den)
+        # A_c = (ln(xc) - ln 4 pi) / 2
+        ln_n, ln_d = ln_bounds(xc_num), ln_bounds(xc_den)
+        self.Ac = ((ln_n[0] - ln_d[1] - LN4PI_U) // 2, cdiv(ln_n[1] - ln_d[0] - LN4PI_L, 2))
+        sigma_c = rat_iv(2 * self.yden + yc_num, 4 * self.yden)          # (1 + y_c) / 2
+        half_ym1 = rat_iv(yc_num - 2 * self.yden, 4 * self.yden)        # (y_c - 1) / 2
+        rho1 = cdiv(201 * tc_num * self.xden * S, 100 * tc_den * xc_num)   # 2.01 t_c / x_c
+        rhok = cdiv(tc_num * yc_num * self.xden * S, 2 * tc_den * yc_den * (xc_num - 12 * self.xden))
+        TA2 = iscale(imul(self.Tc, self.Ac), 1, 2)
+        re_c1 = iadd(isub(ineg_iv(sigma_c), TA2), rad(rho1))
+        re_d1 = iadd(isub(half_ym1, TA2), rad(rho1 + rhok))
+        c2 = iscale(self.Tc, 1, 4)
+        TP8 = iscale(imul(self.Tc, (PI_L, PI_U)), 1, 8)
+        # ln n at 2^112 by the recurrence, then at 2^48
+        lnh = [(0, 0)] * (self.N + 1)
+        lo_h, hi_h = 0, 0
+        for n in range(2, self.N + 1):
+            s_lo, s_hi = artanh_step(n)
+            lo_h += 2 * s_lo
+            hi_h += 2 * s_hi
+            lnh[n] = (lo_h, hi_h)
+        L48 = [(lo >> (KH - K), cdiv(hi, 1 << (KH - K))) for lo, hi in lnh]
+        # dyadic ranges [a, b], centre L_r = (ln_lo a + ln_hi b) / 2 exactly, l_max
+        self.ranges = []
+        a = 1
+        while a <= self.N:
+            self.ranges.append((a, min(2 * a - 1, self.N)))
+            a *= 2
+        self.Lr = [(L48[a][0] + L48[b][1]) // 2 for a, b in self.ranges]
+        self.lmax = [max(Lr - L48[a][0], L48[b][1] - Lr, 0) for (a, b), Lr in zip(self.ranges, self.Lr)]
+        # the centre weights and the moments
+        J = self.J
+        zero = ((0, 0), (0, 0))
+        self.mm = []
+        self.mp = []
+        self.mass_m = []
+        self.mass_p = []
+        for (a, b), Lr in zip(self.ranges, self.Lr):
+            mm = [zero] * J
+            mp = [zero] * J
+            mass_m = 0
+            mass_p = 0
+            for n in range(a, b + 1):
+                L = L48[n]
+                phi = phase_of(xc_num, lnh[n][0], lnh[n][1], 2 * xc_den)
+                tp = imul(TP8, L)
+                rr = cdiv(rho1 * L[1], S)
+                rk = cdiv((rho1 + rhok) * L[1], S)
+                L2 = imul(c2, isq(L))
+                E_m = iadd(imul(re_c1, L), L2)
+                E_p = iadd(imul(re_d1, L), L2)
+                if E_m[1] > EXP_LIMIT or E_p[1] > EXP_LIMIT:
+                    raise ValueError("centre weight exceeds the exponent limit")
+                g_m = iexp(E_m)
+                g_p = iexp(E_p)
+                c_m, s_m = cis(iadd(iadd(phi, tp), rad(rr)))
+                c_p, s_p = cis(iadd(ineg_iv(iadd(phi, tp)), rad(rk)))
+                w_m = (imul(g_m, c_m), imul(g_m, s_m))
+                w_p = (imul(g_p, c_p), imul(g_p, s_p))
+                ell = isub(L, (Lr, Lr))
+                power = (S, S)
+                for j in range(J):
+                    mm[j] = cadd(mm[j], cscale(w_m, power))
+                    mp[j] = cadd(mp[j], cscale(w_p, power))
+                    power = imul(power, ell)
+                mass_m += g_m[1]
+                mass_p += g_p[1]
+            self.mm.append(mm)
+            self.mp.append(mp)
+            self.mass_m.append(mass_m)
+            self.mass_p.append(mass_p)
+        # grid abscissae: ln(x_i / 4 pi) at 2^112 and Phi_i = (x_i / 2)(ln(x_i / 4 pi) - 1)
+        self.ell_h = []
+        self.Phi = []
+        for i in range(self.gx + 1):
+            num, den = self.x_at(i)
+            ln_n, ln_d = ln_high(num), ln_high(den)
+            ell = (ln_n[0] - ln_d[1] - LN4PI_HU, ln_n[1] - ln_d[0] - LN4PI_HL)
+            self.ell_h.append(ell)
+            self.Phi.append(((num * (ell[0] - SH)) // (2 * den), cdiv(num * (ell[1] - SH), 2 * den)))
+
+    def box_of(self, member: list[int]) -> tuple[int, int, int]:
+        if len(member) == 1:
+            m = member[0]
+            if m >= self.gx * self.gy * self.gt:
+                raise ValueError("box index beyond the grid")
+            return m // (self.gy * self.gt), (m // self.gt) % self.gy, m % self.gt
+        if len(member) == 3:
+            i, j, k = member
+            if not (i < self.gx and j < self.gy and k < self.gt):
+                raise ValueError("box beyond the grid")
+            return i, j, k
+        raise ValueError("barrier_lower needs 1 x 1 or 1 x 3 members")
+
+    def range_sum(self, dc1, dc2, moments, mass):
+        """sum_r P_r sum_j q_j m_{r,j} over the ranges as a complex interval, and the remainder
+        loss."""
+        J = self.J
+        K0 = (J + 1) // 2
+        total = ((0, 0), (0, 0))
+        loss = 0
+        for r, (Lr, lmax) in enumerate(zip(self.Lr, self.lmax)):
+            Lr_iv = (Lr, Lr)
+            E_re = iadd(imul(dc1[0], Lr_iv), imul(dc2, isq(Lr_iv)))
+            E_im = imul(dc1[1], Lr_iv)
+            if E_re[1] > EXP_LIMIT:
+                raise ValueError("box too far from the centre: exponent above 7")
+            g = iexp(E_re)
+            c, s_ = cis(E_im)
+            P = (imul(g, c), imul(g, s_))
+            a = (iadd(dc1[0], iscale(imul(dc2, Lr_iv), 2, 1)), dc1[1])
+            apow = [((S, S), (0, 0))]
+            for k in range(1, J):
+                z = cmul(apow[-1], a)
+                apow.append((iscale(z[0], 1, k), iscale(z[1], 1, k)))
+            bpow = [(S, S)]
+            for m in range(1, J // 2 + 1):
+                bpow.append(iscale(imul(bpow[-1], dc2), 1, m))
+            Sr = ((0, 0), (0, 0))
+            for j in range(J):
+                q = ((0, 0), (0, 0))
+                for m in range(j // 2 + 1):
+                    q = cadd(q, cscale(apow[j - 2 * m], bpow[m]))
+                Sr = cadd(Sr, cmul(q, moments[r][j]))
+            total = cadd(total, cmul(P, Sr))
+            a_hi = cmod_upper(a)
+            U = cdiv(a_hi * lmax, S) + cdiv(abs_upper(dc2) * cdiv(lmax * lmax, S), S)
+            if U >= K0 * S:
+                raise ValueError("Taylor remainder does not converge: box too large")
+            rem = cdiv(powfact(U, K0, False) * (K0 + 1) * S, (K0 + 1) * S - U)
+            loss += cdiv(cmod_upper(P) * cdiv(mass[r] * rem, S), S)
+        return total, loss
+
+    def barrier_lower(self, member: list[int]) -> int:
+        i, j, k = self.box_of(member)
+        xc_num, xc_den = self.xa + self.xb, 2 * self.xden
+        tc_num, tc_den = self.ta + self.tb, 2 * self.tden
+        yc_num, yc_den = self.ya + self.yb, 2 * self.yden
+        # displacements and ranges as intervals
+        x0, xd = self.x_at(i)
+        x1, _ = self.x_at(i + 1)
+        DX = ((2 * x0 - xc_num * self.gx) * S // (2 * xd), cdiv((2 * x1 - xc_num * self.gx) * S, 2 * xd))
+        y0, yd = self.y_at(j)
+        y1, _ = self.y_at(j + 1)
+        DY = ((2 * y0 - yc_num * self.gy) * S // (2 * yd), cdiv((2 * y1 - yc_num * self.gy) * S, 2 * yd))
+        Y = (y0 * S // yd, cdiv(y1 * S, yd))
+        t0, td = self.t_at(k)
+        t1, _ = self.t_at(k + 1)
+        DT = ((2 * t0 - tc_num * self.gt) * S // (2 * td), cdiv((2 * t1 - tc_num * self.gt) * S, 2 * td))
+        T = (t0 * S // td, cdiv(t1 * S, td))
+        ell = (self.ell_h[i][0] >> (KH - K), cdiv(self.ell_h[i + 1][1], 1 << (KH - K)))
+        A = (ell[0] // 2, cdiv(ell[1], 2))
+        # error radii: 2.01 (t_hi + t_c) / x_lo and (t_hi y_hi + t_c y_c) / (2 (x_lo - 6))
+        tsum_num, tsum_den = 2 * t1 * self.tden + tc_num * td, 2 * td * self.tden   # t_hi + t_c
+        rho = cdiv(201 * tsum_num * self.xden * S, 100 * tsum_den * self.xa)
+        ty_num = 4 * t1 * y1 * tc_den * yc_den + tc_num * yc_num * 4 * td * yd
+        ty_den = 4 * td * yd * tc_den * yc_den
+        rhok = cdiv(ty_num * self.xden * S, ty_den * 2 * (self.xa - 6 * self.xden))
+        # the exponent displacements
+        mid = iscale(iadd(imul(DT, A), imul(self.Tc, isub(A, self.Ac))), 1, 2)
+        dtp8 = iscale(imul(DT, (PI_L, PI_U)), 1, 8)
+        dc1 = (iadd(isub(ineg_iv(iscale(DY, 1, 2)), mid), rad(rho)), iadd(iadd(iscale(DX, 1, 2), dtp8), rad(rho)))
+        dd1 = (iadd(isub(iscale(DY, 1, 2), mid), rad(rho + rhok)),
+               iadd(ineg_iv(iadd(iscale(DX, 1, 2), dtp8)), rad(rho + rhok)))
+        dc2 = iscale(DT, 1, 4)
+        main, loss_m = self.range_sum(dc1, dc2, self.mm, self.mass_m)
+        part, loss_p = self.range_sum(dd1, dc2, self.mp, self.mass_p)
+        # gamma over the box
+        eps = cdiv((2 * S + cdiv(T[1] * (4 * S + cdiv(42 * A[1], 10)), S)) * self.xden, self.xa)
+        re_g = iadd(ineg_iv(iscale(imul(Y, ell), 1, 2)), rad(eps))
+        Phi = phase_of(1, self.Phi[i][0], self.Phi[i + 1][1], 1)
+        im_g = iadd(iadd(iadd(Phi, (-cdiv(PI_U, 4), -(PI_L // 4))), iscale(imul(imul((PI_L, PI_U), T), ell), 1, 8)), rad(eps))
+        if re_g[1] > EXP_LIMIT:
+            raise ValueError("gamma exceeds the exponent limit")
+        g = iexp(re_g)
+        c, s_ = cis(im_g)
+        G = (imul(g, c), imul(g, s_))
+        f = cadd(main, cmul(G, part))
+        loss = loss_m + cdiv(cmod_upper(G) * loss_p, S)
+        if self.real:
+            value = f[0][0] - loss
+        else:
+            re_lo = min(abs_lower(f[0]), ABS_CAP)
+            im_lo = min(abs_lower(f[1]), ABS_CAP)
+            value = sqrt_lower((re_lo * re_lo + im_lo * im_lo) // S) - loss
+        v = (value + self.offset * S) >> (K - self.scale)
+        if v < 0:
+            return 0
+        if v >= 1 << 64:
+            raise ValueError("value does not fit in 64 bits")
+        return v
+
+
+def ineg_iv(a):
+    return -a[1], -a[0]
+
+
+def numbers(family: Family, prefix: int | None, boxes: bool = False, widths=(1, 4)):
     ms = list(itertools.islice(rt.iter_members(family), prefix))
     if rt.prime(family) != NATURALS:
         raise ValueError("heat_dirichlet operations need natural numbers, not elements of a field")
     if boxes:
-        if any(len(m) != 1 or len(m[0]) not in (1, 4) for m in ms):
-            raise ValueError("phase_bound needs 1 x 1 or 1 x 4 members")
+        if any(len(m) != 1 or len(m[0]) not in widths for m in ms):
+            raise ValueError(f"boxes need 1 x 1 or 1 x {widths[1]} members")
         return ms, [list(m[0]) for m in ms]
     if any(len(m) != 1 or len(m[0]) != 1 for m in ms):
         raise ValueError("heat_dirichlet operations need 1 x 1 members")
@@ -792,6 +1196,10 @@ def run(op: str, family: Family, reduction: str = "all", prefix: int | None = No
         ms, boxes = numbers(family, prefix, boxes=True)
         P = PhaseParams(args)
         return rt.reduce_int(reduction, [P.phase_bound(b) for b in boxes], ms, NATURALS)
+    if op == "barrier_lower":
+        ms, boxes = numbers(family, prefix, boxes=True, widths=(1, 3))
+        P = BarrierParams(args)
+        return rt.reduce_int(reduction, [P.barrier_lower(b) for b in boxes], ms, NATURALS)
     ms, ns = numbers(family, prefix)
     P = Params(args)
     if op == "weight_upper":
