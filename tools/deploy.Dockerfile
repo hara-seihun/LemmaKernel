@@ -2,5 +2,5 @@ FROM debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        cmake g++ libnauty2-dev ninja-build pkg-config python3 \
+        cmake g++ libboost-dev libnauty2-dev ninja-build pkg-config python3 \
     && rm -rf /var/lib/apt/lists/*
