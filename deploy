@@ -9,6 +9,7 @@ dest=${LEMMAKERNEL_DEPLOY_ROOT:-/srv/pi/lemmakernel}
 
 "$python_bin" tools/manifest.py check
 if command -v cmake >/dev/null && command -v ninja >/dev/null; then
+  rm -rf "$build_dir/runtime-libs"
   cmake -S . -B "$build_dir" -G Ninja \
     -DLEMMAKERNEL_MARCH="${LEMMAKERNEL_MARCH:-native}"
   ninja -C "$build_dir"
@@ -26,7 +27,11 @@ elif command -v docker >/dev/null; then
       ldd "$1/liblemmakernel.so" |
         while read -r soname _arrow dependency _rest; do
           case "$soname" in
-            libnauty*) cp -L "$dependency" "$1/runtime-libs/$soname" ;;
+            libnauty*|libcliquer*)
+              target="$1/runtime-libs/$soname"
+              cp -L "$dependency" "$target"
+              patchelf --set-rpath "\$ORIGIN" "$target"
+              ;;
           esac
         done
     ' sh "$build_dir"
@@ -53,21 +58,27 @@ mkdir -p "$stage/python/lemmakernel" "$stage/lib" "$stage/include"
 rsync -a --exclude __pycache__ python/lemmakernel/ "$stage/python/lemmakernel/"
 cp "$library" "$stage/python/lemmakernel/liblemmakernel.so"
 ln -s ../python/lemmakernel/liblemmakernel.so "$stage/lib/liblemmakernel.so"
-while read -r soname _arrow dependency _rest; do
-  case "$soname" in
-    libnauty*) ;;
-    *) continue ;;
-  esac
-  if [[ $dependency == not ]]; then
-    dependency="$build_dir/runtime-libs/$soname"
-  fi
-  [[ -f $dependency ]] || {
-    echo "deploy: cannot resolve $soname for $library" >&2
-    exit 1
-  }
-  cp -L "$dependency" "$stage/python/lemmakernel/$soname"
-  ln -s "../python/lemmakernel/$soname" "$stage/lib/$soname"
-done < <(ldd "$library")
+if [[ -d $build_dir/runtime-libs ]]; then
+  for dependency in "$build_dir"/runtime-libs/*; do
+    [[ -f $dependency ]] || continue
+    soname=$(basename "$dependency")
+    cp -L "$dependency" "$stage/python/lemmakernel/$soname"
+    ln -s "../python/lemmakernel/$soname" "$stage/lib/$soname"
+  done
+else
+  while read -r soname _arrow dependency _rest; do
+    case "$soname" in
+      libnauty*) ;;
+      *) continue ;;
+    esac
+    [[ -f $dependency ]] || {
+      echo "deploy: cannot resolve $soname for $library" >&2
+      exit 1
+    }
+    cp -L "$dependency" "$stage/python/lemmakernel/$soname"
+    ln -s "../python/lemmakernel/$soname" "$stage/lib/$soname"
+  done < <(ldd "$library")
+fi
 cp -a runtime/include/lemmakernel "$stage/include/"
 cp README.md BENCHMARKS.md LICENSE "$stage/"
 printf '%s\n' "$commit" > "$stage/COMMIT"
