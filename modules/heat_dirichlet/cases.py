@@ -92,23 +92,26 @@ def cases(ctx, rng):
     ]
 
     # The barrier: the box [X, X+1] x [0.1, 1] x [0, t0] at the row's X, split coarsely, with a
-    # small cutoff so the naive oracle is quick (the ln recurrence's restart at 2^16 is beyond it;
-    # the backend and the naive were checked against each other at N = 70000 by hand, 30 s of
-    # naive setup).  The x numerators are two 32-bit words each.
+    # small cutoff and few moments: the Lean kernel spends about 2 ms per interval product, and
+    # a request costs N x jmax x 5 of them in the setup and a few thousand per box (N = 60 with
+    # jmax = 14 is 18 s for one box; N = 12 with jmax = 8 is under a second).  The ln recurrence's
+    # restart at 2^16 is beyond any oracle case; the backend and the naive were checked against
+    # each other at N = 70000 by hand (30 s of naive setup).  The x numerators are two 32-bit
+    # words each.
     X = 6_000_000_185_827
     words = lambda v: [v >> 32, v & 0xFFFFFFFF]
     bottom = ctx.naturals([[words(X) + words(X + 1) + [1, 1, 1, 10, 0, 1579, 10000]]])
     left = ctx.naturals([[words(X) + words(X) + [1, 1, 10, 10, 0, 1579, 10000]]])
     top_t0 = ctx.naturals([[words(X) + words(X + 1) + [1, 1, 1, 10, 1579, 1579, 10000]]])
-    BARRIER = {"box": bottom, "gx": 10, "gy": 1, "gt": 8, "n": 60, "jmax": 14, "real": 0, "offset": 8, "scale": 40}
+    BARRIER = {"box": bottom, "gx": 10, "gy": 1, "gt": 8, "n": 12, "jmax": 8, "real": 0, "offset": 8, "scale": 40}
     out += [
-        Case("bottom edge, |f|", ctx.range(0, 80), "barrier_lower", BARRIER, reductions=["all", "min"]),
-        Case("bottom edge, Re f", ctx.range(0, 80), "barrier_lower", {**BARRIER, "real": 1}, reductions=["all", "min"]),
+        Case("bottom edge, |f|", ctx.range(0, 3), "barrier_lower", BARRIER, reductions=["all", "min", "sum"]),
+        Case("bottom edge, Re f", ctx.range(77, 80), "barrier_lower", {**BARRIER, "real": 1}, reductions=["all", "max"]),
         Case("left edge by coordinates", ctx.explicit(lk.naturals([[[0, 0, 0]], [[0, 5, 3]], [[0, 8, 7]]])),
              "barrier_lower", {**BARRIER, "box": left, "gx": 1, "gy": 9}, reductions=["all", "min"]),
-        Case("the t0 face, Re f", ctx.range(0, 10), "barrier_lower", {**BARRIER, "box": top_t0, "gt": 1, "real": 1},
+        Case("the t0 face, Re f", ctx.range(4, 7), "barrier_lower", {**BARRIER, "box": top_t0, "gt": 1, "real": 1},
              reductions=["all", "min"]),
-        Case("coarse histogram", ctx.range(0, 8), "barrier_lower", {**BARRIER, "gx": 1, "scale": 1},
+        Case("coarse histogram", ctx.range(0, 3), "barrier_lower", {**BARRIER, "scale": 1},
              reductions=["histogram"]),
         Case("box beyond the grid", ctx.range(79, 82), "barrier_lower", BARRIER, reductions=["all"], oracle=False),
         Case("box too large for the Taylor remainder", ctx.range(0, 2), "barrier_lower",
@@ -158,7 +161,7 @@ def cases(ctx, rng):
         # n up to N) and 8000 boxes of 10^-2 in x and 10^-3 in t over the first half of [0, t0].
         Case("barrier_edge", lambda: ctx.range(0, 8000), "barrier_lower",
              {**BARRIER, "box": ctx.naturals([[words(X) + words(X + 1) + [1, 1, 1, 10, 0, 1579, 20000]]]),
-              "gx": 100, "gt": 80, "n": 690_988},
+              "gx": 100, "gt": 80, "n": 690_988, "jmax": 14},
              what="the lower bound on |f_t| over 8000 boxes of the barrier's bottom edge (x in [X, X+1], y = 0.1, t in [0, t0/2]) with N = 690988, minimised",
              bench="min", oracle=False),
     ]

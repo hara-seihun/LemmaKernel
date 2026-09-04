@@ -887,11 +887,13 @@ def cis(a: tuple[int, int]) -> tuple[tuple[int, int], tuple[int, int]]:
     v_hi = u[1] - (qq * PI_L) // 2
     if v_hi > PI_U or v_lo > v_hi:
         raise ValueError("angle interval too wide")
-    c = (cos_bounds(v_hi)[0], cos_bounds(v_lo)[1])
+    c_lo, s_lo = cos_sin_bounds(v_lo)
+    c_hi, s_hi = cos_sin_bounds(v_hi)
+    c = (c_hi[0], c_lo[1])
     if v_hi <= PI_L // 2:
-        s_ = (sin_bounds(v_lo)[0], sin_bounds(v_hi)[1])
+        s_ = (s_lo[0], s_hi[1])
     else:
-        s_ = (min(sin_bounds(v_lo)[0], sin_bounds(v_hi)[0]), S)
+        s_ = (min(s_lo[0], s_hi[0]), S)
     neg = lambda z: (-z[1], -z[0])  # noqa: E731
     qq %= 4
     if qq == 0:
@@ -901,6 +903,42 @@ def cis(a: tuple[int, int]) -> tuple[tuple[int, int], tuple[int, int]]:
     if qq == 2:
         return neg(c), neg(s_)
     return s_, neg(c)
+
+
+def cos_sin_bounds(x: int) -> tuple[tuple[int, int], tuple[int, int]]:
+    """cos_bounds(x) and sin_bounds(x) together, each power x^i / i! taken once: the floor and
+    ceiling recurrences of powfact carried side by side, even i into the cosine, odd into the
+    sine, the first omitted term of each as its tail.  The same integers as the two series."""
+    tl = tu = S
+    c_lo = c_hi = s_lo = s_hi = 0
+    for i in range(2 * TRIG_TERMS + 2):
+        if i:
+            tl = (tl * x) // (S * i)
+            tu = cdiv(tu * x, S * i)
+        k = i // 2
+        if i % 2 == 0:
+            if k < TRIG_TERMS:
+                if k % 2 == 0:
+                    c_lo += tl
+                    c_hi += tu
+                else:
+                    c_lo -= tu
+                    c_hi -= tl
+            else:
+                c_lo -= tu
+                c_hi += tu
+        else:
+            if k < TRIG_TERMS:
+                if k % 2 == 0:
+                    s_lo += tl
+                    s_hi += tu
+                else:
+                    s_lo -= tu
+                    s_hi -= tl
+            else:
+                s_lo -= tu
+                s_hi += tu
+    return (c_lo, c_hi), (s_lo, s_hi)
 
 
 def rat_iv(num: int, den: int) -> tuple[int, int]:

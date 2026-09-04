@@ -710,6 +710,27 @@ def reduce2pi (a : Iv) : Iv :=
   if q ≥ 0 then (max 0 (a.1 - q * 2 * piU), a.2 - q * 2 * piL)
   else (max 0 (a.1 + (-q) * 2 * piL), a.2 + (-q) * 2 * piU)
 
+/-- `cosBounds x` and `sinBounds x` together, each power `x^i / i!` taken once: the floor and
+ceiling recurrences of `powfact` carried side by side, even `i` into the cosine, odd into the
+sine, the first omitted term of each as its tail. The same integers as the two series. -/
+def cosSinBounds (x : Int) : Iv × Iv :=
+  let step := fun (st : Int × Int × Iv × Iv) (i : Nat) =>
+    let (tl, tu, c, s) := st
+    let tl := if i = 0 then tl else fdiv (tl * x) (S * i)
+    let tu := if i = 0 then tu else cdiv (tu * x) (S * i)
+    let k := i / 2
+    let c := if i % 2 = 0 then
+        (if k < trigTerms then (if k % 2 = 0 then (c.1 + tl, c.2 + tu) else (c.1 - tu, c.2 - tl))
+         else (c.1 - tu, c.2 + tu))
+      else c
+    let s := if i % 2 = 1 then
+        (if k < trigTerms then (if k % 2 = 0 then (s.1 + tl, s.2 + tu) else (s.1 - tu, s.2 - tl))
+         else (s.1 - tu, s.2 + tu))
+      else s
+    (tl, tu, c, s)
+  let (_, _, c, s) := (List.range (2 * trigTerms + 2)).foldl step (S, S, (0, 0), (0, 0))
+  (c, s)
+
 /-- Enclosures of `cos` and `sin` over an interval of angles of width below `π/2`, or `none`. -/
 def cis (a : Iv) : Option (Iv × Iv) :=
   let u := reduce2pi a
@@ -717,9 +738,10 @@ def cis (a : Iv) : Option (Iv × Iv) :=
   let vLo := max 0 (u.1 - cdiv (qq * piU) 2)
   let vHi := u.2 - fdiv (qq * piL) 2
   if vHi > piU ∨ vLo > vHi then none else
-  let c : Iv := ((cosBounds vHi).1, (cosBounds vLo).2)
-  let s : Iv := if vHi ≤ fdiv piL 2 then ((sinBounds vLo).1, (sinBounds vHi).2)
-    else (min (sinBounds vLo).1 (sinBounds vHi).1, S)
+  let (cLo, sLo) := cosSinBounds vLo
+  let (cHi, sHi) := cosSinBounds vHi
+  let c : Iv := (cHi.1, cLo.2)
+  let s : Iv := if vHi ≤ fdiv piL 2 then (sLo.1, sHi.2) else (min sLo.1 sHi.1, S)
   some (match qq % 4 with
     | 0 => (c, s)
     | 1 => (ineg s, c)
