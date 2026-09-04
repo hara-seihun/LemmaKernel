@@ -1629,7 +1629,16 @@ MODULES = [{'backends': [{'accepts': 'every group_tables family whose answers fi
                 'summary': 'Portable C++: 128-bit fixed-point arithmetic at scale 2^48 with directed '
                            'rounding, the per-request constants (lambda_d, d^(-y), r, the cosine table, '
                            "every bin's coefficient enclosures) computed once, block coefficients computed "
-                           'once per divisor class, members split across threads.'}],
+                           'once per divisor class, members split across threads.'},
+               {'accepts': 'phase_bound with npsi <= 128, when liblemmakernel_hip.so '
+                           "(backends/hip/phase_kernel.hip, built by hipcc into liblemmakernel's directory, "
+                           'or LEMMAKERNEL_HIP_LIB) loads and a device is present; preferred over generic',
+                'name': 'hip',
+                'sources': ['backends/hip/heat_dirichlet_hip.cpp'],
+                'summary': "AMD GPU: the request's setup as in generic, then one device thread per theta box "
+                           'with the psi loop inside, 64-bit sums and 128-bit products at scale 2^48 with '
+                           "the same directed roundings, so the value equals the generic backend's and the "
+                           "reference's."}],
   'module': {'cases': 'cases.py',
              'contract': 'lean/Heat_dirichlet/Contract.lean',
              'lean': 'lean',

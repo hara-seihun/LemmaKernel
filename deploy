@@ -112,6 +112,12 @@ mkdir -p "$stage/python/lemmakernel" "$stage/lib" "$stage/include"
 rsync -a --exclude __pycache__ python/lemmakernel/ "$stage/python/lemmakernel/"
 cp "$library" "$stage/python/lemmakernel/liblemmakernel.so"
 ln -s ../python/lemmakernel/liblemmakernel.so "$stage/lib/liblemmakernel.so"
+# GPU device code (built by hipcc when present) sits beside the main library, which loads it
+# with dlopen; hosts without it keep the CPU backends.
+if [[ -f $build_dir/liblemmakernel_hip.so ]]; then
+  cp "$build_dir/liblemmakernel_hip.so" "$stage/python/lemmakernel/liblemmakernel_hip.so"
+  ln -s ../python/lemmakernel/liblemmakernel_hip.so "$stage/lib/liblemmakernel_hip.so"
+fi
 if [[ -d $build_dir/runtime-libs ]]; then
   for dependency in "$build_dir"/runtime-libs/*; do
     [[ -f $dependency ]] || continue

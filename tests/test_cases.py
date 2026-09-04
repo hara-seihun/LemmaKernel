@@ -52,8 +52,16 @@ def test_backend_and_naive_match_reference(module, backend, name):
     ctx = lk.Context(backend)
     naive = mod.naive() if backend == mod.backends[0] else None
     lc = LeanCheck(f"{backend}_{H.safe_name(name)}", [f"{mod.lean}.Reference"], [mod.lean, "Lk"])
+    served = 0
     for case in _cases_named(mod, ctx, name):
-        H.claims_for_case(mod, ctx, case, lc, naive)
+        try:
+            H.claims_for_case(mod, ctx, case, lc, naive)
+            served += 1
+        except H.Declined as e:
+            if backend == mod.backends[0]:
+                raise AssertionError(f"the module's first backend must serve every case: {e}")
+    if not served:
+        pytest.skip(f"{backend} declines {name!r}")
     lc.verify()
 
 

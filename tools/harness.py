@@ -439,14 +439,26 @@ def coverage_gaps(mod: Module, cases: list[Case]) -> list[str]:
     return gaps
 
 
+class Declined(Exception):
+    """The context's backend does not accept the case's requests (a backend that serves part of
+    its module, such as a GPU backend for one operation). Callers skip the case for that backend
+    and check that the backend served something."""
+
+
 def claims_for_case(mod: Module, ctx, case: Case, lc, naive=None) -> None:
     """Add the kernel's answers as claims. With `naive`, also run the naive implementation: when
     it agrees with the kernel byte for byte the one claim covers both; when it disagrees both
-    answers are claimed and Lean says which (if either) is right."""
+    answers are claimed and Lean says which (if either) is right. Raises Declined when the
+    context's backend does not accept the request."""
     desc = case.fam.value()
     for red in reductions_of(mod, case):
         args = request_args(mod, case.op, red, case.args)
-        h = ctx.run(case.op, case.fam, red, **args)
+        try:
+            h = ctx.run(case.op, case.fam, red, **args)
+        except lk.Error as e:
+            if e.status == 2 and "does not accept" in str(e):
+                raise Declined(str(e)) from None
+            raise
         lc.claim(claim(mod, case.op, desc, red, args), lean_result(h.value()), f"{case.name} {case.op}/{red}")
         if naive is not None:
             n = naive.run(case.op, desc, red, **naive_args(args))

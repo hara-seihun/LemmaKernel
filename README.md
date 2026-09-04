@@ -55,6 +55,13 @@ pytest -n auto tests                                # every module's cases again
 tools/bench.py                                      # kernel vs naive; reruns only modules whose sources changed
 ```
 
+A HIP toolchain (`hipcc` on the path, as on this machine's Strix Halo) adds
+`build/liblemmakernel_hip.so`, the GPU device code, which `deploy` publishes beside the main
+library; without it the build is the same and the GPU backends report unavailable. The
+architectures come from `rocm_agent_enumerator`, or `-DLEMMAKERNEL_HIP_ARCHS=gfx1151,gfx1100`;
+`-DLEMMAKERNEL_HIP=OFF` skips it. CMake's own HIP language is not used because it cannot locate
+the ROCm device libraries under NixOS, while `hipcc` can.
+
 The Lean side (`lake build`) needs Mathlib. In the canonical checkout `.lake/packages` is a
 hardlink copy of `~/projects/LemmaLib/.lake/packages`, which pins the same Lean and Mathlib
 versions. A task checkout under `~/work/clones` should make another hardlink copy rather than
@@ -65,7 +72,11 @@ mkdir -p .lake && cp -al /home/kenan/projects/LemmaKernel/.lake/packages .lake/p
 ```
 
 Do not symlink this directory. `lake clean` follows package symlinks and deletes the shared build.
-With the hardlink copy, cleanup removes only the checkout's directory entries.
+With the hardlink copy, cleanup removes only the checkout's directory entries. Hardlink only
+`.lake/packages`, never `.lake/build`: Lake rewrites trace files in place, so a build in one
+checkout would silently mark another checkout's stale `.olean` files as current, and its oracle
+tests then fail with unknown constants. Let each checkout build its own module outputs (a module's
+`Reference` takes a second or two once the packages are there).
 
 Nothing then has to be fetched or elaborated from Mathlib, but each module's own `Reference` and
 `Contract` still elaborate once per checkout, so the first `lake build` there costs several
@@ -148,7 +159,7 @@ and committed; the build refuses to configure if they are stale.
 | [graph_iso](modules/graph_iso/manifest.toml) | canonical forms, canonical vertex orders, and complete automorphism groups of undirected F_2 adjacency matrices, with loops allowed | `generic` (Weisfeiler-Lehman refinement and individualisation, portable C++) |
 | [graphs](modules/graphs/manifest.toml) | connectivity, girth, diameter, colouring, clique and independence numbers, bipartiteness, degree sequences, and canonical forms of simple graphs | `generic` (portable C++; exact searches for colouring, cliques, and canonical labelling) |
 | [hadamard](modules/hadamard/manifest.toml) | Hadamard, skew, regular and conference predicates for F_2 matrices read as signs, plus signed-equivalence canonical forms | `generic` (portable C++) |
-| [heat_dirichlet](modules/heat_dirichlet/manifest.toml) | rigorous fixed-point bounds for heat-weighted Dirichlet polynomials (the de Bruijn-Newman barrier and canopy sums): the weight b_n n^(-sigma), the mollified summand enclosed over a cell of cutoffs, that summand summed over blocks of consecutive n, the Re s lower bound they consume, and the phase-aware lower bound on the mollified polynomial over a box of the torus of shared prime phases (rough phases free), which keeps what the triangle inequality gives up; every rounding directed, the same integer in every implementation | `generic` (128-bit fixed point at scale 2^48, portable C++) |
+| [heat_dirichlet](modules/heat_dirichlet/manifest.toml) | rigorous fixed-point bounds for heat-weighted Dirichlet polynomials (the de Bruijn-Newman barrier and canopy sums): the weight b_n n^(-sigma), the mollified summand enclosed over a cell of cutoffs, that summand summed over blocks of consecutive n, the Re s lower bound they consume, and the phase-aware lower bound on the mollified polynomial over a box of the torus of shared prime phases (rough phases free), which keeps what the triangle inequality gives up; every rounding directed, the same integer in every implementation | `generic` (128-bit fixed point at scale 2^48, portable C++); `hip` (phase_bound on an AMD GPU, one thread per box, the same integers) |
 | [hypergraphs](modules/hypergraphs/manifest.toml) | uniform hypergraphs: linearity, weak colouring number, Berge cycles and girth, finite Turan searches, and two-colour Ramsey searches | `generic` (bit sets and backtracking, portable C++) |
 | [integer_partitions](modules/integer_partitions/manifest.toml) | constrained partitions and compositions: number of parts, largest part, and rank/crank distributions | `generic` (portable C++ enumeration) |
 | [latin_squares](modules/latin_squares/manifest.toml) | Latin-square recognition, orthogonal mates, transversals, group tables, and isotopy canonical forms | `generic` (orders 1 through 5, portable C++) |

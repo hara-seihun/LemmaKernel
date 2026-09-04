@@ -47,7 +47,8 @@ target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/graphs/backends/g
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/hadamard/backends/generic/hadamard_generic.cpp)
 # module hadamard: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/heat_dirichlet/backends/generic/heat_dirichlet_generic.cpp)
-# module heat_dirichlet: backends ['generic']
+target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/heat_dirichlet/backends/hip/heat_dirichlet_hip.cpp)
+# module heat_dirichlet: backends ['generic', 'hip']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/hypergraphs/backends/generic/hypergraphs_generic.cpp)
 # module hypergraphs: backends ['generic']
 target_sources(lemmakernel PRIVATE ${CMAKE_SOURCE_DIR}/modules/integer_partitions/backends/generic/integer_partitions_generic.cpp)

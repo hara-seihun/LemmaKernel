@@ -59,6 +59,46 @@ set_target_properties(lemmakernel PROPERTIES
 
 include(${CMAKE_SOURCE_DIR}/runtime/generated/modules.cmake)
 
+# GPU device code is a separate library built by hipcc (CMake's HIP language cannot locate the
+# ROCm device libraries on NixOS) and loaded by its backend with dlopen from liblemmakernel's
+# directory, so the main library carries no ROCm dependency and the backend is simply
+# unavailable where the device library or a device is missing. The architecture list defaults to
+# the machine's devices (rocm_agent_enumerator), else gfx1151.
+option(LEMMAKERNEL_HIP "Build the HIP device library when hipcc is present" ON)
+find_program(LEMMAKERNEL_HIPCC hipcc)
+if(LEMMAKERNEL_HIP AND LEMMAKERNEL_HIPCC)
+  if(NOT LEMMAKERNEL_HIP_ARCHS)
+    find_program(LEMMAKERNEL_ROCM_AGENTS rocm_agent_enumerator)
+    if(LEMMAKERNEL_ROCM_AGENTS)
+      execute_process(COMMAND ${LEMMAKERNEL_ROCM_AGENTS} OUTPUT_VARIABLE agents OUTPUT_STRIP_TRAILING_WHITESPACE)
+      string(REPLACE "\n" ";" agents "${agents}")
+      list(REMOVE_ITEM agents gfx000)
+      list(REMOVE_DUPLICATES agents)
+      string(REPLACE ";" "," LEMMAKERNEL_HIP_ARCHS "${agents}")
+    endif()
+    if(NOT LEMMAKERNEL_HIP_ARCHS)
+      set(LEMMAKERNEL_HIP_ARCHS gfx1151)
+    endif()
+  endif()
+  set(LEMMAKERNEL_HIP_ARCHS "${LEMMAKERNEL_HIP_ARCHS}" CACHE STRING "comma-separated offload architectures for hipcc")
+  string(REPLACE "," ";" hip_arch_list "${LEMMAKERNEL_HIP_ARCHS}")
+  set(hip_arch_flags)
+  foreach(arch ${hip_arch_list})
+    list(APPEND hip_arch_flags --offload-arch=${arch})
+  endforeach()
+  set(hip_sources ${CMAKE_SOURCE_DIR}/modules/heat_dirichlet/backends/hip/phase_kernel.hip)
+  set(hip_library ${CMAKE_BINARY_DIR}/liblemmakernel_hip.so)
+  add_custom_command(OUTPUT ${hip_library}
+    COMMAND ${LEMMAKERNEL_HIPCC} -O3 -std=c++20 -fPIC -shared ${hip_arch_flags} ${hip_sources} -o ${hip_library}
+    DEPENDS ${hip_sources} ${CMAKE_SOURCE_DIR}/modules/heat_dirichlet/backends/hip/phase_gpu_abi.hpp
+    COMMENT "hipcc liblemmakernel_hip.so (${LEMMAKERNEL_HIP_ARCHS})" VERBATIM)
+  add_custom_target(lemmakernel_hip ALL DEPENDS ${hip_library})
+  install(FILES ${hip_library} DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  message(STATUS "HIP device library: ${LEMMAKERNEL_HIPCC} for ${LEMMAKERNEL_HIP_ARCHS}")
+else()
+  message(STATUS "HIP device library: not built (hipcc not found or LEMMAKERNEL_HIP off)")
+endif()
+
 include(GNUInstallDirs)
 install(TARGETS lemmakernel LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY runtime/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

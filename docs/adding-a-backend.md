@@ -73,6 +73,21 @@ A backend need not use the walk at all. A GPU backend will more likely unrank me
 from their canonical indices (`Family::member` is the scalar version of that) and reduce on
 device. The only things fixed are the request in, the object out, and the bytes matching.
 
+`heat_dirichlet`'s `hip` backend is the worked example of a GPU backend that serves one
+operation of a module: its setup is the generic backend's (shared through
+`backends/heat_dirichlet_common.hpp`), the device code lives in a `.hip` file that `hipcc` builds
+into a separate `liblemmakernel_hip.so`, and the backend `dlopen`s that library from the main
+library's directory, so `liblemmakernel.so` never links ROCm and the backend is simply
+unavailable elsewhere. `accepts` declines the module's other operations, which the generic
+backend then serves; the harness (`Declined` in `tools/harness.py`) skips a case a backend
+declines and requires that every backend serves at least one case of each name, and that the
+module's first backend serves them all. On the device the arithmetic is the reference's step for
+step (64-bit sums, 128-bit products by `__mul64hi`, floors and ceilings by shifts), because the
+oracle is byte equality with the CPU and with Lean; the cost there is the quarter-rate 64-bit
+multiply, so the win over 32 CPU threads is about 8x, not 100x. Its resource report
+(`hipcc -Rpass-analysis=kernel-resource-usage`) and the per-loop instruction counts from
+`--save-temps` are the tools that found the code-size and divergence problems.
+
 ## Doing it
 
 1. Read `PHILOSOPHY.md`, the module's `manifest.toml`, and its `Reference.lean`. Ten minutes.
