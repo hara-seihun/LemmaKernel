@@ -27,12 +27,34 @@ value cover every height above y. `mollified_term_upper` bounds sup over cutoffs
 of term(n); `block_term_upper` bounds the sum of that over a block of consecutive n using only that
 rho_d decreases in n, pi_d increases, and g is quasi-convex; `sigma_lower` gives the lower bound
 on Re s_* that the other operations consume.
+
+`phase_bound` is the phase-aware bound. Write every n = m k with m 7-smooth (m = 2^a 3^b 5^c 7^e)
+and k coprime to 210, and let theta = (theta_2, theta_3, theta_5, theta_7) be the phases of
+2^(-iT), ..., 7^(-iT), shared by every term, and psi the phase of the partner sum. With a
+general mollifier E(s) = sum_d mu_d d^(-s) on 7-smooth d, the mollified polynomial is
+sum_k k^(-sigma) b_k e^(i phi_k) T_k(theta, psi) with independent rough phases phi_k, where
+
+    T_k(theta, psi) = sum_m [cS_{m,k} + e^(i psi) cA_{m,k}] e^(i theta(m)),   theta(m) = sum_p v_p(m) theta_p,
+    cS_{m,k} = sum_{d | m, mk/d <= N} mu_d b_{m/d} (m/d)^(eps_k) m^(-sigma),    eps_k = (t/2) ln k,
+    cA_{m,k} = C sum_{d | m, mk/d <= N} mu_d (mk/(d N_-))^y b_{m/d} (m/d)^(eps_k) m^(-sigma),
+
+so that dist(E f, (-inf, 0]) >= F(theta, psi) - |E| Z with
+
+    F(theta, psi) = dist(T_1(theta, psi), (-inf, 0]) - sum_{k > 1} b_k k^(-sigma) |T_k(theta, psi)|.
+
+The rough k are grouped into bins [K_i, K_{i+1}) given by the caller; a bin's coefficients are
+enclosed over its k (eps_k and the partner weight are monotone, a term whose cutoff condition
+mk/d <= N depends on k or N is hulled with 0), and the bin costs W_i max |T| with W_i the sum
+of b_k k^(-sigma) over its rough k. A member is a box of the grid g2 x g3 x g5 x g7 x gpsi on
+the torus; the value is a lower bound on F over the box, from the centre value, the gradient,
+and the second-order remainder (|e^(ix) - 1 - ix| <= x^2/2), plus `offset`, at scale 2^scale.
+sigma ranges over [sigma_num, sigma_hi_num] / sigma_den across the cell.
 """
 from __future__ import annotations
 
 import itertools
 import sys
-from math import gcd
+from math import gcd, isqrt
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "python"))
@@ -50,6 +72,10 @@ EXP_LIMIT = 7 * S
 # ln 2 at scale 2^48, rounded down and up.
 LN2_L = 195103586505167
 LN2_U = 195103586505168
+# pi at scale 2^48, rounded down and up.
+PI_L = 884279719003555
+PI_U = 884279719003556
+TRIG_TERMS = 13  # alternating series on [0, pi/2]; the first omitted term is below 2^-70
 
 
 def cdiv(a: int, b: int) -> int:
@@ -327,10 +353,349 @@ class Params:
         return half + main - corr
 
 
-def numbers(family: Family, prefix: int | None):
+# ---- phase_bound ---------------------------------------------------------------------------------
+
+def sqrt_lower(a: int) -> int:
+    """Lower bound on sqrt(a / S) at scale S, for a >= 0."""
+    return isqrt(a * S)
+
+
+def sqrt_upper(a: int) -> int:
+    r = isqrt(a * S)
+    return r if r * r == a * S else r + 1
+
+
+def isq(a: tuple[int, int]) -> tuple[int, int]:
+    """The square of an interval, tight at 0."""
+    lo, hi = a
+    top = max(lo * lo, hi * hi)
+    bottom = 0 if lo <= 0 <= hi else min(lo * lo, hi * hi)
+    return bottom // S, cdiv(top, S)
+
+
+def abs_lower(a: tuple[int, int]) -> int:
+    lo, hi = a
+    return 0 if lo <= 0 <= hi else min(abs(lo), abs(hi))
+
+
+def powfact(x: int, n: int, lower: bool) -> int:
+    """x^n / n! at scale S for x >= 0, rounded one way."""
+    term = S
+    for i in range(1, n + 1):
+        term = (term * x) // (S * i) if lower else cdiv(term * x, S * i)
+    return term
+
+
+def cos_bounds(x: int) -> tuple[int, int]:
+    """(lower, upper) bounds on cos(x / S) for 0 <= x <= pi/2: the alternating series with each
+    term rounded the safe way, and the first omitted term as the tail."""
+    lo = 0
+    hi = 0
+    for k in range(TRIG_TERMS):
+        if k % 2 == 0:
+            lo += powfact(x, 2 * k, True)
+            hi += powfact(x, 2 * k, False)
+        else:
+            lo -= powfact(x, 2 * k, False)
+            hi -= powfact(x, 2 * k, True)
+    tail = powfact(x, 2 * TRIG_TERMS, False)
+    return lo - tail, hi + tail
+
+
+def sin_bounds(x: int) -> tuple[int, int]:
+    lo = 0
+    hi = 0
+    for k in range(TRIG_TERMS):
+        if k % 2 == 0:
+            lo += powfact(x, 2 * k + 1, True)
+            hi += powfact(x, 2 * k + 1, False)
+        else:
+            lo -= powfact(x, 2 * k + 1, False)
+            hi -= powfact(x, 2 * k + 1, True)
+    tail = powfact(x, 2 * TRIG_TERMS + 1, False)
+    return lo - tail, hi + tail
+
+
+def unit_circle(M: int, J: int) -> tuple[tuple[int, int], tuple[int, int]]:
+    """Enclosures of cos and sin of 2 pi J / M, for M a multiple of 4 and 0 <= J < M: reduce to
+    the first quadrant, where cos decreases and sin increases, then rotate."""
+    quarter = M // 4
+    q, j = divmod(J, quarter)
+    x_lo = (2 * PI_L * j) // M
+    x_hi = cdiv(2 * PI_U * j, M)
+    c = (cos_bounds(x_hi)[0], cos_bounds(x_lo)[1])
+    s_ = (sin_bounds(x_lo)[0], sin_bounds(x_hi)[1])
+    neg = lambda a: (-a[1], -a[0])  # noqa: E731
+    if q == 0:
+        return c, s_
+    if q == 1:
+        return neg(s_), c
+    if q == 2:
+        return neg(c), neg(s_)
+    return s_, neg(c)
+
+
+def smooth_numbers(limit: int) -> list[tuple[int, tuple[int, int, int, int]]]:
+    """Every 2^a 3^b 5^c 7^e <= limit with its exponent vector, in increasing order."""
+    out = []
+    a = 1
+    while a <= limit:
+        b = a
+        while b <= limit:
+            c = b
+            while c <= limit:
+                e = c
+                while e <= limit:
+                    out.append(e)
+                    e *= 7
+                c *= 5
+            b *= 3
+        a *= 2
+    vectors = []
+    for m in sorted(out):
+        v = []
+        r = m
+        for p in PRIMES:
+            k = 0
+            while r % p == 0:
+                r //= p
+                k += 1
+            v.append(k)
+        vectors.append((m, tuple(v)))
+    return vectors
+
+
+def is_rough(k: int) -> bool:
+    return gcd(k, 210) == 1
+
+
+def read_rows(arg) -> list[list[int]]:
+    """A `vectors` argument as a list of rows, whether it came as one matrix or a batch of rows."""
+    if hasattr(arg, "value"):
+        arg = arg.value()
+    if hasattr(arg, "tolist"):
+        mats = arg.tolist()
+        return [row for mat in mats for row in mat]
+    return [list(r) for r in arg]
+
+
+class PhaseParams(Params):
+    """The phase-aware bound's request: the cell, the grid, the mollifier and the bins, with
+    every member-independent quantity computed once."""
+
+    def __init__(self, args: dict):
+        super().__init__(args)
+        self.sigma_hi_num = int(args.get("sigma_hi_num", self.sigma_num))
+        if self.sigma_hi_num < self.sigma_num:
+            raise ValueError("need sigma_num <= sigma_hi_num")
+        self.g = [int(args.get(name, 1)) for name in ("g2", "g3", "g5", "g7", "gpsi")]
+        if any(x < 1 for x in self.g):
+            raise ValueError("grid sizes must be positive")
+        self.offset = int(args.get("offset", 0))
+        if self.offset < 0:
+            raise ValueError("offset must be non-negative")
+        self.mollifier = []
+        seen = set()
+        for row in read_rows(args["mollifier"]):
+            if len(row) != 4:
+                raise ValueError("mollifier rows are (d, sign, num, den)")
+            d, sign, num, den = (int(x) for x in row)
+            r = d
+            for p in PRIMES:
+                while r % p == 0:
+                    r //= p
+            if d < 1 or r != 1 or d > self.n_plus:
+                raise ValueError("mollifier support must be 7-smooth and at most n_plus")
+            if d in seen:
+                raise ValueError("mollifier support has a repeated d")
+            if sign not in (0, 1) or den < 1:
+                raise ValueError("mollifier sign must be 0 or 1 and den positive")
+            seen.add(d)
+            self.mollifier.append((d, -num if sign else num, den))
+        rows = read_rows(args["bins"])
+        if len(rows) != 1:
+            raise ValueError("bins is one row of boundaries")
+        self.bins = [int(x) for x in rows[0]]
+        if len(self.bins) < 2 or self.bins[0] != 2 or self.bins[-1] <= self.n_plus \
+                or any(a >= b for a, b in zip(self.bins, self.bins[1:])):
+            raise ValueError("bins must be increasing, start at 2 and end above n_plus")
+        self.sigma_iv = ((S * self.sigma_num) // self.sigma_den, cdiv(S * self.sigma_hi_num, self.sigma_den))
+        lcm = 1
+        for x in self.g:
+            lcm = lcm * x // gcd(lcm, x)
+        self.M = 4 * lcm
+        self.h = [cdiv(PI_U, x) for x in self.g]   # half-widths of a box, in radians at scale S
+        # the mollified polynomial reaches d N for d in the support: n / d <= N, not n <= N
+        self.smooth = smooth_numbers(max(d for d, _, _ in self.mollifier) * self.n_plus)
+        self.circle = [unit_circle(self.M, J) for J in range(self.M)]
+        self.lnN = ln_bounds(self.n_minus)
+        # the head and the bins: (W, Q, terms) with terms a list of (index into smooth, cS, cA)
+        self.head = self.polynomial(1, 1, True)
+        self.tail = []
+        for lo, hi in zip(self.bins, self.bins[1:]):
+            ks = [k for k in range(lo, min(hi, self.n_plus + 1)) if is_rough(k)]
+            if not ks:
+                continue
+            W = sum(self.g_upper(k) for k in ks)
+            self.tail.append((W,) + self.polynomial(ks[0], ks[-1], False)[1:])
+
+    def polynomial(self, ka: int, kb: int, head: bool):
+        """The coefficient enclosures of T_k over rough k in [ka, kb] and cutoffs in the cell, the
+        second-order constant Q, and W = 1 (the head's weight is not used)."""
+        Lk = (0, 0) if head else (ln_bounds(ka)[0], ln_bounds(kb)[1])
+        terms = []
+        mass = 0
+        Q = 0
+        for idx, (m, v) in enumerate(self.smooth):
+            Lm = ln_bounds(m)
+            cS = (0, 0)
+            cA = (0, 0)
+            for d, num, den in self.mollifier:
+                if m % d:
+                    continue
+                j = m // d
+                if j * ka > self.n_plus:
+                    continue
+                certain = j * kb <= self.n_minus
+                Lj = ln_bounds(j)
+                e_main = isub(iadd(iscale(imul(Lj, Lj), self.t_num, 4 * self.t_den),
+                                   iscale(imul(Lj, Lk), self.t_num, 2 * self.t_den)),
+                              imul(Lm, self.sigma_iv))
+                e_part = iadd(e_main, iscale(isub(iadd(Lj, Lk), self.lnN), self.y_num, self.y_den))
+                main = iscale(iexp(e_main), num, den)
+                part = iscale(iscale(iexp(e_part), num, den), self.c_num, self.c_den)
+                if not certain:
+                    main = (min(main[0], 0), max(main[1], 0))
+                    part = (min(part[0], 0), max(part[1], 0))
+                cS = iadd(cS, main)
+                cA = iadd(cA, part)
+            if cS == (0, 0) and cA == (0, 0):
+                continue
+            # The arc a term sweeps over a box: half-angle vh (radians at scale S) and X (table
+            # steps). Up to one radian the term is expanded to first order around the centre
+            # and its second-order remainder |e^(ix) - 1 - ix| <= x^2/2 goes into Q; beyond that
+            # the arc is enclosed by its rectangle instead, with no remainder.
+            vh = sum(vp * hp for vp, hp in zip(v, self.h[:4]))
+            X = sum(vp * (self.M // (2 * gx)) for vp, gx in zip(v, self.g[:4]))
+            aS = abs_upper(cS)
+            aA = abs_upper(cA)
+            mass += aS + aA
+            if vh <= S:
+                Q += cdiv(aS * cdiv(vh * vh, S), S)
+            if vh + self.h[4] <= S:
+                Q += cdiv(aA * cdiv((vh + self.h[4]) ** 2, S), S)
+            terms.append((idx, cS, cA, vh, X))
+        if mass > 16 * S:
+            raise ValueError("polynomial mass exceeds 16")
+        return 1, cdiv(Q, 2), terms
+
+    def arc(self, J: int, X: int) -> tuple[tuple[int, int], tuple[int, int]]:
+        """Enclosures of cos and sin over the arc of table steps [J - X, J + X]: an extremum lies
+        inside when the arc holds a step congruent to it, otherwise the ends are extreme."""
+        M = self.M
+        if 2 * X >= M:
+            return (-S, S), (-S, S)
+        a, b = J - X, J + X
+
+        def contains(r: int) -> bool:
+            return (b - r) // M >= cdiv(a - r, M)
+
+        ca, sa = self.circle[a % M]
+        cb, sb = self.circle[b % M]
+        cos_hi = S if contains(0) else max(ca[1], cb[1])
+        cos_lo = -S if contains(M // 2) else min(ca[0], cb[0])
+        sin_hi = S if contains(M // 4) else max(sa[1], sb[1])
+        sin_lo = -S if contains(3 * M // 4) else min(sa[0], sb[0])
+        return (cos_lo, cos_hi), (sin_lo, sin_hi)
+
+    def box_of(self, member: list[int]) -> list[int]:
+        if len(member) == 1:
+            i = member[0]
+            js = []
+            for gx in reversed(self.g):
+                i, r = divmod(i, gx)
+                js.append(r)
+            if i:
+                raise ValueError("box index beyond the grid")
+            return js[::-1]
+        if len(member) != 5:
+            raise ValueError("a box is one index or five")
+        if any(not (0 <= j < gx) for j, gx in zip(member, self.g)):
+            raise ValueError("box index beyond the grid")
+        return list(member)
+
+    def evaluate(self, poly, js: list[int]):
+        """Centre value T_c and gradient G (five complex intervals) of a polynomial on the box."""
+        _, _, terms = poly
+        steps = [(2 * j + 1) * (self.M // (2 * gx)) for j, gx in zip(js, self.g)]
+        Tre, Tim = (0, 0), (0, 0)
+        G = [[(0, 0), (0, 0)] for _ in range(5)]
+        for idx, cS, cA, vh, X in terms:
+            _, v = self.smooth[idx]
+            J = sum(vp * sp for vp, sp in zip(v, steps[:4])) % self.M
+            for c, JJ, XX, taylor, part in ((cS, J, X, vh <= S, False),
+                                            (cA, (J + steps[4]) % self.M, X + self.M // (2 * self.g[4]),
+                                             vh + self.h[4] <= S, True)):
+                if c == (0, 0):
+                    continue
+                if not taylor:
+                    cs, sn = self.arc(JJ, XX)
+                    Tre = iadd(Tre, imul(c, cs))
+                    Tim = iadd(Tim, imul(c, sn))
+                    continue
+                cs, sn = self.circle[JJ]
+                wre, wim = imul(c, cs), imul(c, sn)
+                Tre = iadd(Tre, wre)
+                Tim = iadd(Tim, wim)
+                # i w = (-Im w, Re w), times the exponent
+                for p in range(4):
+                    if v[p]:
+                        G[p][0] = iadd(G[p][0], (-v[p] * wim[1], -v[p] * wim[0]))
+                        G[p][1] = iadd(G[p][1], (v[p] * wre[0], v[p] * wre[1]))
+                if part:
+                    G[4][0] = iadd(G[4][0], (-wim[1], -wim[0]))
+                    G[4][1] = iadd(G[4][1], wre)
+        return (Tre, Tim), G
+
+    def mod_upper(self, z) -> int:
+        ar, ai = abs_upper(z[0]), abs_upper(z[1])
+        return sqrt_upper(cdiv(ar * ar, S) + cdiv(ai * ai, S))
+
+    def bounds(self, poly, js):
+        """(modulus upper bound, dist lower bound) of the polynomial over the box."""
+        _, Q, _ = poly
+        (Tre, Tim), G = self.evaluate(poly, js)
+        A = iadd(isq(Tre), isq(Tim))
+        B = sum(cdiv(h * abs_upper(iadd(imul(Tre, g[0]), imul(Tim, g[1]))), S) for h, g in zip(self.h, G))
+        Cc = sum(cdiv(h * self.mod_upper(g), S) for h, g in zip(self.h, G))
+        upper = sqrt_upper(A[1] + 2 * B + cdiv(Cc * Cc, S)) + Q
+        lower_mod = sqrt_lower(max(0, A[0] - 2 * B)) - Q
+        re_margin = Tre[0] - sum(cdiv(h * abs_upper(g[0]), S) for h, g in zip(self.h, G)) - Q
+        im_lower = abs_lower(Tim) - sum(cdiv(h * abs_upper(g[1]), S) for h, g in zip(self.h, G)) - Q
+        dist = max(0, im_lower, lower_mod if re_margin >= 0 else 0)
+        return upper, dist
+
+    def phase_bound(self, member: list[int]) -> int:
+        js = self.box_of(member)
+        F = self.bounds(self.head, js)[1]
+        for poly in self.tail:
+            F -= cdiv(poly[0] * self.bounds(poly, js)[0], S)
+        v = (F + self.offset * S) >> (K - self.scale)
+        if v < 0:
+            return 0
+        if v >= 1 << 64:
+            raise ValueError("value does not fit in 64 bits")
+        return v
+
+
+def numbers(family: Family, prefix: int | None, boxes: bool = False):
     ms = list(itertools.islice(rt.iter_members(family), prefix))
     if rt.prime(family) != NATURALS:
         raise ValueError("heat_dirichlet operations need natural numbers, not elements of a field")
+    if boxes:
+        if any(len(m) != 1 or len(m[0]) not in (1, 5) for m in ms):
+            raise ValueError("phase_bound needs 1 x 1 or 1 x 5 members")
+        return ms, [list(m[0]) for m in ms]
     if any(len(m) != 1 or len(m[0]) != 1 for m in ms):
         raise ValueError("heat_dirichlet operations need 1 x 1 members")
     return ms, [m[0][0] for m in ms]
@@ -338,6 +703,10 @@ def numbers(family: Family, prefix: int | None):
 
 def run(op: str, family: Family, reduction: str = "all", prefix: int | None = None, **args):
     op = op.removeprefix("heat_dirichlet.")
+    if op == "phase_bound":
+        ms, boxes = numbers(family, prefix, boxes=True)
+        P = PhaseParams(args)
+        return rt.reduce_int(reduction, [P.phase_bound(b) for b in boxes], ms, NATURALS)
     ms, ns = numbers(family, prefix)
     P = Params(args)
     if op == "weight_upper":

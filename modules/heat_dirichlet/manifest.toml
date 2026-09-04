@@ -28,12 +28,36 @@
 # same value: the partner sum's weight at a greater height is still at most pi_d(n), and Re s only
 # grows with the height.
 #
+# `phase_bound` is the phase-aware bound: write n = m k with m 7-smooth and k coprime to 210, let
+# theta = (theta_2, theta_3, theta_5, theta_7) be the phases of p^(-iT) shared by every term and
+# psi the phase of the partner sum, and take a general mollifier E(s) = sum_d mu_d d^(-s) on
+# 7-smooth d. Then the mollified polynomial is sum_k b_k k^(-sigma) e^(i phi_k) T_k(theta, psi)
+# with independent rough phases phi_k, where
+#
+#   T_k(theta, psi) = sum_m [cS_{m,k} + e^(i psi) cA_{m,k}] e^(i theta(m)),   theta(m) = sum_p v_p(m) theta_p
+#   cS_{m,k}        = sum_{d | m, mk/d <= N} mu_d b_{m/d} (m/d)^(eps_k) m^(-sigma),   eps_k = (t/2) ln k
+#   cA_{m,k}        = C sum_{d | m, mk/d <= N} mu_d (mk/(d N_-))^y b_{m/d} (m/d)^(eps_k) m^(-sigma)
+#
+# and dist(E f, (-inf, 0]) >= F(theta, psi) - |E| Z, with
+#
+#   F(theta, psi)   = dist(T_1(theta, psi), (-inf, 0]) - sum_{k > 1} b_k k^(-sigma) |T_k(theta, psi)|.
+#
+# The rough k are grouped into the caller's bins [K_i, K_{i+1}); a bin's coefficients are
+# enclosed over its k and the cell's cutoffs, and it costs W_i max |T| with W_i the sum of
+# b_k k^(-sigma) over its rough k. A member is a box of the grid g2 x g3 x g5 x g7 x gpsi on the
+# torus (a `range` index in mixed radix, or an explicit 1 x 5 multi-index); the value is a lower
+# bound on F over the box, plus `offset`, at scale 2^scale, from the centre value, the gradient
+# and the second-order remainder of every polynomial, with terms whose arc over the box exceeds
+# a radian enclosed by their rectangle instead. sigma ranges over [sigma_num, sigma_hi_num] /
+# sigma_den across the cell. The mollifier is an lk.naturals matrix of rows (d, sign, num, den),
+# mu_d = (-1)^sign num / den; the bins are one lk.naturals row 2 = K_0 < K_1 < ... > n_plus.
+#
 # Arguments to exp above 7 are refused, which keeps every intermediate below 2^63 at scale 2^48.
 
 [module]
 name = "heat_dirichlet"
 version = 1
-summary = "Rigorous fixed-point upper bounds on the summands of heat-weighted Dirichlet polynomials: the weight b_n n^(-sigma), the mollified summand max(|beta - alpha|, r |beta + alpha|) b_n n^(-sigma) at a height y over a range of cutoffs, that summand summed over a block of consecutive n, and the lower bound on Re s consumed by the others. Members are 1 x 1 natural numbers; values are integers at scale 2^scale with every rounding directed, so a value is a true upper bound and the same integer in every implementation. Real parameters are rationals x_num / x_den."
+summary = "Rigorous fixed-point bounds for heat-weighted Dirichlet polynomials: the weight b_n n^(-sigma), the mollified summand max(|beta - alpha|, r |beta + alpha|) b_n n^(-sigma) at a height y over a range of cutoffs, that summand summed over a block of consecutive n, the lower bound on Re s consumed by the others, and the phase-aware lower bound on dist(E f, (-inf, 0]) over a box of the torus of shared prime phases, which is what the triangle inequality gives up. Members are 1 x 1 natural numbers (boxes may also be 1 x 5); values are integers at scale 2^scale with every rounding directed, so a value is a true bound and the same integer in every implementation. Real parameters are rationals x_num / x_den."
 
 lean = "lean"
 contract = "lean/Heat_dirichlet/Contract.lean"
@@ -63,6 +87,13 @@ families = ["range", "explicit"]
 summary = "For the member k, an upper bound on 2^scale sup over cutoffs N in [N_-, N_+] of the sum of term(n) over the block n0 + k width <= n < n0 + (k+1) width, obtained without visiting every n: rho_d decreases in n, pi_d increases, and b_n n^(-sigma) is quasi-convex, so the block's ends enclose every summand. Blocks must start at 1 or above."
 
 [[operations]]
+name = "phase_bound"
+value = "integer"
+args = { t_num = "int", t_den = "int", sigma_num = "int", sigma_hi_num = "int", sigma_den = "int", y_num = "int", y_den = "int", n_minus = "int", n_plus = "int", c_num = "int", c_den = "int", g2 = "int", g3 = "int", g5 = "int", g7 = "int", gpsi = "int", offset = "int", scale = "int", mollifier = "vectors", bins = "vectors" }
+families = ["range", "explicit"]
+summary = "For the member box of the torus grid g2 x g3 x g5 x g7 x gpsi (a range index in mixed radix, or a 1 x 5 multi-index), a lower bound on 2^scale (offset + F) rounded down and clamped at 0, where F is the phase-aware bound inf over the box of dist(T_1, (-inf, 0]) - sum_{k > 1} b_k k^(-sigma) |T_k| of the module description, with the mollifier (rows d, sign, num, den) and the bins of rough k given as lk.naturals arguments and sigma in [sigma_num, sigma_hi_num] / sigma_den."
+
+[[operations]]
 name = "sigma_lower"
 value = "integer"
 args = { t_num = "int", t_den = "int", y_num = "int", y_den = "int", scale = "int" }
@@ -72,7 +103,7 @@ summary = "A lower bound on 2^scale ((1 + y)/2 + (t/4) ln(N^2 - 1) - t / (144 (N
 [[backends]]
 name = "generic"
 sources = ["backends/generic/heat_dirichlet_generic.cpp"]
-summary = "Portable C++: 128-bit fixed-point arithmetic at scale 2^48 with directed rounding, the per-request constants (lambda_d, d^(-y), r) computed once, block coefficients computed once per divisor class, members split across threads."
+summary = "Portable C++: 128-bit fixed-point arithmetic at scale 2^48 with directed rounding, the per-request constants (lambda_d, d^(-y), r, the cosine table, every bin's coefficient enclosures) computed once, block coefficients computed once per divisor class, members split across threads."
 accepts = "every request the module accepts"
 
 [[rejections]]

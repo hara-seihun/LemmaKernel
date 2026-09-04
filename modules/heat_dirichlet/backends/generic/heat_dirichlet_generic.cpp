@@ -10,13 +10,22 @@
  *
  * Widths: a scale-48 value below 2^15 (the `exp` limit of 7 guarantees exp values below 1097)
  * occupies under 2^60, so products of two such fit a signed 128-bit word with room for the small
- * integer multipliers (divisor counts, block counts) that follow.
+ * integer multipliers (divisor counts, block counts) that follow. `phase_bound` keeps every
+ * polynomial's coefficient mass below 16 for the same reason.
+ *
+ * `phase_bound` (the naive module's docstring has the mathematics): the request builds the
+ * 7-smooth numbers, a cosine table on the grid, and for the head and every bin of rough k the
+ * coefficient enclosures; a member is a box of the grid, and its value comes from the centre
+ * value, the gradient and the second-order remainder of each polynomial over the box, with terms
+ * whose arc exceeds a radian enclosed by their rectangle instead.
  */
 #include "../../../../runtime/src/reduce.hpp"
 
 #include <algorithm>
+#include <array>
 #include <numeric>
 #include <optional>
+#include <set>
 
 namespace lk::heat_dirichlet {
 namespace {
@@ -34,13 +43,17 @@ constexpr I LN2_L = 195103586505167;
 constexpr I LN2_U = 195103586505168;
 constexpr I EXP_LIMIT = 7 * S;
 constexpr uint64_t PRIMES[4] = {2, 3, 5, 7};
+constexpr I PI_L = 884279719003555;
+constexpr I PI_U = 884279719003556;
+constexpr int TRIG_TERMS = 13;
 
-enum class Op { WeightUpper, MollifiedTermUpper, BlockTermUpper, SigmaLower };
+enum class Op { WeightUpper, MollifiedTermUpper, BlockTermUpper, SigmaLower, PhaseBound };
 
 Result<Op> parse_op(const std::string &name) {
     static const std::map<std::string, Op> names{
         {"weight_upper", Op::WeightUpper}, {"mollified_term_upper", Op::MollifiedTermUpper},
-        {"block_term_upper", Op::BlockTermUpper}, {"sigma_lower", Op::SigmaLower}};
+        {"block_term_upper", Op::BlockTermUpper}, {"sigma_lower", Op::SigmaLower},
+        {"phase_bound", Op::PhaseBound}};
     auto it = names.find(name);
     if (it == names.end()) return Result<Op>::failure(INTERNAL, "unknown heat_dirichlet operation " + name);
     return Result<Op>::success(it->second);
@@ -353,9 +366,371 @@ struct Params {
     }
 };
 
-Status validate(const Family &family) {
+/* ---- phase_bound ---- */
+
+unsigned __int128 isqrt128(unsigned __int128 n) {
+    if (n < 2) return n;
+    unsigned __int128 x = (unsigned __int128)1 << ((bit_length(n) + 1) / 2);
+    for (;;) {
+        unsigned __int128 y = (x + n / x) / 2;
+        if (y >= x) return x;
+        x = y;
+    }
+}
+/* Bounds on sqrt(a / S) at scale S, a >= 0. */
+I sqrt_lower(I a) { return (I)isqrt128((unsigned __int128)(a * S)); }
+I sqrt_upper(I a) {
+    unsigned __int128 n = (unsigned __int128)(a * S), r = isqrt128(n);
+    return (I)(r * r == n ? r : r + 1);
+}
+Iv isq(Iv a) {
+    I top = std::max(a.lo * a.lo, a.hi * a.hi);
+    I bottom = (a.lo <= 0 && 0 <= a.hi) ? 0 : std::min(a.lo * a.lo, a.hi * a.hi);
+    return {fdiv(bottom, S), cdiv(top, S)};
+}
+I abs_lower(Iv a) { return (a.lo <= 0 && 0 <= a.hi) ? 0 : std::min(iabs(a.lo), iabs(a.hi)); }
+
+/* x^n / n! at scale S for x >= 0, rounded one way. */
+I powfact(I x, int n, bool lower) {
+    I term = S;
+    for (int i = 1; i <= n; ++i) term = lower ? fdiv(term * x, S * i) : cdiv(term * x, S * i);
+    return term;
+}
+/* Bounds on cos and sin of x / S for 0 <= x <= pi/2: alternating series, each term rounded the
+ * safe way, the first omitted term as the tail. */
+Iv cos_bounds(I x) {
+    I lo = 0, hi = 0;
+    for (int k = 0; k < TRIG_TERMS; ++k) {
+        if (k % 2 == 0) { lo += powfact(x, 2 * k, true); hi += powfact(x, 2 * k, false); }
+        else { lo -= powfact(x, 2 * k, false); hi -= powfact(x, 2 * k, true); }
+    }
+    I tail = powfact(x, 2 * TRIG_TERMS, false);
+    return {lo - tail, hi + tail};
+}
+Iv sin_bounds(I x) {
+    I lo = 0, hi = 0;
+    for (int k = 0; k < TRIG_TERMS; ++k) {
+        if (k % 2 == 0) { lo += powfact(x, 2 * k + 1, true); hi += powfact(x, 2 * k + 1, false); }
+        else { lo -= powfact(x, 2 * k + 1, false); hi -= powfact(x, 2 * k + 1, true); }
+    }
+    I tail = powfact(x, 2 * TRIG_TERMS + 1, false);
+    return {lo - tail, hi + tail};
+}
+struct Cv {
+    Iv re, im;
+};
+Iv ineg(Iv a) { return {-a.hi, -a.lo}; }
+/* Enclosures of cos and sin of 2 pi J / M, M a multiple of 4, 0 <= J < M: the first quadrant,
+ * where cos decreases and sin increases, then a rotation. */
+Cv unit_circle(uint64_t M, uint64_t J) {
+    uint64_t quarter = M / 4, q = J / quarter, j = J % quarter;
+    I x_lo = fdiv(2 * PI_L * (I)j, (I)M), x_hi = cdiv(2 * PI_U * (I)j, (I)M);
+    Iv c{cos_bounds(x_hi).lo, cos_bounds(x_lo).hi};
+    Iv s{sin_bounds(x_lo).lo, sin_bounds(x_hi).hi};
+    switch (q) {
+    case 0: return {c, s};
+    case 1: return {ineg(s), c};
+    case 2: return {ineg(c), ineg(s)};
+    default: return {s, ineg(c)};
+    }
+}
+
+struct Smooth {
+    uint64_t m;
+    int v[4];
+};
+struct Term {
+    uint32_t idx;
+    Iv cS, cA;
+    I vh;      /* half-angle of the arc over a box, radians at scale S */
+    int64_t X; /* the same in table steps */
+};
+struct Poly {
+    I W = S, Q = 0;
+    std::vector<Term> terms;
+};
+
+struct PhaseParams : Params {
+    I sigma_hi_num = 0;
+    uint64_t g[5] = {1, 1, 1, 1, 1};
+    uint64_t offset = 0;
+    struct Mu { uint64_t d; I num, den; };
+    std::vector<Mu> mollifier;
+    std::vector<uint64_t> bins;
+    Iv sigma_iv{0, 0};
+    uint64_t M = 4;
+    I h[5] = {0, 0, 0, 0, 0};
+    std::vector<Smooth> smooth;
+    std::vector<Cv> circle;
+    Poly head;
+    std::vector<Poly> tail;
+
+    static Result<std::vector<std::vector<uint64_t>>> rows_of(const Request &req, const char *name) {
+        using RR = Result<std::vector<std::vector<uint64_t>>>;
+        auto it = req.handle_args.find(name);
+        if (it == req.handle_args.end() || !it->second->matrix)
+            return RR::failure(INVALID, std::string("phase_bound needs an lk.naturals argument `") + name + "`");
+        const Matrix &m = *it->second->matrix;
+        if (m.p != NATURALS) return RR::failure(INVALID, std::string("`") + name + "` must be lk.naturals");
+        std::vector<std::vector<uint64_t>> rows;
+        for (uint64_t r = 0; r < m.count * m.rows; ++r)
+            rows.push_back(std::vector<uint64_t>(m.entries.begin() + r * m.cols, m.entries.begin() + (r + 1) * m.cols));
+        return RR::success(rows);
+    }
+
+    Status init_phase(const Request &req) {
+        auto st = init(req);
+        if (!st.ok) return st;
+        sigma_hi_num = arg(req, "sigma_hi_num", sigma_num);
+        if (sigma_hi_num < sigma_num) return fail(INVALID, "need sigma_num <= sigma_hi_num");
+        const char *names[5] = {"g2", "g3", "g5", "g7", "gpsi"};
+        for (int i = 0; i < 5; ++i) {
+            g[i] = arg(req, names[i], 1);
+            if (g[i] < 1 || g[i] > (1u << 20)) return fail(INVALID, "grid sizes must be between 1 and 2^20");
+        }
+        offset = arg(req, "offset", 0);
+        auto moll = rows_of(req, "mollifier");
+        if (!moll.ok) return fail(moll.error.status, moll.error.message);
+        std::set<uint64_t> seen;
+        for (const auto &row : moll.value) {
+            if (row.size() != 4) return fail(INVALID, "mollifier rows are (d, sign, num, den)");
+            uint64_t d = row[0], sign = row[1], num = row[2], den = row[3];
+            uint64_t r = d;
+            for (uint64_t p : PRIMES)
+                while (r && r % p == 0) r /= p;
+            if (d < 1 || r != 1 || d > n_plus) return fail(INVALID, "mollifier support must be 7-smooth and at most n_plus");
+            if (seen.count(d)) return fail(INVALID, "mollifier support has a repeated d");
+            if (sign > 1 || den < 1) return fail(INVALID, "mollifier sign must be 0 or 1 and den positive");
+            seen.insert(d);
+            mollifier.push_back({d, sign ? -(I)num : (I)num, (I)den});
+        }
+        if (mollifier.empty()) return fail(INVALID, "mollifier must have at least one row");
+        auto b = rows_of(req, "bins");
+        if (!b.ok) return fail(b.error.status, b.error.message);
+        if (b.value.size() != 1) return fail(INVALID, "bins is one row of boundaries");
+        bins = b.value[0];
+        bool increasing = true;
+        for (size_t i = 1; i < bins.size(); ++i) increasing = increasing && bins[i - 1] < bins[i];
+        if (bins.size() < 2 || bins.front() != 2 || bins.back() <= n_plus || !increasing)
+            return fail(INVALID, "bins must be increasing, start at 2 and end above n_plus");
+        return ok();
+    }
+
+    static void smooth_up_to(uint64_t limit, std::vector<Smooth> &out) {
+        for (unsigned __int128 a = 1; a <= limit; a *= 2)
+            for (unsigned __int128 b = a; b <= limit; b *= 3)
+                for (unsigned __int128 c = b; c <= limit; c *= 5)
+                    for (unsigned __int128 e = c; e <= limit; e *= 7) {
+                        Smooth s{(uint64_t)e, {0, 0, 0, 0}};
+                        uint64_t r = s.m;
+                        for (int i = 0; i < 4; ++i)
+                            while (r % PRIMES[i] == 0) { r /= PRIMES[i]; ++s.v[i]; }
+                        out.push_back(s);
+                    }
+        std::sort(out.begin(), out.end(), [](const Smooth &x, const Smooth &y) { return x.m < y.m; });
+    }
+    static bool is_rough(uint64_t k) { return std::gcd(k, (uint64_t)210) == 1; }
+
+    Status precompute_phase() {
+        sigma_iv = {fdiv(S * sigma_num, sigma_den), cdiv(S * sigma_hi_num, sigma_den)};
+        uint64_t lcm = 1;
+        for (uint64_t x : g) lcm = std::lcm(lcm, x);
+        if (lcm > (1u << 24)) return fail(INVALID, "grid too fine: lcm of sizes above 2^24");
+        M = 4 * lcm;
+        for (int i = 0; i < 5; ++i) h[i] = cdiv(PI_U, (I)g[i]);
+        uint64_t dmax = 1;
+        for (auto &mu : mollifier) dmax = std::max(dmax, mu.d);
+        smooth_up_to(dmax * n_plus, smooth);
+        circle.resize(M);
+        for (uint64_t J = 0; J < M; ++J) circle[J] = unit_circle(M, J);
+        lnN = ln_bounds(n_minus);
+        auto hd = polynomial(1, 1, true);
+        if (!hd) return fail(INVALID, "exponent exceeds 7 or polynomial mass exceeds 16");
+        head = *hd;
+        for (size_t i = 0; i + 1 < bins.size(); ++i) {
+            uint64_t lo = bins[i], hi = std::min<uint64_t>(bins[i + 1], n_plus + 1);
+            uint64_t ka = 0, kb = 0;
+            I W = 0;
+            for (uint64_t k = lo; k < hi; ++k) {
+                if (!is_rough(k)) continue;
+                if (!ka) ka = k;
+                kb = k;
+                auto gk = g_upper(k);
+                if (!gk) return fail(INVALID, "exponent exceeds 7");
+                W += *gk;
+            }
+            if (!ka) continue;
+            auto poly = polynomial(ka, kb, false);
+            if (!poly) return fail(INVALID, "exponent exceeds 7 or polynomial mass exceeds 16");
+            poly->W = W;
+            tail.push_back(std::move(*poly));
+        }
+        return ok();
+    }
+
+    /* Coefficient enclosures of T_k over rough k in [ka, kb] and cutoffs in the cell, with the
+     * second-order constant Q. */
+    std::optional<Poly> polynomial(uint64_t ka, uint64_t kb, bool is_head) const {
+        Poly poly;
+        Iv Lk = is_head ? Iv{0, 0} : Iv{ln_bounds(ka).lo, ln_bounds(kb).hi};
+        I mass = 0, Q = 0;
+        for (size_t idx = 0; idx < smooth.size(); ++idx) {
+            const Smooth &sm = smooth[idx];
+            Iv Lm = ln_bounds(sm.m);
+            Iv cS{0, 0}, cA{0, 0};
+            for (const auto &mu : mollifier) {
+                if (sm.m % mu.d) continue;
+                uint64_t j = sm.m / mu.d;
+                if ((unsigned __int128)j * ka > n_plus) continue;
+                bool certain = (unsigned __int128)j * kb <= n_minus;
+                Iv Lj = ln_bounds(j);
+                Iv e_main = isub(iadd(iscale(imul(Lj, Lj), t_num, 4 * t_den), iscale(imul(Lj, Lk), t_num, 2 * t_den)),
+                                 imul(Lm, sigma_iv));
+                Iv e_part = iadd(e_main, iscale(isub(iadd(Lj, Lk), lnN), y_num, y_den));
+                auto em = iexp(e_main), ep = iexp(e_part);
+                if (!em || !ep) return std::nullopt;
+                Iv main = iscale(*em, mu.num, mu.den);
+                Iv part = iscale(iscale(*ep, mu.num, mu.den), c_num, c_den);
+                if (!certain) {
+                    main = {std::min<I>(main.lo, 0), std::max<I>(main.hi, 0)};
+                    part = {std::min<I>(part.lo, 0), std::max<I>(part.hi, 0)};
+                }
+                cS = iadd(cS, main);
+                cA = iadd(cA, part);
+            }
+            bool zeroS = cS.lo == 0 && cS.hi == 0, zeroA = cA.lo == 0 && cA.hi == 0;
+            if (zeroS && zeroA) continue;
+            I vh = 0;
+            int64_t X = 0;
+            for (int p = 0; p < 4; ++p) {
+                vh += sm.v[p] * h[p];
+                X += sm.v[p] * (int64_t)(M / (2 * g[p]));
+            }
+            I aS = abs_upper(cS), aA = abs_upper(cA);
+            mass += aS + aA;
+            if (vh <= S) Q += cdiv(aS * cdiv(vh * vh, S), S);
+            if (vh + h[4] <= S) Q += cdiv(aA * cdiv((vh + h[4]) * (vh + h[4]), S), S);
+            poly.terms.push_back({(uint32_t)idx, cS, cA, vh, X});
+        }
+        if (mass > 16 * S) return std::nullopt;
+        poly.Q = cdiv(Q, 2);
+        return poly;
+    }
+
+    /* Enclosures of cos and sin over the arc of table steps [J - X, J + X]. */
+    Cv arc(int64_t J, int64_t X) const {
+        int64_t Mi = (int64_t)M;
+        if (2 * X >= Mi) return {{-S, S}, {-S, S}};
+        int64_t a = J - X, b = J + X;
+        auto contains = [&](int64_t r) { return fdiv(b - r, Mi) >= cdiv(a - r, Mi); };
+        auto mod = [&](int64_t z) { return (uint64_t)(((z % Mi) + Mi) % Mi); };
+        Cv ea = circle[mod(a)], eb = circle[mod(b)];
+        I cos_hi = contains(0) ? S : std::max(ea.re.hi, eb.re.hi);
+        I cos_lo = contains(Mi / 2) ? -S : std::min(ea.re.lo, eb.re.lo);
+        I sin_hi = contains(Mi / 4) ? S : std::max(ea.im.hi, eb.im.hi);
+        I sin_lo = contains(3 * Mi / 4) ? -S : std::min(ea.im.lo, eb.im.lo);
+        return {{cos_lo, cos_hi}, {sin_lo, sin_hi}};
+    }
+
+    std::optional<std::array<uint64_t, 5>> box_of(const Family &family, uint64_t i) const {
+        std::array<uint64_t, 5> js{};
+        if (family.kind == Family::Kind::Range || family.data->cols == 1) {
+            uint64_t idx = family.kind == Family::Kind::Range ? family.a + i : (uint64_t)family.data->entries[i];
+            for (int p = 4; p >= 0; --p) { js[p] = idx % g[p]; idx /= g[p]; }
+            if (idx) return std::nullopt;
+            return js;
+        }
+        for (int p = 0; p < 5; ++p) {
+            js[p] = family.data->entries[i * 5 + p];
+            if (js[p] >= g[p]) return std::nullopt;
+        }
+        return js;
+    }
+
+    /* Centre value and gradient (five complex intervals) of a polynomial on a box. */
+    void evaluate(const Poly &poly, const std::array<uint64_t, 5> &js, Cv &T, Cv G[5]) const {
+        int64_t steps[5];
+        for (int p = 0; p < 5; ++p) steps[p] = (int64_t)((2 * js[p] + 1) * (M / (2 * g[p])));
+        int64_t Mi = (int64_t)M;
+        T = {{0, 0}, {0, 0}};
+        for (int p = 0; p < 5; ++p) G[p] = {{0, 0}, {0, 0}};
+        for (const Term &term : poly.terms) {
+            const Smooth &sm = smooth[term.idx];
+            int64_t J = 0;
+            for (int p = 0; p < 4; ++p) J += sm.v[p] * steps[p];
+            J %= Mi;
+            for (int part = 0; part < 2; ++part) {
+                const Iv &c = part ? term.cA : term.cS;
+                if (c.lo == 0 && c.hi == 0) continue;
+                int64_t JJ = part ? (J + steps[4]) % Mi : J;
+                bool taylor = part ? term.vh + h[4] <= S : term.vh <= S;
+                if (!taylor) {
+                    Cv e = arc(JJ, part ? term.X + (int64_t)(M / (2 * g[4])) : term.X);
+                    T.re = iadd(T.re, imul(c, e.re));
+                    T.im = iadd(T.im, imul(c, e.im));
+                    continue;
+                }
+                const Cv &e = circle[(uint64_t)JJ];
+                Iv wre = imul(c, e.re), wim = imul(c, e.im);
+                T.re = iadd(T.re, wre);
+                T.im = iadd(T.im, wim);
+                for (int p = 0; p < 4; ++p) {
+                    if (!sm.v[p]) continue;
+                    I v = sm.v[p];
+                    G[p].re = iadd(G[p].re, {-v * wim.hi, -v * wim.lo});
+                    G[p].im = iadd(G[p].im, {v * wre.lo, v * wre.hi});
+                }
+                if (part) {
+                    G[4].re = iadd(G[4].re, {-wim.hi, -wim.lo});
+                    G[4].im = iadd(G[4].im, wre);
+                }
+            }
+        }
+    }
+
+    I mod_upper(const Cv &z) const {
+        I ar = abs_upper(z.re), ai = abs_upper(z.im);
+        return sqrt_upper(cdiv(ar * ar, S) + cdiv(ai * ai, S));
+    }
+
+    /* (modulus upper bound, dist lower bound) of a polynomial over a box. */
+    std::pair<I, I> bounds(const Poly &poly, const std::array<uint64_t, 5> &js) const {
+        Cv T, G[5];
+        evaluate(poly, js, T, G);
+        Iv A = iadd(isq(T.re), isq(T.im));
+        I B = 0, Cc = 0, re_var = 0, im_var = 0;
+        for (int p = 0; p < 5; ++p) {
+            B += cdiv(h[p] * abs_upper(iadd(imul(T.re, G[p].re), imul(T.im, G[p].im))), S);
+            Cc += cdiv(h[p] * mod_upper(G[p]), S);
+            re_var += cdiv(h[p] * abs_upper(G[p].re), S);
+            im_var += cdiv(h[p] * abs_upper(G[p].im), S);
+        }
+        I upper = sqrt_upper(A.hi + 2 * B + cdiv(Cc * Cc, S)) + poly.Q;
+        I lower_mod = sqrt_lower(std::max<I>(0, A.lo - 2 * B)) - poly.Q;
+        I re_margin = T.re.lo - re_var - poly.Q;
+        I im_lower = abs_lower(T.im) - im_var - poly.Q;
+        I dist = std::max<I>(0, std::max<I>(im_lower, re_margin >= 0 ? lower_mod : 0));
+        return {upper, dist};
+    }
+
+    std::optional<uint64_t> phase_bound(const std::array<uint64_t, 5> &js) const {
+        I F = bounds(head, js).second;
+        for (const Poly &poly : tail) F -= cdiv(poly.W * bounds(poly, js).first, S);
+        I v = (F + (I)offset * S) >> (int)(K - scale);
+        if (v < 0) return 0;
+        if (v > (I)UINT64_MAX) return std::nullopt;
+        return (uint64_t)v;
+    }
+};
+
+Status validate(const Family &family, bool boxes) {
     if (family.prime() != NATURALS)
         return fail(INVALID, "heat_dirichlet operations need members that are natural numbers (lk.naturals), not elements of a field");
+    if (boxes) {
+        if (family.rows() != 1 || (family.cols() != 1 && family.cols() != 5))
+            return fail(INVALID, "phase_bound needs 1 x 1 or 1 x 5 members (a box index or its five grid indices)");
+        return ok();
+    }
     if (family.rows() != 1 || family.cols() != 1)
         return fail(INVALID, "heat_dirichlet operations need 1 x 1 members, one natural number each; these are " +
                                  std::to_string(family.rows()) + " x " + std::to_string(family.cols()));
@@ -367,14 +742,23 @@ inline uint64_t member(const Family &family, uint64_t i) {
 }
 
 R run(const Request &req) {
-    auto valid = validate(*req.family);
-    if (!valid.ok) return R::failure(valid.error.status, valid.error.message);
     auto parsed = parse_op(req.op);
     if (!parsed.ok) return R::failure(parsed.error.status, parsed.error.message);
     Op op = parsed.value;
+    auto valid = validate(*req.family, op == Op::PhaseBound);
+    if (!valid.ok) return R::failure(valid.error.status, valid.error.message);
     Params P;
-    auto st = P.init(req);
-    if (!st.ok) return R::failure(st.error.status, st.error.message);
+    PhaseParams PP;
+    Status st;
+    if (op == Op::PhaseBound) {
+        st = PP.init_phase(req);
+        if (!st.ok) return R::failure(st.error.status, st.error.message);
+        st = PP.precompute_phase();
+        if (!st.ok) return R::failure(st.error.status, st.error.message);
+    } else {
+        st = P.init(req);
+        if (!st.ok) return R::failure(st.error.status, st.error.message);
+    }
     if (op == Op::MollifiedTermUpper || op == Op::BlockTermUpper) {
         st = P.precompute();
         if (!st.ok) return R::failure(st.error.status, st.error.message);
@@ -382,7 +766,7 @@ R run(const Request &req) {
     auto size_r = req.family->size();
     if (!size_r.ok) return R::failure(size_r.error.status, size_r.error.message);
     uint64_t size = size_r.value;
-    if (op != Op::BlockTermUpper)
+    if (op != Op::BlockTermUpper && op != Op::PhaseBound)
         for (uint64_t i = 0; i < size; ++i)
             if (member(*req.family, i) < (op == Op::SigmaLower ? 2u : 1u))
                 return R::failure(INVALID, op == Op::SigmaLower ? "sigma_lower needs a cutoff of at least 2"
@@ -399,6 +783,14 @@ R run(const Request &req) {
     auto statuses = parallel_ranges(size, threads, [&](uint32_t thread, uint64_t begin, uint64_t end) -> Status {
         Accumulator &acc = accumulators[thread];
         for (uint64_t i = begin; i < end; ++i) {
+            if (op == Op::PhaseBound) {
+                auto js = PP.box_of(*req.family, i);
+                if (!js) return fail(INVALID, "box index beyond the grid at member " + std::to_string(i));
+                auto v = PP.phase_bound(*js);
+                if (!v) return fail(INVALID, "value does not fit in 64 bits at member " + std::to_string(i));
+                acc.integer(i, *v);
+                continue;
+            }
             uint64_t n = member(*req.family, i);
             std::optional<uint64_t> v;
             switch (op) {
@@ -410,6 +802,7 @@ R run(const Request &req) {
                 v = (uint64_t)((s < 0 ? 0 : s) >> (int)(K - P.scale));
                 break;
             }
+            case Op::PhaseBound: break; /* handled above */
             }
             if (!v) return fail(INVALID, "exponent exceeds 7 or value does not fit in 64 bits at member " + std::to_string(n));
             acc.integer(i, *v);

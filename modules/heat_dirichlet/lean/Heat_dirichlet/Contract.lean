@@ -108,6 +108,73 @@ theorem sigmaLower_spec (n : ℕ) (hn : 2 ≤ n) :
       - t P / (144 * ((n : ℝ) ^ 2 - 1) ^ 2) := by
   sorry
 
+/-! ## The phase-aware bound -/
+
+section Phase
+
+variable (Q : PhaseParams)
+
+/-- The mollifier `μ_d` as a real. -/
+def mu (d : ℕ) : ℝ :=
+  match Q.mollifier.find? (·.1 = d) with
+  | some (_, num, den) => (num : ℝ) / den
+  | none => 0
+
+/-- `ε_k = (t/2) ln k`. -/
+def eps (k : ℕ) : ℝ := t Q.base / 2 * log k
+
+/-- The 7-smooth divisors `d` of `m` that survive the truncation `m k / d ≤ N`. -/
+def smoothSurvivors (m k N : ℕ) : List ℕ :=
+  ((Q.smooth.map (·.1)).filter fun d => m % d = 0 ∧ m * k ≤ d * N)
+
+/-- `cS_{m,k}` at cutoff `N`: `∑ μ_d b_{m/d} (m/d)^{ε_k} m^{-sigma}`. -/
+def cS (m k N : ℕ) : ℝ :=
+  ((smoothSurvivors Q m k N).map fun d =>
+    mu Q d * b Q.base (m / d) * ((m / d : ℕ) : ℝ) ^ eps Q k).sum * (m : ℝ) ^ (-sigma Q.base)
+
+/-- `cA_{m,k}` at cutoff `N`: the partner coefficient with the weight `(mk/(d N₋))^y`. -/
+def cA (m k N : ℕ) : ℝ :=
+  C Q.base * ((smoothSurvivors Q m k N).map fun d =>
+    mu Q d * ((m * k : ℕ) / (d * Q.base.nMinus : ℕ) : ℝ) ^ y Q.base * b Q.base (m / d)
+      * ((m / d : ℕ) : ℝ) ^ eps Q k).sum * (m : ℝ) ^ (-sigma Q.base)
+
+/-- `θ(m) = ∑_p v_p(m) θ_p` for the smooth `m` with exponent vector `v`. -/
+def thetaOf (v : List ℕ) (θ : Fin 4 → ℝ) : ℝ := ∑ i : Fin 4, (v.getD i.val 0 : ℝ) * θ i
+
+/-- `T_k(θ, ψ)` at cutoff `N`. -/
+def T (k N : ℕ) (θ : Fin 4 → ℝ) (ψ : ℝ) : ℂ :=
+  (Q.smooth.map fun (m, v) =>
+    ((cS Q m k N : ℂ) + Complex.exp (ψ * Complex.I) * cA Q m k N) * Complex.exp (thetaOf v θ * Complex.I)).sum
+
+/-- The rough `k` of the cell, `1 < k ≤ N₊`, coprime to `210`. -/
+def roughs : List ℕ := ((List.range (Q.base.nPlus + 1)).filter fun k => 1 < k ∧ isRough k)
+
+/-- `F(θ, ψ) = dist(T₁, (−∞, 0]) − ∑_{k > 1} b_k k^{-sigma} |T_k|`, at cutoff `N` and the real
+part `s` of the variable (`sigma` bounds it from below across the cell). -/
+def F (N : ℕ) (θ : Fin 4 → ℝ) (ψ : ℝ) : ℝ :=
+  Metric.infDist (T Q 1 N θ ψ) {z : ℂ | z.im = 0 ∧ z.re ≤ 0}
+    - ((roughs Q).map fun k => b Q.base k * (k : ℝ) ^ (-sigma Q.base) * ‖T Q k N θ ψ‖).sum
+
+/-- The box of the torus a member names: `θ_p ∈ 2π [j_p, j_p + 1] / g_p`, `ψ` likewise. -/
+def InBox (js : List ℕ) (θ : Fin 4 → ℝ) (ψ : ℝ) : Prop :=
+  (∀ i : Fin 4, 2 * π * (js.getD i 0 : ℝ) / (Q.g.getD i 1 : ℝ) ≤ θ i ∧
+    θ i ≤ 2 * π * ((js.getD i 0 : ℝ) + 1) / (Q.g.getD i 1 : ℝ)) ∧
+  2 * π * (js.getD 4 0 : ℝ) / (Q.g.getD 4 1 : ℝ) ≤ ψ ∧
+    ψ ≤ 2 * π * ((js.getD 4 0 : ℝ) + 1) / (Q.g.getD 4 1 : ℝ)
+
+/-- The value returned for a box, minus the offset, is below `F` at every point of the box, every
+cutoff of the cell, and every real part `sigma'` in `[sigma, sigmaHi]` (the reference is evaluated
+with `sigma` enclosed by that interval; the statement fixes the lower end for readability and the
+intended proof carries the interval). The clamp at `0` only weakens the bound. -/
+theorem phaseBound_spec (hQ : Q.valid = true) (head : Poly) (tail : List Poly)
+    (hp : Q.polys = some (head, tail)) (member js : List ℕ) (hj : Q.boxOf member = some js)
+    (o : ℕ) (h : Q.phaseBound head tail member = some o) (N : ℕ) (hc : InCell Q.base N)
+    (θ : Fin 4 → ℝ) (ψ : ℝ) (hb : InBox Q js θ ψ) :
+    (o : ℝ) / (2 : ℝ) ^ Q.base.scale - (Q.offset : ℝ) ≤ F Q N θ ψ := by
+  sorry
+
+end Phase
+
 /-- The value returned at the output scale bounds the scale-`S` value from above. -/
 theorem out_spec (v : ℤ) (o : ℕ) (h : P.out v = some o) :
     real v ≤ (o : ℝ) / (2 : ℝ) ^ P.scale := by
