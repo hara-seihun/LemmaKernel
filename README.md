@@ -62,8 +62,8 @@ architectures come from `rocm_agent_enumerator`, or `-DLEMMAKERNEL_HIP_ARCHS=gfx
 `-DLEMMAKERNEL_HIP=OFF` skips it. CMake's own HIP language is not used because it cannot locate
 the ROCm device libraries under NixOS, while `hipcc` can.
 
-CPU-only Ubuntu builds use `build-essential cmake ninja-build pkg-config libnauty2-dev rsync`
-from apt; Python callers also need NumPy. Missing or unloadable HIP device libraries do not
+CPU-only Ubuntu 26.04 builds use `build-essential cmake ninja-build pkg-config libnauty-dev rsync`
+from apt (`libnauty2-dev` on Debian Bookworm); Python callers also need NumPy. Missing or unloadable HIP device libraries do not
 prevent `lk.describe()` or CPU operations.
 
 The Lean side (`lake build`) needs Mathlib. In the canonical checkout `.lake/packages` is a
