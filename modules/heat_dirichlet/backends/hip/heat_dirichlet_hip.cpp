@@ -47,7 +47,8 @@ const Device &device() {
         std::string path = library_path();
         dev.handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
         if (!dev.handle) {
-            dev.error = std::string("cannot load ") + path + ": " + (dlerror() ? dlerror() : "");
+            const char *error = dlerror();
+            dev.error = std::string("cannot load ") + path + ": " + (error ? error : "");
             return;
         }
         dev.prepare = (gpu::PrepareFn)dlsym(dev.handle, "lk_heat_dirichlet_phase_prepare");

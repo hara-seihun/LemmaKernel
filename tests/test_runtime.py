@@ -1,6 +1,8 @@
 """Runtime behaviour that belongs to no module: argument checking, backend pinning, describe."""
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -41,6 +43,26 @@ def test_describe_lists_every_module():
     for m in d["modules"]:
         assert any(b.startswith(m["module"]["name"] + ".") for b in d["available_backends"]), m["module"]["name"]
     assert {f["name"] for f in d["runtime"]["families"]} >= {"explicit", "subsets", "grassmannian", "all_matrices", "group_elements"}
+
+
+@pytest.mark.parametrize("library", ["missing", "invalid"])
+def test_unloadable_hip_library_keeps_cpu_runtime_available(tmp_path, library):
+    path = tmp_path / "liblemmakernel_hip.so"
+    if library == "invalid":
+        path.write_text("not a shared library")
+    env = dict(os.environ, LEMMAKERNEL_HIP_LIB=str(path),
+               PYTHONPATH=str(ROOT / "python"))
+    # Availability is cached once per process, so each loader failure needs a fresh process.
+    proc = subprocess.run([sys.executable, "-c", '''
+import lemmakernel as lk
+backends = lk.describe()["available_backends"]
+assert "heat_dirichlet.hip" not in backends
+assert "heat_dirichlet.generic" in backends
+ctx = lk.Context()
+fam = ctx.explicit(lk.matrix(2, [[[1, 0], [0, 1]]]))
+assert ctx.value("gfp.rank", fam).values == [2]
+'''], env=env, capture_output=True, text=True, timeout=15)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
 def test_natural_number_families_enumerate_like_the_naive_layer():

@@ -62,6 +62,10 @@ architectures come from `rocm_agent_enumerator`, or `-DLEMMAKERNEL_HIP_ARCHS=gfx
 `-DLEMMAKERNEL_HIP=OFF` skips it. CMake's own HIP language is not used because it cannot locate
 the ROCm device libraries under NixOS, while `hipcc` can.
 
+CPU-only Ubuntu builds use `build-essential cmake ninja-build pkg-config libnauty2-dev rsync`
+from apt; Python callers also need NumPy. Missing or unloadable HIP device libraries do not
+prevent `lk.describe()` or CPU operations.
+
 The Lean side (`lake build`) needs Mathlib. In the canonical checkout `.lake/packages` is a
 hardlink copy of `~/projects/LemmaLib/.lake/packages`, which pins the same Lean and Mathlib
 versions. A task checkout under `~/work/clones` should make another hardlink copy rather than
@@ -91,7 +95,9 @@ No test or bench script is written per module: a module ships `cases.py` and the
 `tools/harness.py` derives the rest.
 
 `./deploy` builds the current checkout, checks its generated files, and atomically publishes the
-Python package, shared library, and C headers under `/srv/pi/lemmakernel/current`. It uses the host
+Python package, shared library, and C headers under `/srv/pi/lemmakernel/current`. The staged
+package must pass its rank and backend-description smoke before replacing a release or switching
+`current`; a failed candidate leaves the live release untouched. It uses the host
 CMake and Ninja toolchain when present, otherwise the pinned Debian builder in
 `tools/deploy.Dockerfile`. The package finds its colocated library without `LEMMAKERNEL_LIB`; when
 the host does not already expose it, deployment adds the stable `current/python` path to the
