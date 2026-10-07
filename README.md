@@ -55,7 +55,9 @@ pytest -n auto tests                                # every module's cases again
 tools/bench.py                                      # kernel vs naive; reruns only modules whose sources changed
 ```
 
-A HIP toolchain (`hipcc` on the path, as on this machine's Strix Halo) adds
+Ubuntu 26.04 `kenan-server` is deployed CPU-only. The former GMKtec Strix Halo
+GPU and its ROCm toolchain are not present here. On a host with a HIP toolchain,
+`hipcc` on PATH adds
 `build/liblemmakernel_hip.so`, the GPU device code, which `deploy` publishes beside the main
 library; without it the build is the same and the GPU backends report unavailable. The
 architectures come from `rocm_agent_enumerator`, or `-DLEMMAKERNEL_HIP_ARCHS=gfx1151,gfx1100`;
@@ -66,10 +68,12 @@ CPU-only Ubuntu 26.04 builds use `build-essential cmake ninja-build pkg-config l
 from apt (`libnauty2-dev` on Debian Bookworm); Python callers also need NumPy. Missing or unloadable HIP device libraries do not
 prevent `lk.describe()` or CPU operations.
 
-The Lean side (`lake build`) needs Mathlib. In the canonical checkout `.lake/packages` is a
-hardlink copy of `~/projects/LemmaLib/.lake/packages`, which pins the same Lean and Mathlib
-versions. A task checkout under `~/work/clones` should make another hardlink copy rather than
-fetch its own:
+The Lean side (`lake build`) needs the project's pinned Lean/Mathlib dependencies.
+Generated `.lake` trees were omitted from Ubuntu recovery; the current LemmaKernel
+checkout does not contain the former warm `.lake/packages` cache. Use `lake update`
+with the repository's pins to regenerate it when needed. If a matching cache has
+already been rebuilt, a task checkout under `~/work/clones` can make a hardlink copy
+rather than fetch another copy:
 
 ```
 mkdir -p .lake && cp -al /home/kenan/projects/LemmaKernel/.lake/packages .lake/packages
@@ -82,7 +86,8 @@ checkout would silently mark another checkout's stale `.olean` files as current,
 tests then fail with unknown constants. Let each checkout build its own module outputs (a module's
 `Reference` takes a second or two once the packages are there).
 
-Nothing then has to be fetched or elaborated from Mathlib, but each module's own `Reference` and
+With a populated matching cache, nothing has to be fetched or elaborated from Mathlib,
+but each module's own `Reference` and
 `Contract` still elaborate once per checkout, so the first `lake build` there costs several
 minutes for all of them together; so does the first build after a change to
 `runtime/lean/Lk/Reference.lean`, which every module imports. Under a short command timeout, build
@@ -275,3 +280,7 @@ existing module faster, read [docs/adding-a-backend.md](docs/adding-a-backend.md
 
 Source: `~/projects/LemmaKernel`, public remote `hara-seihun/LemmaKernel`. `./deploy` publishes
 commit-addressed builds under `/srv/pi/lemmakernel` and switches `current` atomically.
+Ubuntu's ordinary Python import is selected by the invoking user's `lemmakernel.pth`
+pointing to `current/python`. [Server recovery](../../machine/server-recovery.md#lemmakernel)
+owns the current deployment receipt and host dependencies. Historical GMKtec measurements
+in `BENCHMARKS.md` remain measurements of that machine, not Ubuntu timings.
